@@ -608,8 +608,9 @@ const App = (() => {
       </tr>`;
 
       grades.forEach(g => {
-        const activo = activos[g.key] !== false;
-        const cap    = state.capacidadMaxima[g.key] || Infinity;
+        const activo    = activos[g.key] !== false;
+        const esEntrada = ENTRY_GRADES.has(g.key);
+        const cap       = state.capacidadMaxima[g.key] || Infinity;
 
         const yearCells = matricula.map((yr, t) => {
           const n = yr[g.key] || 0;
@@ -625,8 +626,6 @@ const App = (() => {
           const icon = isOverpop ? ' <span class="overpop-icon" title="Sobrepoblación">⚠</span>' : '';
           return `<td class="${cls}">${N(n)}${icon}</td>`;
         }).join('');
-
-        const esEntrada = ENTRY_GRADES.has(g.key);
         tableBody += `<tr style="${!activo?'opacity:.55':''}">
           <td style="padding-left:6px">
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
