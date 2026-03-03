@@ -70,8 +70,8 @@ const App = (() => {
       porcentajeModelo:     0.30,
       porcentajeOperadora:  0.12,
       rentaInmuebleBase:    15000000,
-      numAcciones:          250,
-      costoAccion:          1000000,
+      numAcciones:          100,
+      numTickets:           500,
       // ── New enrollment variables ──
       tasaDesercion:        0.03,    // % alumnos que no continúan al siguiente grado
       tasaCaptacion:        0.05     // crecimiento anual de nuevos ingresos externos
@@ -514,7 +514,7 @@ const App = (() => {
 
     const kpis = [
       { label:'Matrícula Año 1',       val:N(y1.totalAlumnos)+' alumnos',  sub:`Capacidad ${N(calcTopeTotal())} · ${P(y1.totalAlumnos/calcTopeTotal())}`, cls:'', accent:'accent' },
-      { label:'Capital Requerido',      val:m2M(state.variables.capitalRequerido)+' MXN', sub:`${N(state.variables.numAcciones)} acciones · ${M(state.variables.costoAccion)} c/u`, cls:'gold', accent:'positive' },
+      { label:'Capital Requerido',      val:m2M(state.variables.capitalRequerido)+' MXN', sub:`${N(state.variables.numAcciones)} acciones · ${N(state.variables.numTickets||500)} tickets`, cls:'gold', accent:'positive' },
       { label:'Ingresos Año 1',         val:m2M(y1.ingresoTotal),           sub:'Netos descontando becas', cls:'', accent:'positive' },
       { label:`Ingresos Año ${YEARS}`,  val:m2M(yN.ingresoTotal),           sub:`+${P(yN.ingresoTotal/y1.ingresoTotal-1)} vs Año 1`, cls:'', accent:'positive' },
       { label:`EBITDA Año ${YEARS}`,    val:m2M(yN.ebitda),                 sub:'Utilidad operativa neta', cls:'gold', accent:'positive' },
@@ -556,10 +556,30 @@ const App = (() => {
   // ============================================================
   function renderVariables() {
     const v = state.variables;
+    const cap        = v.capitalRequerido || 0;
+    const pctModelo  = v.porcentajeModelo || 0.30;
+    const totalAcc   = v.numAcciones      || 100;
+    const accModelo  = Math.round(totalAcc * pctModelo);
+    const accVenta   = totalAcc - accModelo;
+    const valorAccion= accVenta > 0 ? cap / accVenta : 0;
+    const cashRecaudar = cap * (1 - pctModelo);
+    const tickets    = v.numTickets || 500;
+    const valorTicket= tickets > 0 ? cap / tickets : 0;
+    const ano0       = v.anoInicio || ANO_INICIO;
+
+    // Row helper para valores calculados (read-only, gold)
+    const statRow = (label, value, hint='') => `
+      <div class="form-group">
+        <label class="form-label" style="opacity:.75">${label}</label>
+        <div style="padding:9px 4px;border-bottom:1px solid var(--beige);color:var(--gold);
+          font-weight:400;font-size:15px;font-variant-numeric:tabular-nums">${value}</div>
+        ${hint ? `<span class="form-hint">${hint}</span>` : ''}
+      </div>`;
+
     return `
     <div class="section-header">
       <div><div class="section-title">Variables Iniciales</div>
-      <div class="section-sub">Parámetros macroeconómicos, inmobiliarios y de captación</div></div>
+      <div class="section-sub">Parámetros macroeconómicos, de capital y captación</div></div>
     </div>
     <div class="info-note">Cualquier cambio recalcula automáticamente todos los módulos y se guarda en el navegador.</div>
 
@@ -568,22 +588,24 @@ const App = (() => {
       <div class="form-grid">
         <div class="form-group">
           <label class="form-label">Año de inicio — Ciclo 1 <span>(año calendario)</span></label>
-          ${numInput(v.anoInicio,'anoInicio','variables','1')}
-          <span class="form-hint">Ciclo 1 = ${(v.anoInicio||ANO_INICIO)-1}-${String(v.anoInicio||ANO_INICIO).slice(-2)} · La corrida proyecta los ${YEARS} ciclos siguientes</span>
+          ${numInput(ano0,'anoInicio','variables','1')}
+          <span class="form-hint">Ciclo 1 = ${ano0-1}-${String(ano0).slice(-2)} · La corrida proyecta los ${YEARS} ciclos siguientes</span>
         </div>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-title">Datos Inmobiliarios</div>
+      <div class="card-title">Capital del Proyecto</div>
       <div class="form-grid">
-        <div class="form-group"><label class="form-label">Tamaño del Terreno <span>(m²)</span></label>${numInput(v.terreno,'terreno','variables','100')}</div>
-        <div class="form-group"><label class="form-label">Capital Requerido <span>(MXN)</span></label>${numInput(v.capitalRequerido,'capitalRequerido','variables','1000000')}</div>
-        <div class="form-group"><label class="form-label">Renta Anual del Activo <span>(MXN, Año 0)</span></label>${numInput(v.rentaInmuebleBase,'rentaInmuebleBase','variables','100000')}<span class="form-hint">Crece con inflación año a año</span></div>
-        <div class="form-group"><label class="form-label">Valor de la Acción del Modelo</label>
-          <div style="padding:9px 2px;border-bottom:2px solid var(--beige);color:var(--gold);font-weight:400;font-size:15px;font-variant-numeric:tabular-nums">
-            ${M(v.capitalRequerido / (1 - (v.porcentajeModelo||0.30)))}</div>
-          <span class="form-hint">Capital Requerido ÷ (1 − Aportación Modelo)</span>
+        <div class="form-group">
+          <label class="form-label">Capital Requerido <span>(MXN)</span></label>
+          ${numInput(cap,'capitalRequerido','variables','1000000')}
+          <span class="form-hint">${M(cap)}</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Renta Anual del Activo <span>(MXN, Ciclo 1)</span></label>
+          ${numInput(v.rentaInmuebleBase,'rentaInmuebleBase','variables','100000')}
+          <span class="form-hint">${M(v.rentaInmuebleBase)} · crece con inflación</span>
         </div>
       </div>
     </div>
@@ -591,21 +613,40 @@ const App = (() => {
     <div class="card">
       <div class="card-title">Parámetros Económicos</div>
       <div class="form-grid">
-        <div class="form-group"><label class="form-label">Inflación Operacional <span>(%/año)</span></label>${pctInput(v.inflacion,'inflacion','variables')}<span class="form-hint">Afecta nóminas, gastos, renta del activo</span></div>
+        <div class="form-group"><label class="form-label">Inflación Operacional <span>(%/año)</span></label>${pctInput(v.inflacion,'inflacion','variables')}<span class="form-hint">Afecta nóminas, gastos y renta del activo</span></div>
         <div class="form-group"><label class="form-label">Aumento Anual Colegiaturas <span>(%/año)</span></label>${pctInput(v.aumentoColegiatura,'aumentoColegiatura','variables')}</div>
         <div class="form-group"><label class="form-label">Comisión Operadora <span>(%)</span></label>${pctInput(v.porcentajeOperadora,'porcentajeOperadora','variables')}</div>
-        <div class="form-group"><label class="form-label">Aportación Valor del Modelo <span>(%)</span></label>${pctInput(v.porcentajeModelo,'porcentajeModelo','variables')}</div>
+        <div class="form-group"><label class="form-label">Aportación Valor del Modelo <span>(%)</span></label>${pctInput(pctModelo,'porcentajeModelo','variables')}<span class="form-hint">Porción del capital que aporta el modelo (no en efectivo)</span></div>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-title">Estructura Accionaria</div>
-      <div class="form-grid">
-        <div class="form-group"><label class="form-label">Número de Acciones</label>${numInput(v.numAcciones,'numAcciones','variables','1')}</div>
-        <div class="form-group"><label class="form-label">Costo por Acción <span>(MXN)</span></label>${numInput(v.costoAccion,'costoAccion','variables','100000')}</div>
-        <div class="form-group"><label class="form-label">Capital Total Accionario</label>
-          <div style="padding:8px 0;border-bottom:1px solid var(--beige);color:var(--gold);font-weight:300;font-size:13px;">
-            ${M(v.numAcciones * v.costoAccion)}</div>
+      <div class="card-title">Estructura de Capital</div>
+
+      <div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--beige)">
+        <div class="form-hint" style="font-size:11px;letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px">Acciones</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Total de Acciones</label>
+            ${numInput(totalAcc,'numAcciones','variables','1')}
+            <span class="form-hint">Incluye acciones del modelo + acciones a la venta</span>
+          </div>
+          ${statRow('Acciones del Modelo', `${accModelo}`, `${P(pctModelo)} × ${totalAcc} acciones (aportación en especie)`)}
+          ${statRow('Acciones a la Venta', `${accVenta}`, `${totalAcc} − ${accModelo} = ${accVenta} acciones disponibles para inversores`)}
+          ${statRow('Valor por Acción', M(valorAccion), `${M(cap)} ÷ ${accVenta} acciones`)}
+          ${statRow('Capital a Recaudar <span style="font-weight:300">(efectivo)</span>', M(cashRecaudar), `${M(cap)} × ${P(1-pctModelo)} · porción de inversores`)}
+        </div>
+      </div>
+
+      <div>
+        <div class="form-hint" style="font-size:11px;letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px">Tickets de Inversión</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Número de Tickets</label>
+            ${numInput(tickets,'numTickets','variables','1')}
+            <span class="form-hint">Unidades mínimas de inversión</span>
+          </div>
+          ${statRow('Valor por Ticket', M(valorTicket), `${M(cap)} ÷ ${N(tickets)} tickets`)}
         </div>
       </div>
     </div>`;
