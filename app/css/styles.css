@@ -427,45 +427,47 @@ tbody td:first-child {
 }
 .form-label span { font-weight: 300; color: var(--text-faint); margin-left: 4px; }
 .form-input {
-  background: rgba(255,255,255,.04);
+  background: rgba(229,188,53,.13);
   border: none;
-  border-bottom: 2px solid rgba(255,255,255,.12);
-  border-radius: 0;
+  border-bottom: 2px solid rgba(229,188,53,.55);
+  border-radius: 4px 4px 0 0;
   color: var(--oxford);
   font-size: 15px;
   font-weight: 400;
-  padding: 9px 2px;
-  transition: border-color .15s;
+  padding: 9px 8px;
+  transition: border-color .15s, background .15s;
   width: 100%;
   -moz-appearance: textfield;
 }
 .form-input::-webkit-inner-spin-button,
 .form-input::-webkit-outer-spin-button { -webkit-appearance: none; }
-.form-input:focus { outline: none; border-bottom-color: var(--cobalt); }
-.form-input:hover:not(:focus) { border-bottom-color: rgba(255,255,255,.25); }
+.form-input:focus { outline: none; background: rgba(229,188,53,.22); border-bottom-color: var(--gold); }
+.form-input:hover:not(:focus) { background: rgba(229,188,53,.18); border-bottom-color: rgba(229,188,53,.75); }
 .form-hint { font-size: 10px; font-weight: 300; color: var(--text-faint); }
 
 .rates-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
 
 /* Inline cell input (tabla) */
 .cell-input {
-  background: transparent;
+  background: rgba(229,188,53,.12);
   border: none;
+  border-bottom: 1px solid rgba(229,188,53,.45);
+  border-radius: 3px 3px 0 0;
   color: var(--oxford);
   font-size: 13px;
   font-weight: 400;
   text-align: right;
-  width: 80px;
-  min-width: 60px;
-  padding: 2px 4px;
-  border-radius: 4px;
+  width: 90px;
+  min-width: 70px;
+  padding: 3px 6px;
   font-variant-numeric: tabular-nums;
   -moz-appearance: textfield;
+  transition: background .12s, border-color .12s;
 }
 .cell-input::-webkit-inner-spin-button,
 .cell-input::-webkit-outer-spin-button { -webkit-appearance: none; }
-.cell-input:hover { background: rgba(255,255,255,.06); }
-.cell-input:focus { outline: none; background: rgba(255,255,255,.06); border-bottom: 1px solid var(--cobalt); color: var(--oxford); }
+.cell-input:hover { background: rgba(229,188,53,.22); border-bottom-color: rgba(229,188,53,.7); }
+.cell-input:focus { outline: none; background: rgba(229,188,53,.28); border-bottom: 2px solid var(--gold); color: var(--oxford); }
 
 /* ══════════════════════════════════
    BADGES
