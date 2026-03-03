@@ -62,11 +62,12 @@ const App = (() => {
   // ============================================================
   const DEFAULTS = {
     variables: {
+      anoInicio:            2026,
       terreno:              40000,
       capitalRequerido:     250000000,
       inflacion:            0.05,
       aumentoColegiatura:   0.06,
-      porcentajeModelo:     0.23,
+      porcentajeModelo:     0.30,
       porcentajeOperadora:  0.12,
       rentaInmuebleBase:    15000000,
       numAcciones:          250,
@@ -173,7 +174,8 @@ const App = (() => {
     descuentos: {
       inscripcionPct:      0.1557,
       apoyosEconomicosPct: 0.0786,
-      becasSepPct:         0.0500
+      becasSepPct:         0.0500,
+      prontoPagoPct:       0.10
     },
 
     // ── Nóminas ──
@@ -262,6 +264,12 @@ const App = (() => {
   function calcTopeTotal() {
     const activos = state.gradosActivos || {};
     return GRADES.reduce((s, g) => activos[g.key] !== false ? s + (state.capacidadMaxima[g.key] || 0) : s, 0) || 1;
+  }
+
+  /** Encabezado de columna "Ciclo N · YY-YY" para una entrada de corrida */
+  function thCiclo(yr) {
+    const y = yr.ano;
+    return `<th>Ciclo ${yr.i+1}<br><span style="font-size:10px;opacity:.6;font-weight:300">${y-1}-${String(y).slice(-2)}</span></th>`;
   }
 
   /** Suma de los conceptos de cuota para un nivel */
@@ -395,7 +403,7 @@ const App = (() => {
     let cashAcumulado = 0;
 
     for (let i = 0; i < YEARS; i++) {
-      const ano       = ANO_INICIO + i;
+      const ano       = (state.variables.anoInicio || ANO_INICIO) + i;
       const infFactor = Math.pow(1 + state.variables.inflacion, i);
       const colFactor = Math.pow(1 + state.variables.aumentoColegiatura, i);
 
@@ -417,7 +425,8 @@ const App = (() => {
       const descInscripcion = sumInscripciones * state.descuentos.inscripcionPct;
       const apoyosEcon      = sumColegiaturas  * state.descuentos.apoyosEconomicosPct;
       const becas           = sumColegiaturas  * state.descuentos.becasSepPct;
-      const ingresoTotal    = (sumInscripciones - descInscripcion) + sumColegiaturas - apoyosEcon - becas + sumCuotas;
+      const prontoPago      = sumColegiaturas  * (state.descuentos.prontoPagoPct || 0);
+      const ingresoTotal    = (sumInscripciones - descInscripcion) + sumColegiaturas - apoyosEcon - becas - prontoPago + sumCuotas;
 
       const nomina    = calcNomina(i);
       const gastosOp  = calcGastos(i);
@@ -435,7 +444,7 @@ const App = (() => {
         ano, i, infFactor, colFactor,
         gradeEnrollment, levelEnrollment, totalAlumnos,
         sumInscripciones, descInscripcion, sumColegiaturas, sumCuotas,
-        apoyosEcon, becas, ingresoTotal,
+        apoyosEcon, becas, prontoPago, ingresoTotal,
         nomina, gastosOp, egresoTotal,
         subtotal, operadora, rentaInmueble, ebitda,
         cashAcumulado, utilidadPorAccion
@@ -485,7 +494,7 @@ const App = (() => {
     <div class="section-header">
       <div>
         <div class="section-title">Dashboard · Resumen Ejecutivo</div>
-        <div class="section-sub">Lógica &amp; Liquidez · ${ANO_INICIO}–${ANO_INICIO+YEARS-1}</div>
+        <div class="section-sub">Lógica &amp; Liquidez · Ciclos 1–${YEARS} (${corrida[0].ano}–${corrida[YEARS-1].ano})</div>
       </div>
       <div class="badge badge-oxford">México · Ciclo escolar Sept–Ago</div>
     </div>
@@ -524,11 +533,27 @@ const App = (() => {
     <div class="info-note">Cualquier cambio recalcula automáticamente todos los módulos y se guarda en el navegador.</div>
 
     <div class="card">
+      <div class="card-title">Ciclo Escolar</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Año de inicio — Ciclo 1 <span>(año calendario)</span></label>
+          ${numInput(v.anoInicio,'anoInicio','variables','1')}
+          <span class="form-hint">Ciclo 1 = ${(v.anoInicio||ANO_INICIO)-1}-${String(v.anoInicio||ANO_INICIO).slice(-2)} · La corrida proyecta los ${YEARS} ciclos siguientes</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
       <div class="card-title">Datos Inmobiliarios</div>
       <div class="form-grid">
         <div class="form-group"><label class="form-label">Tamaño del Terreno <span>(m²)</span></label>${numInput(v.terreno,'terreno','variables','100')}</div>
         <div class="form-group"><label class="form-label">Capital Requerido <span>(MXN)</span></label>${numInput(v.capitalRequerido,'capitalRequerido','variables','1000000')}</div>
         <div class="form-group"><label class="form-label">Renta Anual del Activo <span>(MXN, Año 0)</span></label>${numInput(v.rentaInmuebleBase,'rentaInmuebleBase','variables','100000')}<span class="form-hint">Crece con inflación año a año</span></div>
+        <div class="form-group"><label class="form-label">Valor de la Acción del Modelo</label>
+          <div style="padding:9px 2px;border-bottom:2px solid var(--beige);color:var(--gold);font-weight:400;font-size:15px;font-variant-numeric:tabular-nums">
+            ${M(v.capitalRequerido / (1 - (v.porcentajeModelo||0.30)))}</div>
+          <span class="form-hint">Capital Requerido ÷ (1 − Aportación Modelo)</span>
+        </div>
       </div>
     </div>
 
@@ -538,7 +563,7 @@ const App = (() => {
         <div class="form-group"><label class="form-label">Inflación Operacional <span>(%/año)</span></label>${pctInput(v.inflacion,'inflacion','variables')}<span class="form-hint">Afecta nóminas, gastos, renta del activo</span></div>
         <div class="form-group"><label class="form-label">Aumento Anual Colegiaturas <span>(%/año)</span></label>${pctInput(v.aumentoColegiatura,'aumentoColegiatura','variables')}</div>
         <div class="form-group"><label class="form-label">Comisión Operadora <span>(%)</span></label>${pctInput(v.porcentajeOperadora,'porcentajeOperadora','variables')}</div>
-        <div class="form-group"><label class="form-label">Utilidad del Modelo <span>(%)</span></label>${pctInput(v.porcentajeModelo,'porcentajeModelo','variables')}</div>
+        <div class="form-group"><label class="form-label">Aportación Valor del Modelo <span>(%)</span></label>${pctInput(v.porcentajeModelo,'porcentajeModelo','variables')}</div>
       </div>
     </div>
 
@@ -560,7 +585,8 @@ const App = (() => {
   // ============================================================
   function renderMatricula() {
     const matricula = calcMatricula();
-    const allYears  = Array.from({length:YEARS}, (_,i) => ANO_INICIO+i);
+    const corrida0  = calcCorrida();
+    const allYears  = corrida0.map(yr => yr.ano);
 
     // ── Detect any overpopulation cells ──
     let hasOverpop = false;
@@ -669,7 +695,7 @@ const App = (() => {
     <div class="section-header">
       <div>
         <div class="section-title">Matriz de Alumnos</div>
-        <div class="section-sub">${ANO_INICIO}–${ANO_INICIO+YEARS-1}
+        <div class="section-sub">Ciclos 1–${YEARS} (${corrida0[0].ano}–${corrida0[YEARS-1].ano})
           · Reinscripción <strong style="color:var(--gold)">${P(rein)}</strong>
           · Crecimiento <strong style="color:var(--cobalt)">+${P(crec)}/año</strong>
         </div>
@@ -709,7 +735,7 @@ const App = (() => {
     </div>
 
     <div class="card">
-      <div class="card-title">Proyección de Matrícula · ${ANO_INICIO}–${ANO_INICIO+YEARS-1}
+      <div class="card-title">Proyección de Matrícula · Ciclos 1–${YEARS}
         <span class="form-hint" style="margin-left:12px;font-size:10px;text-transform:none;letter-spacing:0">
           ☑ activa / ☐ desactiva cada grado
         </span>
@@ -741,13 +767,14 @@ const App = (() => {
   function renderReferencias() {
     const c = state.colegiaturas;
     const desc = state.descuentos;
+    const ano0 = state.variables.anoInicio || ANO_INICIO;
+    const ciclo1 = `${ano0-1}-${String(ano0).slice(-2)}`;
 
     const rows = TUITION_KEYS.map((lk, i) => `
       <tr>
         <td>${TUITION_LABELS[i]}</td>
         <td style="color:var(--gold);font-variant-numeric:tabular-nums">${N(inscripcionTotal(lk))}</td>
-        <td><input type="number" class="cell-input" value="${c[lk]}"     data-ref-type="colegiaturas"  data-ref-grade="${lk}"></td>
-        <td>${M(c[lk] * (1+state.variables.aumentoColegiatura))}</td>
+        <td><input type="number" class="cell-input" value="${c[lk]}" data-ref-type="colegiaturas" data-ref-grade="${lk}"></td>
         <td style="color:var(--gold);font-variant-numeric:tabular-nums">${N(cuotaTotal(lk))}</td>
         <td>${M(inscripcionTotal(lk) * (1-desc.inscripcionPct))}</td>
       </tr>`).join('');
@@ -755,25 +782,24 @@ const App = (() => {
     return `
     <div class="section-header"><div>
       <div class="section-title">Valores de Referencia</div>
-      <div class="section-sub">Colegiaturas, inscripciones y cuotas por nivel académico · Ciclo 2025–26</div>
+      <div class="section-sub">Aranceles y descuentos · Ciclo 1 · ${ciclo1}</div>
     </div></div>
 
     <div class="card">
-      <div class="card-title">Aranceles por Nivel</div>
+      <div class="card-title">Aranceles por Nivel · Ciclo 1 (${ciclo1})</div>
       <div class="table-wrap">
         <table>
           <thead><tr>
             <th>Nivel</th>
             <th>Inscripción (MXN)</th>
             <th>Colegiatura/mes (MXN)</th>
-            <th>Colegiatura Año 2 (+${P(state.variables.aumentoColegiatura)})</th>
             <th>Cuotas Anuales (MXN)</th>
             <th>Inscripción Neta*</th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
-      <div class="form-hint mt-8">* Inscripción neta = bruta × (1 − ${P(desc.inscripcionPct)} descuento promedio)</div>
+      <div class="form-hint mt-8">* Inscripción neta = bruta × (1 − ${P(desc.inscripcionPct)} descuento prom.)</div>
     </div>
 
     <div class="card">
@@ -782,6 +808,7 @@ const App = (() => {
         <div class="form-group"><label class="form-label">Descuento prom. Inscripciones</label>${pctInput(desc.inscripcionPct,'inscripcionPct','descuentos')}<span class="form-hint">Becas, cortesías, maestros</span></div>
         <div class="form-group"><label class="form-label">Apoyos Económicos</label>${pctInput(desc.apoyosEconomicosPct,'apoyosEconomicosPct','descuentos')}<span class="form-hint">% sobre total colegiaturas</span></div>
         <div class="form-group"><label class="form-label">Becas SEP + Maestros + Socios</label>${pctInput(desc.becasSepPct,'becasSepPct','descuentos')}<span class="form-hint">% sobre total colegiaturas</span></div>
+        <div class="form-group"><label class="form-label">Pronto Pago</label>${pctInput(desc.prontoPagoPct,'prontoPagoPct','descuentos')}<span class="form-hint">% desc. sobre colegiaturas por pago anticipado</span></div>
       </div>
     </div>`;
   }
@@ -791,8 +818,6 @@ const App = (() => {
   // ============================================================
   function renderCuotas() {
     const corrida = calcCorrida();
-    const years = Array.from({length:YEARS},(_,i)=>ANO_INICIO+i);
-
     const CONCEPTOS = [
       { key:'cuota',  label:'Precio Cuotas'    },
       { key:'lider',  label:'Yo Soy Líder'     },
@@ -848,7 +873,7 @@ const App = (() => {
       <div class="card-title">Proyección de Ingresos por Cuotas (MXN)</div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Nivel</th>${years.map(y=>`<th>${y}</th>`).join('')}</tr></thead>
+          <thead><tr><th>Nivel</th>${corrida.map(thCiclo).join('')}</tr></thead>
           <tbody>${proyRows}${totales}</tbody>
         </table>
       </div>
@@ -860,7 +885,6 @@ const App = (() => {
   // ============================================================
   function renderInscripciones() {
     const corrida = calcCorrida();
-    const years = Array.from({length:YEARS},(_,i)=>ANO_INICIO+i);
     const desc = state.descuentos;
 
     const CONCEPTOS = [
@@ -923,7 +947,7 @@ const App = (() => {
       <div class="card-title">Proyección de Ingresos por Inscripciones (MXN neto)</div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Nivel</th>${years.map(y=>`<th>${y}</th>`).join('')}</tr></thead>
+          <thead><tr><th>Nivel</th>${corrida.map(thCiclo).join('')}</tr></thead>
           <tbody>${proyRows}${totRow}</tbody>
         </table>
       </div>
@@ -936,7 +960,7 @@ const App = (() => {
   function renderNominas() {
     const nom = state.nominas;
     const nomY1 = calcNomina(0);
-    const years = Array.from({length:YEARS},(_,i)=>ANO_INICIO+i);
+    const corrida = calcCorrida();
     const annuals = Array.from({length:YEARS},(_,i)=>calcNomina(i));
 
     const obligations = [
@@ -968,7 +992,7 @@ const App = (() => {
 
     const transInputs = nom.nominaTransicion.map((v,i)=>`
       <div class="form-group">
-        <label class="form-label">Año ${i+1} (${ANO_INICIO+i}) <span>MXN/mes</span></label>
+        <label class="form-label">Ciclo ${i+1} · ${corrida[i].ano-1}-${String(corrida[i].ano).slice(-2)} <span>MXN/mes</span></label>
         <input type="number" class="form-input" value="${v}" step="10000"
           data-key="nominaTransicion" data-transicion-idx="${i}" data-nested="nominas">
       </div>`).join('');
@@ -1018,7 +1042,7 @@ const App = (() => {
       <div class="card-title">Proyección Nómina Total Anual</div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Concepto</th>${years.map(y=>`<th>${y}</th>`).join('')}</tr></thead>
+          <thead><tr><th>Concepto</th>${corrida.map(thCiclo).join('')}</tr></thead>
           <tbody>${nRows}${totalRow}</tbody>
         </table>
       </div>
@@ -1030,12 +1054,12 @@ const App = (() => {
   // ============================================================
   function renderGastos() {
     const go = state.gastosOperacion;
-    const years = Array.from({length:YEARS},(_,i)=>ANO_INICIO+i);
+    const corrida = calcCorrida();
     const annuals = Array.from({length:YEARS},(_,i)=>calcGastos(i));
 
     const transInputs = go.transicion.map((v,i)=>`
       <div class="form-group">
-        <label class="form-label">Año ${i+1} (${ANO_INICIO+i}) <span>ajuste MXN</span></label>
+        <label class="form-label">Ciclo ${i+1} · ${corrida[i].ano-1}-${String(corrida[i].ano).slice(-2)} <span>ajuste MXN</span></label>
         <input type="number" class="form-input" value="${v}" step="10000"
           data-key="transicion" data-go-idx="${i}" data-nested="gastosOperacion">
       </div>`).join('');
@@ -1067,7 +1091,7 @@ const App = (() => {
           <span class="form-hint">Crece +${P(state.variables.inflacion)}/año</span>
         </div>
         <div class="divider"></div>
-        ${years.map((y,i)=>`<div class="payroll-item"><span class="payroll-item-label">${y}</span><span class="payroll-item-value">${M(annuals[i])}</span></div>`).join('')}
+        ${corrida.map((yr,i)=>`<div class="payroll-item"><span class="payroll-item-label">Ciclo ${i+1} · ${yr.ano}</span><span class="payroll-item-value">${M(annuals[i])}</span></div>`).join('')}
       </div>
       <div class="card">
         <div class="card-title">Ajuste de Transición (Gastos Legacy)</div>
@@ -1080,7 +1104,7 @@ const App = (() => {
       <div class="card-title">Desglose Estimado por Categoría</div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Categoría</th><th>%</th>${years.map(y=>`<th>${y}</th>`).join('')}</tr></thead>
+          <thead><tr><th>Categoría</th><th>%</th>${corrida.map(thCiclo).join('')}</tr></thead>
           <tbody>${gastosRows}${totalRow}</tbody>
         </table>
       </div>
@@ -1163,7 +1187,7 @@ const App = (() => {
     return `
     <div class="section-header">
       <div><div class="section-title">Proyección 7 Años</div>
-      <div class="section-sub">Estado de Resultados Consolidado ${ANO_INICIO}–${ANO_INICIO+YEARS-1}</div></div>
+      <div class="section-sub">Estado de Resultados Consolidado · Ciclos 1–${YEARS} (${corrida[0].ano}–${corrida[YEARS-1].ano})</div></div>
       <button class="toggle-btn" onclick="App.exportCSV()">
         <svg viewBox="0 0 16 16" fill="none"><path d="M8 2v8M5 7l3 3 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M3 11v1.5A1.5 1.5 0 004.5 14h7a1.5 1.5 0 001.5-1.5V11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
         Exportar CSV
@@ -1212,10 +1236,10 @@ const App = (() => {
 
     return `
     <div class="card" style="overflow:hidden">
-      <div class="card-title">Estado de Resultados · ${ANO_INICIO}–${ANO_INICIO+YEARS-1}</div>
+      <div class="card-title">Estado de Resultados · Ciclos 1–${YEARS}</div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Concepto</th>${years.map(y=>`<th>${y}</th>`).join('')}</tr></thead>
+          <thead><tr><th>Concepto</th>${corrida.map(thCiclo).join('')}</tr></thead>
           <tbody>${rows.map(makeRow).join('')}</tbody>
         </table>
       </div>
