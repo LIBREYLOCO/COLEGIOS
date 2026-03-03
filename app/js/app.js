@@ -157,11 +157,11 @@ const App = (() => {
       bachillerato:13100
     },
     inscripciones: {
-      maternalK1:  10000,
-      kinder23:    12150,
-      primaria:    16500,
-      secundaria:  18800,
-      bachillerato:19500
+      maternalK1:  { cuotaInsc:    0, admision:  1804, orfandad: 3238, seguro: 1208, otro: 0 },
+      kinder23:    { cuotaInsc: 1395, admision:  6470, orfandad: 3238, seguro: 1425, otro: 0 },
+      primaria:    { cuotaInsc: 1373, admision: 10033, orfandad: 3049, seguro: 1495, otro: 0 },
+      secundaria:  { cuotaInsc: 1395, admision: 11410, orfandad: 2402, seguro: 1537, otro: 0 },
+      bachillerato:{ cuotaInsc: 1395, admision: 11410, orfandad: 1201, seguro:  769, otro: 0 }
     },
     cuotas: {
       maternalK1:  { cuota: 2179, lider: 2697, utiles: 1434, teds: 2921, otro: 0 },
@@ -269,6 +269,13 @@ const App = (() => {
     const c = state.cuotas[lk];
     if (!c || typeof c !== 'object') return c || 0;
     return (c.cuota||0) + (c.lider||0) + (c.utiles||0) + (c.teds||0) + (c.otro||0);
+  }
+
+  /** Suma de los conceptos de inscripción para un nivel */
+  function inscripcionTotal(lk) {
+    const c = state.inscripciones[lk];
+    if (!c || typeof c !== 'object') return c || 0;
+    return (c.cuotaInsc||0) + (c.admision||0) + (c.orfandad||0) + (c.seguro||0) + (c.otro||0);
   }
 
   /**
@@ -402,7 +409,7 @@ const App = (() => {
 
       TUITION_KEYS.forEach(lk => {
         const n = levelEnrollment[lk] || 0;
-        sumInscripciones += n * (state.inscripciones[lk] || 0) * colFactor;
+        sumInscripciones += n * inscripcionTotal(lk) * colFactor;
         sumColegiaturas  += n * (state.colegiaturas[lk]  || 0) * colFactor * 10;
         sumCuotas        += n * cuotaTotal(lk) * colFactor;
       });
@@ -733,17 +740,16 @@ const App = (() => {
   // ============================================================
   function renderReferencias() {
     const c = state.colegiaturas;
-    const ins = state.inscripciones;
     const desc = state.descuentos;
 
     const rows = TUITION_KEYS.map((lk, i) => `
       <tr>
         <td>${TUITION_LABELS[i]}</td>
-        <td><input type="number" class="cell-input" value="${ins[lk]}"   data-ref-type="inscripciones" data-ref-grade="${lk}"></td>
+        <td style="color:var(--gold);font-variant-numeric:tabular-nums">${N(inscripcionTotal(lk))}</td>
         <td><input type="number" class="cell-input" value="${c[lk]}"     data-ref-type="colegiaturas"  data-ref-grade="${lk}"></td>
         <td>${M(c[lk] * (1+state.variables.aumentoColegiatura))}</td>
         <td style="color:var(--gold);font-variant-numeric:tabular-nums">${N(cuotaTotal(lk))}</td>
-        <td>${M(ins[lk] * (1-desc.inscripcionPct))}</td>
+        <td>${M(inscripcionTotal(lk) * (1-desc.inscripcionPct))}</td>
       </tr>`).join('');
 
     return `
@@ -850,7 +856,82 @@ const App = (() => {
   }
 
   // ============================================================
-  // 12. VIEW — NÓMINAS
+  // 12. VIEW — INSCRIPCIONES Y RE-INSCRIPCIONES
+  // ============================================================
+  function renderInscripciones() {
+    const corrida = calcCorrida();
+    const years = Array.from({length:YEARS},(_,i)=>ANO_INICIO+i);
+    const desc = state.descuentos;
+
+    const CONCEPTOS = [
+      { key:'cuotaInsc', label:'Cuota de Inscripción' },
+      { key:'admision',  label:'Cuota de Admisión'    },
+      { key:'orfandad',  label:'Beca de Orfandad'     },
+      { key:'seguro',    label:'Seguro por Accidentes'},
+      { key:'otro',      label:'Otro'                 },
+    ];
+
+    const desglose = TUITION_KEYS.map((lk, i) => {
+      const c = (state.inscripciones[lk] && typeof state.inscripciones[lk]==='object') ? state.inscripciones[lk] : {};
+      const total = inscripcionTotal(lk);
+      const neto  = total * (1 - (desc.inscripcionPct || 0));
+      const conceptoCells = CONCEPTOS.map(cp => `
+        <td><input type="number" class="cell-input" value="${c[cp.key]||0}" step="1"
+          data-insc-level="${lk}" data-insc-concepto="${cp.key}"></td>`).join('');
+      return `<tr>
+        <td>${TUITION_LABELS[i]}</td>
+        ${conceptoCells}
+        <td style="color:var(--gold);font-weight:400;font-variant-numeric:tabular-nums">${N(total)}</td>
+        <td style="color:var(--cobalt);font-variant-numeric:tabular-nums">${N(Math.round(neto))}</td>
+      </tr>`;
+    }).join('');
+
+    const proyRows = TUITION_KEYS.map((lk, i) => {
+      const cells = corrida.map(yr => {
+        const n    = yr.levelEnrollment[lk] || 0;
+        const bruto = n * inscripcionTotal(lk) * yr.colFactor;
+        const neto  = bruto * (1 - (desc.inscripcionPct || 0));
+        return `<td>${M(neto)}</td>`;
+      }).join('');
+      return `<tr><td>${TUITION_LABELS[i]}</td>${cells}</tr>`;
+    }).join('');
+
+    const totRow = `<tr class="tr-total"><td>TOTAL INSCRIPCIONES (neto)</td>${corrida.map(yr=>`<td>${M(yr.sumInscripciones*(1-desc.inscripcionPct))}</td>`).join('')}</tr>`;
+
+    return `
+    <div class="section-header"><div>
+      <div class="section-title">Inscripciones y Re-inscripciones</div>
+      <div class="section-sub">Desglose por concepto · descuento ${(desc.inscripcionPct*100).toFixed(1)}% aplicado al total</div>
+    </div></div>
+
+    <div class="card">
+      <div class="card-title">Desglose por Nivel <span class="form-hint">(MXN/alumno · edita cada concepto)</span></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Nivel</th>
+            ${CONCEPTOS.map(cp=>`<th>${cp.label}</th>`).join('')}
+            <th>Total Bruto</th>
+            <th>Total Neto</th>
+          </tr></thead>
+          <tbody>${desglose}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Proyección de Ingresos por Inscripciones (MXN neto)</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Nivel</th>${years.map(y=>`<th>${y}</th>`).join('')}</tr></thead>
+          <tbody>${proyRows}${totRow}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }
+
+  // ============================================================
+  // 13. VIEW — NÓMINAS
   // ============================================================
   function renderNominas() {
     const nom = state.nominas;
@@ -1020,13 +1101,13 @@ const App = (() => {
     corrida.forEach(yr => {
       const breakdown = TUITION_KEYS.map((lk,i)=>{
         const n   = yr.levelEnrollment[lk] || 0;
-        const ins = (state.inscripciones[lk]||0) * yr.colFactor * (1-state.descuentos.inscripcionPct);
+        const ins = inscripcionTotal(lk) * yr.colFactor * (1-state.descuentos.inscripcionPct);
         const col = (state.colegiaturas[lk]||0)  * yr.colFactor * 10;
         const cuota = cuotaTotal(lk)              * yr.colFactor;
         return `<tr>
           <td>${TUITION_LABELS[i]}</td>
           <td>${N(n)}</td>
-          <td>${M((state.inscripciones[lk]||0)*yr.colFactor)}</td>
+          <td>${M(inscripcionTotal(lk)*yr.colFactor)}</td>
           <td>${M(n*ins)}</td>
           <td>${M((state.colegiaturas[lk]||0)*yr.colFactor)}</td>
           <td>${M(n*col)}</td>
@@ -1247,13 +1328,15 @@ const App = (() => {
   // ============================================================
   const VIEW_TITLES = {
     dashboard:'Dashboard', variables:'Variables Iniciales', matricula:'Matriz de Alumnos',
-    referencias:'Valores de Referencia', cuotas:'Cuotas Escolares', nominas:'Nóminas',
-    gastos:'Gastos de Operación', corrida:'Corrida Anual', proyeccion:'Proyección 7 Años'
+    referencias:'Valores de Referencia', cuotas:'Cuotas Escolares',
+    inscripciones:'Inscripciones y Re-inscripciones',
+    nominas:'Nóminas', gastos:'Gastos de Operación',
+    corrida:'Corrida Anual', proyeccion:'Proyección 7 Años'
   };
   const RENDERERS = {
     dashboard:renderDashboard, variables:renderVariables, matricula:renderMatricula,
-    referencias:renderReferencias, cuotas:renderCuotas, nominas:renderNominas,
-    gastos:renderGastos, corrida:renderCorrida, proyeccion:renderProyeccion
+    referencias:renderReferencias, cuotas:renderCuotas, inscripciones:renderInscripciones,
+    nominas:renderNominas, gastos:renderGastos, corrida:renderCorrida, proyeccion:renderProyeccion
   };
 
   function navigate(view) {
@@ -1330,6 +1413,15 @@ const App = (() => {
       { state.nominas.nominaTransicion[+el.dataset.transicionIdx]=raw; return scheduleUpdate(); }
     if (el.dataset.key==='transicion' && el.dataset.goIdx!==undefined)
       { state.gastosOperacion.transicion[+el.dataset.goIdx]=raw; return scheduleUpdate(); }
+
+    // Inscripciones — desglose por concepto
+    if (el.dataset.inscLevel && el.dataset.inscConcepto) {
+      const lk = el.dataset.inscLevel;
+      const ck = el.dataset.inscConcepto;
+      if (!state.inscripciones[lk] || typeof state.inscripciones[lk] !== 'object') state.inscripciones[lk] = {};
+      state.inscripciones[lk][ck] = raw;
+      return scheduleUpdate();
+    }
 
     // Cuotas — desglose por concepto
     if (el.dataset.cuotaLevel && el.dataset.cuotaConcepto) {
