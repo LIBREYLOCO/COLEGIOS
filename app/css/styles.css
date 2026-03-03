@@ -296,7 +296,7 @@ button { cursor: pointer; border: none; background: none; }
 .kpi-card.cobalt::after { background: var(--cobalt); }
 .kpi-card:hover { box-shadow: 0 3px 14px rgba(0,24,48,.11), 0 0 0 1px rgba(0,24,48,.06); }
 .kpi-label { font-size: 10px; font-weight: 400; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-muted); }
-.kpi-value { font-size: 26px; font-weight: 300; color: var(--oxford); letter-spacing: -.5px; line-height: 1.15; }
+.kpi-value { font-size: 26px; font-weight: 400; color: var(--oxford); letter-spacing: -.5px; line-height: 1.15; }
 .kpi-value.positive { color: var(--gold); }
 .kpi-value.negative { color: var(--purple); }
 .kpi-value.accent   { color: var(--cobalt); }
@@ -363,11 +363,11 @@ tbody tr:hover { background: rgba(0,71,171,.06); }
 tbody td {
   padding: 10px 14px;
   text-align: right;
-  color: var(--text-secondary);
+  color: var(--oxford);
   border-bottom: 1px solid var(--beige);
   border-left: none;
   border-right: none;
-  font-weight: 300;
+  font-weight: 400;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
@@ -430,8 +430,8 @@ tbody td:first-child {
   border-bottom: 2px solid var(--beige);
   border-radius: 0;
   color: var(--oxford);
-  font-size: 14px;
-  font-weight: 300;
+  font-size: 15px;
+  font-weight: 400;
   padding: 9px 2px;
   transition: border-color .15s;
   width: 100%;
@@ -449,9 +449,9 @@ tbody td:first-child {
 .cell-input {
   background: transparent;
   border: none;
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 300;
+  color: var(--oxford);
+  font-size: 13px;
+  font-weight: 400;
   text-align: right;
   width: 80px;
   min-width: 60px;
@@ -644,7 +644,7 @@ tbody td:first-child {
 
 /* Corrida section */
 .corrida-year-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-.corrida-year-num   { font-size: 26px; font-weight: 300; color: var(--oxford); letter-spacing: -.5px; }
+.corrida-year-num   { font-size: 26px; font-weight: 400; color: var(--oxford); letter-spacing: -.5px; }
 .corrida-year-label { font-size: 14px; font-weight: 300; color: var(--text-muted); }
 
 /* ══════════════════════════════════
