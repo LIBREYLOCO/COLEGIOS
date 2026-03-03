@@ -126,11 +126,11 @@ const App = (() => {
 
     // ── Capacidad máxima por grado ──
     capacidadMaxima: {
-      mat: 25,
-      k1: 40, k2: 40, k3: 40,
-      p1: 70, p2: 70, p3: 70, p4: 70, p5: 70, p6: 70,
-      s1: 80, s2: 80, s3: 80,
-      b1: 80, b2: 80, b3: 80
+      mat: 30,
+      k1: 50, k2: 50, k3: 50,
+      p1: 50, p2: 50, p3: 50, p4: 50, p5: 50, p6: 50,
+      s1: 50, s2: 50, s3: 50,
+      b1: 25, b2: 25, b3: 25
     },
 
     topeTotalAlumnos: 1155,
@@ -164,11 +164,11 @@ const App = (() => {
       bachillerato:19500
     },
     cuotas: {
-      maternalK1:  9232,
-      kinder23:    7165,
-      primaria:    7630,
-      secundaria:  8001,
-      bachillerato:5934
+      maternalK1:  { cuota: 2179, lider: 2697, utiles: 1434, teds: 2921, otro: 0 },
+      kinder23:    { cuota: 3034, lider: 2697, utiles: 1434, teds:    0, otro: 0 },
+      primaria:    { cuota: 3695, lider: 2697, utiles: 1238, teds:    0, otro: 0 },
+      secundaria:  { cuota: 4197, lider: 2697, utiles: 1108, teds:    0, otro: 0 },
+      bachillerato:{ cuota: 5934, lider:    0, utiles:    0, teds:    0, otro: 0 }
     },
     descuentos: {
       inscripcionPct:      0.1557,
@@ -262,6 +262,13 @@ const App = (() => {
   function calcTopeTotal() {
     const activos = state.gradosActivos || {};
     return GRADES.reduce((s, g) => activos[g.key] !== false ? s + (state.capacidadMaxima[g.key] || 0) : s, 0) || 1;
+  }
+
+  /** Suma de los conceptos de cuota para un nivel */
+  function cuotaTotal(lk) {
+    const c = state.cuotas[lk];
+    if (!c || typeof c !== 'object') return c || 0;
+    return (c.cuota||0) + (c.lider||0) + (c.utiles||0) + (c.teds||0) + (c.otro||0);
   }
 
   /**
@@ -397,7 +404,7 @@ const App = (() => {
         const n = levelEnrollment[lk] || 0;
         sumInscripciones += n * (state.inscripciones[lk] || 0) * colFactor;
         sumColegiaturas  += n * (state.colegiaturas[lk]  || 0) * colFactor * 10;
-        sumCuotas        += n * (state.cuotas[lk]        || 0) * colFactor;
+        sumCuotas        += n * cuotaTotal(lk) * colFactor;
       });
 
       const descInscripcion = sumInscripciones * state.descuentos.inscripcionPct;
@@ -727,7 +734,6 @@ const App = (() => {
   function renderReferencias() {
     const c = state.colegiaturas;
     const ins = state.inscripciones;
-    const cuotas = state.cuotas;
     const desc = state.descuentos;
 
     const rows = TUITION_KEYS.map((lk, i) => `
@@ -736,7 +742,7 @@ const App = (() => {
         <td><input type="number" class="cell-input" value="${ins[lk]}"   data-ref-type="inscripciones" data-ref-grade="${lk}"></td>
         <td><input type="number" class="cell-input" value="${c[lk]}"     data-ref-type="colegiaturas"  data-ref-grade="${lk}"></td>
         <td>${M(c[lk] * (1+state.variables.aumentoColegiatura))}</td>
-        <td><input type="number" class="cell-input" value="${cuotas[lk]}" data-ref-type="cuotas"       data-ref-grade="${lk}"></td>
+        <td style="color:var(--gold);font-variant-numeric:tabular-nums">${N(cuotaTotal(lk))}</td>
         <td>${M(ins[lk] * (1-desc.inscripcionPct))}</td>
       </tr>`).join('');
 
@@ -781,10 +787,31 @@ const App = (() => {
     const corrida = calcCorrida();
     const years = Array.from({length:YEARS},(_,i)=>ANO_INICIO+i);
 
-    const rows = TUITION_KEYS.map((lk, i) => {
+    const CONCEPTOS = [
+      { key:'cuota',  label:'Precio Cuotas'    },
+      { key:'lider',  label:'Yo Soy Líder'     },
+      { key:'utiles', label:'Útiles Escolares' },
+      { key:'teds',   label:'TEDS'             },
+      { key:'otro',   label:'Otro'             },
+    ];
+
+    const desglose = TUITION_KEYS.map((lk, i) => {
+      const c = (state.cuotas[lk] && typeof state.cuotas[lk]==='object') ? state.cuotas[lk] : {};
+      const total = cuotaTotal(lk);
+      const conceptoCells = CONCEPTOS.map(cp => `
+        <td><input type="number" class="cell-input" value="${c[cp.key]||0}" step="1"
+          data-cuota-level="${lk}" data-cuota-concepto="${cp.key}"></td>`).join('');
+      return `<tr>
+        <td>${TUITION_LABELS[i]}</td>
+        ${conceptoCells}
+        <td style="color:var(--gold);font-weight:400;font-variant-numeric:tabular-nums">${N(total)}</td>
+      </tr>`;
+    }).join('');
+
+    const proyRows = TUITION_KEYS.map((lk, i) => {
       const cells = corrida.map(yr => {
         const n = yr.levelEnrollment[lk] || 0;
-        return `<td>${M(n * (state.cuotas[lk]||0) * yr.colFactor)}</td>`;
+        return `<td>${M(n * cuotaTotal(lk) * yr.colFactor)}</td>`;
       }).join('');
       return `<tr><td>${TUITION_LABELS[i]}</td>${cells}</tr>`;
     }).join('');
@@ -794,18 +821,20 @@ const App = (() => {
     return `
     <div class="section-header"><div>
       <div class="section-title">Cuotas Escolares</div>
-      <div class="section-sub">Ingresos anuales por cuotas (material didáctico, uniformes, seguros)</div>
+      <div class="section-sub">Ingreso anual por alumno · desglose por concepto · Ciclo 2025–26</div>
     </div></div>
 
     <div class="card">
-      <div class="card-title">Cuota Anual por Nivel <span class="form-hint">(MXN/alumno/año)</span></div>
-      <div class="form-grid" style="margin-bottom:18px">
-        ${TUITION_KEYS.map((lk,i)=>`
-          <div class="form-group">
-            <label class="form-label">${TUITION_LABELS[i]}</label>
-            <input type="number" class="form-input" value="${state.cuotas[lk]}" step="10"
-              data-ref-type="cuotas" data-ref-grade="${lk}">
-          </div>`).join('')}
+      <div class="card-title">Desglose de Cuotas por Nivel <span class="form-hint">(MXN/alumno/año · edita cada concepto)</span></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Nivel</th>
+            ${CONCEPTOS.map(cp=>`<th>${cp.label}</th>`).join('')}
+            <th>Total</th>
+          </tr></thead>
+          <tbody>${desglose}</tbody>
+        </table>
       </div>
     </div>
 
@@ -814,7 +843,7 @@ const App = (() => {
       <div class="table-wrap">
         <table>
           <thead><tr><th>Nivel</th>${years.map(y=>`<th>${y}</th>`).join('')}</tr></thead>
-          <tbody>${rows}${totales}</tbody>
+          <tbody>${proyRows}${totales}</tbody>
         </table>
       </div>
     </div>`;
@@ -993,7 +1022,7 @@ const App = (() => {
         const n   = yr.levelEnrollment[lk] || 0;
         const ins = (state.inscripciones[lk]||0) * yr.colFactor * (1-state.descuentos.inscripcionPct);
         const col = (state.colegiaturas[lk]||0)  * yr.colFactor * 10;
-        const cuota = (state.cuotas[lk]||0)      * yr.colFactor;
+        const cuota = cuotaTotal(lk)              * yr.colFactor;
         return `<tr>
           <td>${TUITION_LABELS[i]}</td>
           <td>${N(n)}</td>
@@ -1301,6 +1330,15 @@ const App = (() => {
       { state.nominas.nominaTransicion[+el.dataset.transicionIdx]=raw; return scheduleUpdate(); }
     if (el.dataset.key==='transicion' && el.dataset.goIdx!==undefined)
       { state.gastosOperacion.transicion[+el.dataset.goIdx]=raw; return scheduleUpdate(); }
+
+    // Cuotas — desglose por concepto
+    if (el.dataset.cuotaLevel && el.dataset.cuotaConcepto) {
+      const lk = el.dataset.cuotaLevel;
+      const ck = el.dataset.cuotaConcepto;
+      if (!state.cuotas[lk] || typeof state.cuotas[lk] !== 'object') state.cuotas[lk] = {};
+      state.cuotas[lk][ck] = raw;
+      return scheduleUpdate();
+    }
 
     // Ref tables
     if (el.dataset.refType && el.dataset.refGrade)
