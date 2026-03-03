@@ -1,0 +1,4 @@
+*.xlsx
+*.numbers
+*.pages
+.DS_Store
