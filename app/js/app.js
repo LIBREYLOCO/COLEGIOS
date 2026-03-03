@@ -80,11 +80,11 @@ const App = (() => {
     // Distribución: 15 Maternal + 31 K1 + 36 K2 + 36 K3 + 54×6 Primaria + 62×2+61 Sec + 45+44×2 Bach
     // Total = 759 alumnos
     matriculaInicial: {
-      mat: 15,
-      k1:  31, k2: 36, k3: 36,
-      p1:  54, p2: 54, p3: 54, p4: 54, p5: 54, p6: 53,
-      s1:  62, s2: 62, s3: 61,
-      b1:  45, b2: 44, b3: 44
+      mat: 15,                                            // Maternal: fijo 15 (tradicional)
+      k1:  13, k2: 11, k3: 10,                          // Kinder: cascade desde Maternal
+      p1:  30, p2: 26, p3: 22, p4: 19, p5: 16, p6: 14, // 1°Prim fijo 30 → cascade
+      s1:  25, s2: 21, s3: 18,
+      b1:  20, b2: 17, b3: 14
     },
 
     // ── Nuevos ingresos EXTERNOS por grado (alumnos que entran desde fuera, por año) ──
@@ -136,8 +136,17 @@ const App = (() => {
     topeTotalAlumnos: 1155,
 
     // ── Modelo simplificado de matrícula ──
-    tasaReinscripcion:            0.85,  // % de alumnos que pasan al siguiente grado
-    tasaCrecimientoNuevoIngreso:  0.05,  // % crecimiento anual en alumnos de nuevo ingreso
+    tasaReinscripcion:            0.85,  // % de alumnos que se reinscriben
+    tasaCrecimientoNuevoIngreso:  0.05,  // % crecimiento anual sobre reinscritos
+
+    // ── Grados activos (false = excluir de proyección) ──
+    gradosActivos: {
+      mat:true,
+      k1:true, k2:true, k3:true,
+      p1:true, p2:true, p3:true, p4:true, p5:true, p6:true,
+      s1:true, s2:true, s3:true,
+      b1:true, b2:true, b3:true
+    },
 
     // ── Aranceles (ciclo 2025–26) ──
     colegiaturas: {
@@ -249,19 +258,37 @@ const App = (() => {
    *   • Per-grade cap: if > 105% of capacidadMaxima → truncate at 105% (overpopulation)
    *   • School-wide cap: proportional reduction if total > calcTopeTotal()
    */
-  /** Suma de capacidadMaxima de todos los grados — es el tope real de la escuela */
+  /** Suma de capacidadMaxima sólo de grados activos */
   function calcTopeTotal() {
-    return GRADES.reduce((s, g) => s + (state.capacidadMaxima[g.key] || 0), 0) || 1;
+    const activos = state.gradosActivos || {};
+    return GRADES.reduce((s, g) => activos[g.key] !== false ? s + (state.capacidadMaxima[g.key] || 0) : s, 0) || 1;
   }
 
+  /**
+   * Modelo matrícula — dos tipos de grado:
+   *
+   * GRADOS DE ENTRADA (mat, p1, s1, b1) — reciben alumnos nuevos del exterior:
+   *   grade[t] = base_año0 × (1 + crec)^t
+   *   → Siempre crecen. mat arranca en 15, p1 en 30.
+   *
+   * GRADOS CASCADE (todos los demás) — alumnos que avanzan del grado anterior:
+   *   grade[t] = prev_grade[t-1] × reinscripcion × (1 + crec)
+   *   → reinscripcion retiene, crec agrega nuevo ingreso lateral.
+   *
+   * Grados inactivos (gradosActivos[key] === false) → 0 en todos los años.
+   */
   function calcMatricula() {
-    const rein = state.tasaReinscripcion            ?? 0.85;
-    const crec = state.tasaCrecimientoNuevoIngreso  ?? 0.05;
-    const result = [];
+    const rein    = state.tasaReinscripcion           ?? 0.85;
+    const crec    = state.tasaCrecimientoNuevoIngreso ?? 0.05;
+    const activos = state.gradosActivos || {};
+    const result  = [];
 
-    // Year 0 — initial enrollment from user input (base for growth)
+    // Año 0 — base editada por el usuario
     const year0 = {};
-    GRADES.forEach(g => { year0[g.key] = Math.max(0, Math.round(state.matriculaInicial[g.key] || 0)); });
+    GRADES.forEach(g => {
+      year0[g.key] = activos[g.key] === false
+        ? 0 : Math.max(0, Math.round(state.matriculaInicial[g.key] || 0));
+    });
     result.push({ ...year0 });
 
     for (let t = 1; t < YEARS; t++) {
@@ -269,30 +296,32 @@ const App = (() => {
       const cur  = {};
 
       GRADES.forEach((g, i) => {
+        if (activos[g.key] === false) { cur[g.key] = 0; return; }
+
         let val;
         if (ENTRY_GRADES.has(g.key)) {
-          // Primer grado de cada nivel: crece por tasa de nuevo ingreso desde base Año 0
+          // Entrada: crece desde base año 0
           val = year0[g.key] * Math.pow(1 + crec, t);
         } else {
-          // Todos los demás: cascade del grado anterior × reinscripción
-          val = prev[GRADES[i - 1].key] * rein;
+          // Cascade: grado anterior × reinscripción × (1 + crecimiento)
+          val = prev[GRADES[i - 1].key] * rein * (1 + crec);
         }
 
         val = Math.max(0, Math.round(val));
 
-        // Per-grade overpopulation: truncate at 105% of cap
+        // Tope por grado (105%)
         const cap = state.capacidadMaxima ? (state.capacidadMaxima[g.key] || Infinity) : Infinity;
         if (val > cap * 1.05) val = Math.round(cap * 1.05);
 
         cur[g.key] = val;
       });
 
-      // School-wide cap (proportional reduction)
+      // Tope escolar global
       const total   = Object.values(cur).reduce((s, v) => s + v, 0);
       const topeEsc = calcTopeTotal();
       if (topeEsc > 0 && total > topeEsc) {
         const f = topeEsc / total;
-        GRADES.forEach(g => { cur[g.key] = Math.round(cur[g.key] * f); });
+        GRADES.forEach(g => { if (activos[g.key] !== false) cur[g.key] = Math.round(cur[g.key] * f); });
       }
 
       result.push({ ...cur });
@@ -549,75 +578,98 @@ const App = (() => {
       }
     });
 
-    // ── Totales por categoría ──
-    const grandTotals   = matricula.map(yr => Object.values(yr).reduce((s,v)=>s+v,0));
-    const nuevoIngreso  = matricula.map(yr => GRADES.filter(g => ENTRY_GRADES.has(g.key)).reduce((s,g)=>s+(yr[g.key]||0),0));
-    const reinscritos   = matricula.map(yr => GRADES.filter(g => !ENTRY_GRADES.has(g.key)).reduce((s,g)=>s+(yr[g.key]||0),0));
+    const rein    = state.tasaReinscripcion           ?? 0.85;
+    const crec    = state.tasaCrecimientoNuevoIngreso ?? 0.05;
+    const activos = state.gradosActivos || {};
+    const topeEsc = calcTopeTotal();
 
-    // ── Cuerpo de la tabla de proyección ──
+    // ── Totales por año (sólo grados activos) ──
+    const grandTotals = matricula.map(yr =>
+      GRADES.filter(g => activos[g.key] !== false).reduce((s,g) => s + (yr[g.key]||0), 0));
+
+    // ── NI = suma grados ENTRADA activos · Reinscritos = suma grados CASCADE activos ──
+    const niRow = matricula.map(yr =>
+      GRADES.filter(g => ENTRY_GRADES.has(g.key) && activos[g.key] !== false)
+            .reduce((s,g) => s + (yr[g.key]||0), 0));
+    const reinscritosRow = matricula.map(yr =>
+      GRADES.filter(g => !ENTRY_GRADES.has(g.key) && activos[g.key] !== false)
+            .reduce((s,g) => s + (yr[g.key]||0), 0));
+
+    // ── Cuerpo de la tabla ──
     let tableBody = '';
     LEVELS.forEach(lv => {
       const grades = GRADES.filter(g => g.level === lv.key);
+      const anyActive = grades.some(g => activos[g.key] !== false);
 
       tableBody += `<tr class="tr-level-header">
-        <td colspan="${YEARS + 2}">▸ ${lv.key}</td>
+        <td colspan="${YEARS + 2}">▸ ${lv.key}
+          ${!anyActive ? '<span style="font-size:9px;color:var(--text-faint);margin-left:8px">(inactivo)</span>' : ''}
+        </td>
       </tr>`;
 
       grades.forEach(g => {
-        const initVal = state.matriculaInicial[g.key] || 0;
-        const cap     = state.capacidadMaxima[g.key]  || Infinity;
-        const esEntrada = ENTRY_GRADES.has(g.key);
+        const activo = activos[g.key] !== false;
+        const cap    = state.capacidadMaxima[g.key] || Infinity;
 
         const yearCells = matricula.map((yr, t) => {
           const n = yr[g.key] || 0;
           if (t === 0) {
-            return `<td class="col-year-0"><input type="number" class="cell-input"
-              value="${n}" step="1" data-mat-grade="${g.key}" style="width:56px"></td>`;
+            return `<td class="col-year-0" style="${!activo?'opacity:.3':''}">
+              <input type="number" class="cell-input" value="${n}" step="1"
+                data-mat-grade="${g.key}" style="width:56px" ${!activo?'disabled':''}></td>`;
           }
+          if (!activo) return `<td style="opacity:.3;color:var(--text-faint)">—</td>`;
           const isOverpop = n >= cap * 1.05;
-          const isHigh    = esEntrada && n > initVal;
+          const isHigh    = !isOverpop && n > (state.matriculaInicial[g.key] || 0) && esEntrada;
           const cls = isOverpop ? 'num-negative overpop-cell' : isHigh ? 'enroll-high' : '';
-          const icon = isOverpop ? ' <span class="overpop-icon" title="Sobrepoblación detectada">⚠</span>' : '';
+          const icon = isOverpop ? ' <span class="overpop-icon" title="Sobrepoblación">⚠</span>' : '';
           return `<td class="${cls}">${N(n)}${icon}</td>`;
         }).join('');
 
-        tableBody += `<tr>
-          <td>
-            <span style="padding-left:12px">${g.label}</span>
-            ${esEntrada ? '<span style="font-size:9px;color:var(--cobalt);margin-left:6px;opacity:.7">↑ NI</span>' : ''}
+        const esEntrada = ENTRY_GRADES.has(g.key);
+        tableBody += `<tr style="${!activo?'opacity:.55':''}">
+          <td style="padding-left:6px">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" data-toggle-grade="${g.key}" ${activo?'checked':''}
+                style="accent-color:var(--cobalt);cursor:pointer;width:13px;height:13px;flex-shrink:0">
+              <span>${g.label}</span>
+              ${esEntrada && activo ? '<span style="font-size:9px;color:var(--cobalt);opacity:.8;margin-left:2px">↑</span>' : ''}
+            </label>
           </td>
           <td><input type="number" class="cell-input" value="${cap === Infinity ? 0 : cap}" step="5" min="0"
             data-key="${g.key}" data-cap-grade="true"
-            style="width:56px;text-align:right;font-size:11px;color:var(--text-muted)"></td>
+            style="width:56px;text-align:right;font-size:11px;color:var(--text-muted)"
+            ${!activo?'disabled':''}></td>
           ${yearCells}
         </tr>`;
       });
 
-      const levelTotals = matricula.map(yr => grades.reduce((s,g)=>s+(yr[g.key]||0),0));
+      // Subtotal nivel — sólo grados activos
+      const levelTotals = matricula.map(yr =>
+        grades.filter(g => activos[g.key] !== false).reduce((s,g) => s+(yr[g.key]||0), 0));
       tableBody += `<tr class="tr-level-sub tr-gold-total">
-        <td>Total ${lv.key}</td><td></td>
+        <td style="padding-left:6px">Total ${lv.key}</td><td></td>
         ${levelTotals.map(t => `<td>${N(t)}</td>`).join('')}
       </tr>`;
     });
 
     // ── Filas resumen ──
-    const topeEsc = calcTopeTotal();
     tableBody += `
-    <tr class="tr-result">
-      <td>↑ Nuevo Ingreso</td><td></td>
-      ${nuevoIngreso.map(v => `<td>${N(v)}</td>`).join('')}
-    </tr>
     <tr class="tr-ebitda">
-      <td>↺ Reinscritos</td><td></td>
-      ${reinscritos.map(v => `<td>${N(v)}</td>`).join('')}
+      <td style="padding-left:6px">↺ Reinscritos <small style="opacity:.6;font-size:9px">(cascade)</small></td><td></td>
+      ${reinscritosRow.map(v => `<td>${N(v)}</td>`).join('')}
+    </tr>
+    <tr class="tr-result">
+      <td style="padding-left:6px">↑ Nuevo Ingreso <small style="opacity:.6;font-size:9px">(entradas)</small></td><td></td>
+      ${niRow.map(v => `<td>${N(v)}</td>`).join('')}
     </tr>
     <tr class="tr-total">
-      <td>TOTAL ALUMNOS</td>
+      <td style="padding-left:6px">TOTAL ALUMNOS</td>
       <td style="text-align:right;font-size:11px;color:var(--gold);font-weight:400">${N(topeEsc)}</td>
       ${grandTotals.map(t => `<td>${N(t)}</td>`).join('')}
     </tr>
     <tr class="tr-sub">
-      <td style="padding-left:4px">% Capacidad Instalada</td><td></td>
+      <td style="padding-left:10px">% Capacidad</td><td></td>
       ${grandTotals.map(t => `<td>${P(t/topeEsc)}</td>`).join('')}
     </tr>`;
 
@@ -625,7 +677,10 @@ const App = (() => {
     <div class="section-header">
       <div>
         <div class="section-title">Matriz de Alumnos</div>
-        <div class="section-sub">${ANO_INICIO}–${ANO_INICIO+YEARS-1} · Reinscripción ${P(state.tasaReinscripcion??0.85)} · NI +${P(state.tasaCrecimientoNuevoIngreso??0.05)}/año</div>
+        <div class="section-sub">${ANO_INICIO}–${ANO_INICIO+YEARS-1}
+          · Reinscripción <strong style="color:var(--gold)">${P(rein)}</strong>
+          · Crecimiento <strong style="color:var(--cobalt)">+${P(crec)}/año</strong>
+        </div>
       </div>
       <span class="badge badge-oxford">Tope: ${N(topeEsc)} alumnos</span>
     </div>
@@ -633,41 +688,46 @@ const App = (() => {
     ${hasOverpop ? `
     <div class="alert-overpop">
       <span style="font-size:14px">⚠</span>
-      <div><strong>Alerta: Sobrepoblación detectada.</strong> Uno o más grados supera el 105% de su capacidad máxima.
-      Los valores han sido truncados. Ajuste la columna Tope o reduzca las tasas.</div>
+      <div><strong>Sobrepoblación detectada.</strong> Un grado supera el 105% de su tope. Los valores han sido truncados.</div>
     </div>` : ''}
 
     <div class="card">
       <div class="card-title">Variables Globales de Matrícula</div>
       <div class="form-grid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px">
         <div class="form-group">
-          <label class="form-label">Tasa de Reinscripción <span>(%)</span></label>
-          ${pctInput(state.tasaReinscripcion??0.85,'tasaReinscripcion')}
-          <span class="form-hint">% de alumnos que pasan al siguiente grado cada año. Aplica a todos los grados de cascada (no entradas).</span>
+          <label class="form-label">% Reinscripción <span>(alumnos que se quedan)</span></label>
+          ${pctInput(rein,'tasaReinscripcion')}
+          <span class="form-hint">Ej. 85% → de 20 alumnos, 17 se reinscriben.</span>
         </div>
         <div class="form-group">
-          <label class="form-label">Crecimiento Nuevo Ingreso <span>(%/año)</span></label>
-          ${pctInput(state.tasaCrecimientoNuevoIngreso??0.05,'tasaCrecimientoNuevoIngreso')}
-          <span class="form-hint">Incremento anual en los grados de entrada (Maternal, 1° Primaria, 1° Secundaria, 1° Bachillerato). Se calcula sobre la base del Año ${ANO_INICIO}.</span>
+          <label class="form-label">% Crecimiento <span>(nuevo ingreso sobre reinscritos)</span></label>
+          ${pctInput(crec,'tasaCrecimientoNuevoIngreso')}
+          <span class="form-hint">Ej. 20% → los 17 reinscritos × 1.20 = ~20 alumnos totales.</span>
         </div>
         <div class="form-group">
-          <label class="form-label">Fórmula</label>
-          <div style="padding:9px 0;font-size:11.5px;color:var(--text-secondary);line-height:1.7">
-            <span style="color:var(--cobalt)">↑ NI</span>: base × (1 + %NI)<sup>t</sup><br>
-            <span style="color:var(--gold)">↺ Reinsc.</span>: grado anterior × %Reinsc.
+          <label class="form-label" style="margin-bottom:6px">Fórmula aplicada</label>
+          <div style="font-size:12px;color:var(--text-secondary);line-height:2;padding:4px 0">
+            <span style="color:var(--cobalt)">↑ Entrada</span> (mat, p1, s1, b1):<br>
+            &nbsp;&nbsp;base × (1 + ${P(crec)})<sup>t</sup><br>
+            <span style="color:var(--gold)">↺ Cascade</span> (demás grados):<br>
+            &nbsp;&nbsp;grado_ant × ${P(rein)} × (1 + ${P(crec)})
           </div>
         </div>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-title">Proyección de Matrícula · ${ANO_INICIO}–${ANO_INICIO+YEARS-1}</div>
+      <div class="card-title">Proyección de Matrícula · ${ANO_INICIO}–${ANO_INICIO+YEARS-1}
+        <span class="form-hint" style="margin-left:12px;font-size:10px;text-transform:none;letter-spacing:0">
+          ☑ activa / ☐ desactiva cada grado
+        </span>
+      </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
               <th>Grado</th>
-              <th style="text-align:right;min-width:56px;color:var(--text-muted)">Tope</th>
+              <th style="text-align:right;min-width:56px">Tope</th>
               ${allYears.map((y,i)=>`<th class="${i===0?'col-year-0':''}">${y}</th>`).join('')}
             </tr>
           </thead>
@@ -675,10 +735,10 @@ const App = (() => {
         </table>
       </div>
       <div class="form-hint mt-8" style="display:flex;gap:16px;flex-wrap:wrap">
-        <span><span style="color:var(--cobalt)">↑ NI</span> = Nuevo Ingreso (crece anual)</span>
-        <span><span style="color:var(--gold)">■</span> = Crecimiento sobre base</span>
-        <span><span style="color:var(--purple)">■ ⚠</span> = Sobrepoblación (&gt;105% tope)</span>
-        <span style="color:var(--text-muted)">Año ${ANO_INICIO} y columna Tope son editables</span>
+        <span><span style="color:var(--cobalt)">↑</span> Grado entrada: base × (1+${P(crec)})<sup>t</sup></span>
+        <span><span style="color:var(--gold)">↺</span> Grado cascade: ant × ${P(rein)} × (1+${P(crec)})</span>
+        <span><span style="color:var(--purple)">⚠</span> Sobrepoblación &gt;105% tope</span>
+        <span style="color:var(--text-muted)">☑/☐ activa o desactiva el grado</span>
       </div>
     </div>`;
   }
@@ -1208,9 +1268,18 @@ const App = (() => {
   // 18. INPUT HANDLERS
   // ============================================================
   function attachInputListeners() {
-    document.getElementById('content-body')?.querySelectorAll('input[type="number"]').forEach(el => {
+    const body = document.getElementById('content-body');
+    if (!body) return;
+    body.querySelectorAll('input[type="number"]').forEach(el => {
       el.addEventListener('change', handleInput);
       el.addEventListener('input',  debounce(handleInput, 450));
+    });
+    body.querySelectorAll('input[type="checkbox"][data-toggle-grade]').forEach(el => {
+      el.addEventListener('change', e => {
+        if (!state.gradosActivos) state.gradosActivos = {};
+        state.gradosActivos[e.target.dataset.toggleGrade] = e.target.checked;
+        scheduleUpdate();
+      });
     });
   }
 
