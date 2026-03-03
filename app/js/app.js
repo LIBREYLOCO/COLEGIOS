@@ -201,38 +201,85 @@ const App = (() => {
 
     // ── Nóminas ──
     nominas: {
-      // Catálogo de puestos verificado en modelo PDF · LSS / LISR México 2025
-      // Campo "count": número de personas en ese puesto (todos los costos se multiplican)
+      // Catálogo de nómina base — importado de CSV "NOMINA MODELO BASE COLEGIO TIPO"
+      // 70 personas individuales, count:1 cada una — el motor calcula IMSS/ISN/Infonavit por persona
       puestos: [
         // ── Dirección ──
         { nombre: 'DIRECCIÓN', sector: 'Dirección', sueldo: 53000, count: 1, esHonorarios: false },
-        { nombre: 'DIRECCIÓN EJECUTIVA', sector: 'Dirección', sueldo: 72424, count: 1, esHonorarios: false },
-        { nombre: 'D.O.', sector: 'Dirección', sueldo: 35000, count: 1, esHonorarios: false },
-        // ── Administrativo ──
-        { nombre: 'Recepción', sector: 'Administrativo', sueldo: 10000, count: 1, esHonorarios: false },
-        { nombre: 'Marca', sector: 'Administrativo', sueldo: 25000, count: 1, esHonorarios: false },
-        { nombre: 'Coordinador Administrativo', sector: 'Administrativo', sueldo: 25000, count: 1, esHonorarios: false },
-        { nombre: 'Servicios Escolares', sector: 'Administrativo', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Auxiliar Administrativo', sector: 'Administrativo', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Líder TI', sector: 'Administrativo', sueldo: 20000, count: 1, esHonorarios: false },
-        { nombre: 'Intendencia', sector: 'Administrativo', sueldo: 10000, count: 1, esHonorarios: false },
-        { nombre: 'Mantenimiento', sector: 'Administrativo', sueldo: 12000, count: 1, esHonorarios: false },
-        { nombre: 'Enfermera', sector: 'Administrativo', sueldo: 18000, count: 1, esHonorarios: false },
-        // ── Académico ──
-        { nombre: 'Coord. Preescolar', sector: 'Académico', sueldo: 25000, count: 1, esHonorarios: false },
-        { nombre: 'Coord. Primaria Baja', sector: 'Académico', sueldo: 18500, count: 1, esHonorarios: false },
-        { nombre: 'Coord. Primaria Alta', sector: 'Académico', sueldo: 25000, count: 1, esHonorarios: false },
-        { nombre: 'Coord. Secundaria', sector: 'Académico', sueldo: 25000, count: 1, esHonorarios: false },
-        { nombre: 'Coord. Preparatoria', sector: 'Académico', sueldo: 25000, count: 1, esHonorarios: false },
-        // ── Formadores de Planta ──
-        { nombre: 'Formador Kínder', sector: 'Formadores', sueldo: 15000, count: 3, esHonorarios: false },
-        { nombre: 'Formador Primaria', sector: 'Formadores', sueldo: 15000, count: 18, esHonorarios: false },
-        { nombre: 'Formador Secundaria', sector: 'Formadores', sueldo: 15000, count: 9, esHonorarios: false },
-        { nombre: 'Mentor Preparatoria', sector: 'Formadores', sueldo: 26000, count: 6, esHonorarios: false },
-        // ── Especialistas CAI ──
-        { nombre: 'Líder CAI', sector: 'Especialistas', sueldo: 18000, count: 1, esHonorarios: false },
-        { nombre: 'Psicólogo/CAI A', sector: 'Especialistas', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Psicólogo/CAI B', sector: 'Especialistas', sueldo: 12000, count: 1, esHonorarios: false }
+        { nombre: 'Recepción', sector: 'Administración', sueldo: 10000, count: 1, esHonorarios: false },
+        { nombre: 'Marca', sector: 'Dir Ejecutiva', sueldo: 25000, count: 1, esHonorarios: false },
+        { nombre: 'DIRECCION EJEC.', sector: 'Dir Ejecutiva', sueldo: 72424, count: 1, esHonorarios: false },
+        { nombre: 'D.O.', sector: 'Dir Ejecutiva', sueldo: 35000, count: 1, esHonorarios: false },
+        // ── Administración ──
+        { nombre: 'Coordinador Administrativo', sector: 'Administración', sueldo: 25000, count: 1, esHonorarios: false },
+        { nombre: 'Coordinación Preescolar', sector: 'Administración', sueldo: 25000, count: 1, esHonorarios: false },
+        { nombre: 'Coordinación Primaria Baja', sector: 'Administración', sueldo: 18500, count: 1, esHonorarios: false },
+        { nombre: 'Coordinación Primaria Alta', sector: 'Administración', sueldo: 25000, count: 1, esHonorarios: false },
+        { nombre: 'Coordinador Secundaria', sector: 'Administración', sueldo: 25000, count: 1, esHonorarios: false },
+        { nombre: 'Coordinador Prepa', sector: 'Administración', sueldo: 25000, count: 1, esHonorarios: false },
+        { nombre: 'Servicios Escolares', sector: 'Administración', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Auxiliar Administrativo', sector: 'Administración', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Líder TI', sector: 'Administración', sueldo: 20000, count: 1, esHonorarios: false },
+        { nombre: 'TECNOLOGIA', sector: 'Administración', sueldo: 14000, count: 1, esHonorarios: false },
+        { nombre: 'CAP 1', sector: 'Administración', sueldo: 14000, count: 1, esHonorarios: false },
+        { nombre: 'CAP 2', sector: 'Administración', sueldo: 14000, count: 1, esHonorarios: false },
+        { nombre: 'Lider CAI', sector: 'Administración', sueldo: 18000, count: 1, esHonorarios: false },
+        { nombre: 'CAI A', sector: 'Administración', sueldo: 12000, count: 1, esHonorarios: false },
+        { nombre: 'CAI B', sector: 'Administración', sueldo: 12000, count: 1, esHonorarios: false },
+        { nombre: 'CAI C', sector: 'Administración', sueldo: 14000, count: 1, esHonorarios: false },
+        { nombre: 'Intendencia 1', sector: 'Administración', sueldo: 10000, count: 1, esHonorarios: false },
+        { nombre: 'Intendencia 2', sector: 'Administración', sueldo: 10000, count: 1, esHonorarios: false },
+        { nombre: 'Intendencia 3', sector: 'Administración', sueldo: 10000, count: 1, esHonorarios: false },
+        { nombre: 'Intendencia 4', sector: 'Administración', sueldo: 10000, count: 1, esHonorarios: false },
+        { nombre: 'Intendencia 5', sector: 'Administración', sueldo: 10000, count: 1, esHonorarios: false },
+        { nombre: 'Enfermera', sector: 'Administración', sueldo: 18000, count: 1, esHonorarios: false },
+        { nombre: 'Mantenimiento 1', sector: 'Administración', sueldo: 12000, count: 1, esHonorarios: false },
+        { nombre: 'Mantenimiento 2', sector: 'Administración', sueldo: 12000, count: 1, esHonorarios: false },
+        // ── Preescolar / Maternal ──
+        { nombre: 'Formador Preescolar', sector: 'MATERNAL', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Formador Preescolar', sector: 'MATERNAL', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Formador Preescolar', sector: 'KINDER 1', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Formador Preescolar', sector: 'KINDER 1', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Formador Preescolar', sector: 'KINDER 2', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Formador Preescolar', sector: 'KINDER 2', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Formador Preescolar', sector: 'KINDER 3', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Formador Preescolar', sector: 'KINDER 3', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Asistente educativo', sector: 'ASIST. MATERNAL', sueldo: 11000, count: 1, esHonorarios: false },
+        { nombre: 'Asistente educativo', sector: 'ASIST. MATERNAL', sueldo: 11000, count: 1, esHonorarios: false },
+        { nombre: 'Asistente educativo', sector: 'ASIST. KINDER', sueldo: 11000, count: 1, esHonorarios: false },
+        { nombre: 'Asistente educativo', sector: 'ASIST. KINDER', sueldo: 11000, count: 1, esHonorarios: false },
+        { nombre: 'Asistente educativo', sector: 'ASIST. KINDER', sueldo: 11000, count: 1, esHonorarios: false },
+        // ── Primaria ──
+        { nombre: 'Formador Primaria', sector: 'PRIMARIA 1', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Formador Primaria', sector: 'PRIMARIA 1', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Formador Primaria', sector: 'PRIMARIA 2', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Formador Primaria', sector: 'PRIMARIA 2', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Formador Primaria', sector: 'PRIMARIA 3', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Formador Primaria', sector: 'PRIMARIA 3', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Formador Primaria', sector: 'PRIMARIA 4', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Formador Primaria', sector: 'PRIMARIA 4', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Formador Primaria', sector: 'PRIMARIA 5', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Formador Primaria', sector: 'PRIMARIA 5', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Formador Primaria', sector: 'PRIMARIA 6', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Formador Primaria', sector: 'PRIMARIA 6', sueldo: 15000, count: 1, esHonorarios: false },
+        // ── Secundaria ──
+        { nombre: 'Formador Secundaria', sector: 'SECUNDARIA 1', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Formador Secundaria', sector: 'SECUNDARIA 1', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Formador Secundaria', sector: 'SECUNDARIA 2', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Formador Secundaria', sector: 'SECUNDARIA 2', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Formador Secundaria', sector: 'SECUNDARIA 3', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Formador Secundaria', sector: 'SECUNDARIA 3', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Formador Secundaria', sector: 'SECUNDARIA GRAL', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Formador Secundaria', sector: 'SECUNDARIA GRAL', sueldo: 15000, count: 1, esHonorarios: false },
+        // ── Preparatoria ──
+        { nombre: 'Formador preparatoria', sector: 'MENTOR PREPA 1', sueldo: 26000, count: 1, esHonorarios: false },
+        { nombre: 'Formador preparatoria', sector: 'PREPA 1', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Formador preparatoria', sector: 'MENTOR PREPA 2', sueldo: 26000, count: 1, esHonorarios: false },
+        { nombre: 'Formador preparatoria', sector: 'PREPA 2', sueldo: 15000, count: 1, esHonorarios: false },
+        { nombre: 'Formador preparatoria', sector: 'MENTOR PREPA 3', sueldo: 26000, count: 1, esHonorarios: false },
+        { nombre: 'Formador preparatoria', sector: 'PREPA 3', sueldo: 15000, count: 1, esHonorarios: false },
+        // ── Liderazgo ──
+        { nombre: 'Life Project Lider', sector: 'Administración', sueldo: 25000, count: 1, esHonorarios: false }
       ],
       // Legacy (se usa si puestos.length === 0)
       nominaCampusBase: 1509500,
@@ -289,14 +336,14 @@ const App = (() => {
 
   function loadState() {
     try {
-      const s = localStorage.getItem('lyl_state_v4');
+      const s = localStorage.getItem('lyl_state_v5');
       if (s) return JSON.parse(s);
     } catch (e) { }
     return deepCopy(DEFAULTS);
   }
 
   function saveState() {
-    try { localStorage.setItem('lyl_state_v4', JSON.stringify(state)); } catch (e) { }
+    try { localStorage.setItem('lyl_state_v5', JSON.stringify(state)); } catch (e) { }
     const b = document.getElementById('save-badge');
     if (b) b.textContent = '● Guardado ' + new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
   }
