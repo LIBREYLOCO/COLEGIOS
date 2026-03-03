@@ -529,27 +529,6 @@ const App = (() => {
     </div>
 
     <div class="card">
-      <div class="card-title">Variables de Matrícula</div>
-      <div class="form-grid">
-        <div class="form-group">
-          <label class="form-label">Tasa de Deserción Global <span>(%/año por grado)</span></label>
-          ${pctInput(v.tasaDesercion,'tasaDesercion','variables')}
-          <span class="form-hint">Alumnos que NO pasan al siguiente grado. Se puede ajustar por nivel en Matriz de Alumnos.</span>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Tasa de Crecimiento de Captación <span>(%/año)</span></label>
-          ${pctInput(v.tasaCaptacion,'tasaCaptacion','variables')}
-          <span class="form-hint">Crecimiento anual de los alumnos nuevos que ingresan desde afuera.</span>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Capacidad Total Instalada <span>(suma por grado)</span></label>
-          <div style="padding:9px 2px;border-bottom:2px solid var(--beige);color:var(--gold);font-weight:400;font-size:15px;font-variant-numeric:tabular-nums">${N(calcTopeTotal())}</div>
-          <span class="form-hint">Se calcula automáticamente como la suma de las capacidades por grado (Matriz de Alumnos).</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
       <div class="card-title">Estructura Accionaria</div>
       <div class="form-grid">
         <div class="form-group"><label class="form-label">Número de Acciones</label>${numInput(v.numAcciones,'numAcciones','variables','1')}</div>
