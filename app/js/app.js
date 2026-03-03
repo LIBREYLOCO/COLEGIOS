@@ -196,8 +196,31 @@ const App = (() => {
 
     // ── Gastos de Operación ──
     gastosOperacion: {
-      baseAnual:  14290066,
-      transicion: [1464731, -229640, 0, 0, 0, 0, 0]
+      capacidadGastoRef: 400,
+      controlados: [
+        { label: 'Capacitación',                   monto:   30000 },
+        { label: 'Cortesías y Eventos Captación',  monto:   38866 },
+        { label: 'Eventos Especiales',             monto:  650833 },
+        { label: 'Impresos Internos',              monto:  120000 },
+        { label: 'Operación',                      monto: 3107394 },
+        { label: 'Otros Gastos Generales',         monto:  204132 },
+        { label: 'Uniformes',                      monto:  254560 },
+        { label: 'Preparatoria',                   monto:  737416 }
+      ],
+      fijos: [
+        { label: 'Capacitación Rectoría',          monto:   30000 },
+        { label: 'FEDEP Apoyo Legal Escuelas',     monto:   65000 },
+        { label: 'NOM 035',                        monto:   30000 },
+        { label: 'Arrendamiento Cancha de Basket', monto:  120000 },
+        { label: 'Publicidad',                     monto:  525531 },
+        { label: 'Seguridad',                      monto:  811781 },
+        { label: 'Servicios Contables',            monto:  362461 }
+      ],
+      financieros: [
+        { label: 'Comisiones Bancarias',           monto:  191661 },
+        { label: 'Arrendamiento Bus',              monto:  922302 },
+        { label: 'Impuestos',                      monto: 1324774 }
+      ]
     }
   };
 
@@ -390,11 +413,18 @@ const App = (() => {
              totalMensual, totalAnual: totalMensual * 12 };
   }
 
-  function calcGastos(yearIdx) {
-    const inf   = Math.pow(1 + state.variables.inflacion, yearIdx + 1);
-    const base  = state.gastosOperacion.baseAnual * inf;
-    const trans = state.gastosOperacion.transicion[yearIdx] || 0;
-    return base + trans;
+  function calcGastos(yearIdx, totalAlumnos) {
+    const go  = state.gastosOperacion;
+    const inf = Math.pow(1 + state.variables.inflacion, yearIdx);
+    const cap = go.capacidadGastoRef || 400;
+    const factor = Math.min(1, (totalAlumnos || 0) / cap);
+
+    const sumC  = (go.controlados  || []).reduce((s,c)=>s+(c.monto||0),0) * factor * inf;
+    const sumF  = (go.fijos        || []).reduce((s,c)=>s+(c.monto||0),0) * inf;
+    const sumFn = (go.financieros  || []).reduce((s,c)=>s+(c.monto||0),0) * inf;
+    const total = sumC + sumF + sumFn;
+
+    return { total, sumControlados: sumC, sumFijos: sumF, sumFinancieros: sumFn, factor, inf };
   }
 
   function calcCorrida() {
@@ -428,9 +458,10 @@ const App = (() => {
       const prontoPago      = sumColegiaturas  * (state.descuentos.prontoPagoPct || 0);
       const ingresoTotal    = (sumInscripciones - descInscripcion) + sumColegiaturas - apoyosEcon - becas - prontoPago + sumCuotas;
 
-      const nomina    = calcNomina(i);
-      const gastosOp  = calcGastos(i);
-      const egresoTotal = nomina.totalAnual + gastosOp;
+      const nomina       = calcNomina(i);
+      const gastosOpDet  = calcGastos(i, totalAlumnos);
+      const gastosOp     = gastosOpDet.total;
+      const egresoTotal  = nomina.totalAnual + gastosOp;
 
       const subtotal      = ingresoTotal - egresoTotal;
       const operadora     = Math.max(0, subtotal) * state.variables.porcentajeOperadora;
@@ -1055,59 +1086,88 @@ const App = (() => {
   function renderGastos() {
     const go = state.gastosOperacion;
     const corrida = calcCorrida();
-    const annuals = Array.from({length:YEARS},(_,i)=>calcGastos(i));
+    const cap = go.capacidadGastoRef || 400;
+    // Per-year detail
+    const annuals = corrida.map(yr => calcGastos(yr.i, yr.totalAlumnos));
 
-    const transInputs = go.transicion.map((v,i)=>`
-      <div class="form-group">
-        <label class="form-label">Ciclo ${i+1} · ${corrida[i].ano-1}-${String(corrida[i].ano).slice(-2)} <span>ajuste MXN</span></label>
-        <input type="number" class="form-input" value="${v}" step="10000"
-          data-key="transicion" data-go-idx="${i}" data-nested="gastosOperacion">
-      </div>`).join('');
+    function seccionRows(arr, secKey, esControlado) {
+      const catRows = arr.map((c,idx) => {
+        const cells = annuals.map(a => {
+          const inf = a.inf;
+          const factor = esControlado ? a.factor : 1;
+          return `<td>${M((c.monto||0) * factor * inf)}</td>`;
+        }).join('');
+        return `<tr>
+          <td><input type="text" class="cell-input" value="${c.label}"
+            data-gasto-section="${secKey}" data-gasto-idx="${idx}" data-gasto-field="label"
+            style="width:200px;text-align:left"></td>
+          <td><input type="number" class="cell-input" value="${c.monto||0}" step="1000"
+            data-gasto-section="${secKey}" data-gasto-idx="${idx}" data-gasto-field="monto"
+            style="width:110px"></td>
+          ${cells}
+        </tr>`;
+      }).join('');
 
-    const gastosCat = [
-      {l:'Arrendamiento / Renta',p:.28},{l:'Servicios (agua, luz, telefonía)',p:.12},
-      {l:'Mantenimiento preventivo/correctivo',p:.10},{l:'Seguros institucionales',p:.08},
-      {l:'Capacitación y desarrollo',p:.07},{l:'Materiales y suministros',p:.10},
-      {l:'Eventos y captación',p:.08},{l:'Impresos y papelería',p:.06},
-      {l:'Otros controlados',p:.11}
-    ];
+      const totals = annuals.map((a) => {
+        const val = esControlado ? a.sumControlados
+                    : secKey==='fijos' ? a.sumFijos : a.sumFinancieros;
+        return `<td>${M(val)}</td>`;
+      }).join('');
 
-    const gastosRows = gastosCat.map(f=>`
-      <tr><td>${f.l}</td><td>${P(f.p)}</td>${annuals.map(a=>`<td>${M(a*f.p)}</td>`).join('')}</tr>`).join('');
-    const totalRow = `<tr class="tr-total"><td>TOTAL OPERACIÓN</td><td>100%</td>${annuals.map(a=>`<td>${M(a)}</td>`).join('')}</tr>`;
+      return catRows +
+        `<tr class="tr-total"><td>SUBTOTAL</td><td></td>${totals}</tr>`;
+    }
+
+    const factorRow = `<tr class="tr-sub">
+      <td colspan="2" style="color:var(--gold);font-size:11px;letter-spacing:.5px">% GASTO ESTIMADO (matrícula/${cap} alumnos)</td>
+      ${annuals.map(a=>`<td style="color:var(--gold);font-weight:400">${(a.factor*100).toFixed(1)}%</td>`).join('')}
+    </tr>`;
+
+    const totalFinalRow = `<tr class="tr-result">
+      <td colspan="2">TOTAL GASTOS OPERACIÓN</td>
+      ${annuals.map(a=>`<td>${M(a.total)}</td>`).join('')}
+    </tr>`;
 
     return `
     <div class="section-header"><div>
       <div class="section-title">Gastos de Operación</div>
-      <div class="section-sub">Costos fijos y controlados del campus</div>
+      <div class="section-sub">Controlados · Fijos · Financieros · escalan con matrícula / ${cap} alumnos ref.</div>
     </div></div>
 
-    <div class="two-col">
-      <div class="card">
-        <div class="card-title">Base Anual de Gastos</div>
+    <div class="card">
+      <div class="card-title">Capacidad de Referencia</div>
+      <div class="form-grid">
         <div class="form-group">
-          <label class="form-label">Gasto Operación Base Año 0 <span>(MXN/año)</span></label>
-          <input type="number" class="form-input" value="${go.baseAnual}" step="100000" data-key="baseAnual" data-nested="gastosOperacion">
-          <span class="form-hint">Crece +${P(state.variables.inflacion)}/año</span>
+          <label class="form-label">Alumnos al 100% de gasto <span>(ref.)</span></label>
+          <input type="number" class="form-input" value="${cap}" step="10"
+            data-key="capacidadGastoRef" data-nested="gastosOperacion">
+          <span class="form-hint">Con ${cap} alumnos o más, el gasto controlado es al 100%. Con menos, escala proporcionalmente.</span>
         </div>
-        <div class="divider"></div>
-        ${corrida.map((yr,i)=>`<div class="payroll-item"><span class="payroll-item-label">Ciclo ${i+1} · ${yr.ano}</span><span class="payroll-item-value">${M(annuals[i])}</span></div>`).join('')}
-      </div>
-      <div class="card">
-        <div class="card-title">Ajuste de Transición (Gastos Legacy)</div>
-        <div class="form-hint mb-8">Ajuste ± sobre la base para migración de contratos y legacy costs.</div>
-        <div class="form-grid">${transInputs}</div>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-title">Desglose Estimado por Categoría</div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Categoría</th><th>%</th>${corrida.map(thCiclo).join('')}</tr></thead>
-          <tbody>${gastosRows}${totalRow}</tbody>
-        </table>
-      </div>
+      <div class="card-title">Egresos Controlados <span class="form-hint">(escalan con matrícula)</span></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Concepto</th><th>Monto base (MXN/año)</th>${corrida.map(thCiclo).join('')}</tr></thead>
+        <tbody>${seccionRows(go.controlados||[], 'controlados', true)}${factorRow}</tbody>
+      </table></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Egresos Fijos <span class="form-hint">(no escalan con matrícula)</span></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Concepto</th><th>Monto base (MXN/año)</th>${corrida.map(thCiclo).join('')}</tr></thead>
+        <tbody>${seccionRows(go.fijos||[], 'fijos', false)}</tbody>
+      </table></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Gastos Financieros</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Concepto</th><th>Monto base (MXN/año)</th>${corrida.map(thCiclo).join('')}</tr></thead>
+        <tbody>${seccionRows(go.financieros||[], 'financieros', false)}${totalFinalRow}</tbody>
+      </table></div>
     </div>`;
   }
 
@@ -1399,6 +1459,17 @@ const App = (() => {
 
   function handleInput(e) {
     const el = e.target;
+
+    // Gastos — label (texto) debe manejarse antes del chequeo numérico
+    if (el.dataset.gastoSection && el.dataset.gastoIdx !== undefined && el.dataset.gastoField === 'label') {
+      const sec = el.dataset.gastoSection;
+      const idx = +el.dataset.gastoIdx;
+      if (!state.gastosOperacion[sec]) state.gastosOperacion[sec] = [];
+      if (!state.gastosOperacion[sec][idx]) state.gastosOperacion[sec][idx] = {};
+      state.gastosOperacion[sec][idx].label = el.value;
+      return scheduleUpdate();
+    }
+
     const raw = parseFloat(el.value);
     if (isNaN(raw)) return;
 
@@ -1437,6 +1508,17 @@ const App = (() => {
       { state.nominas.nominaTransicion[+el.dataset.transicionIdx]=raw; return scheduleUpdate(); }
     if (el.dataset.key==='transicion' && el.dataset.goIdx!==undefined)
       { state.gastosOperacion.transicion[+el.dataset.goIdx]=raw; return scheduleUpdate(); }
+
+    // Gastos — edición de categorías (monto o etiqueta)
+    // Gastos — monto numérico por categoría
+    if (el.dataset.gastoSection && el.dataset.gastoIdx !== undefined && el.dataset.gastoField === 'monto') {
+      const sec = el.dataset.gastoSection;
+      const idx = +el.dataset.gastoIdx;
+      if (!state.gastosOperacion[sec]) state.gastosOperacion[sec] = [];
+      if (!state.gastosOperacion[sec][idx]) state.gastosOperacion[sec][idx] = {};
+      state.gastosOperacion[sec][idx].monto = raw;
+      return scheduleUpdate();
+    }
 
     // Inscripciones — desglose por concepto
     if (el.dataset.inscLevel && el.dataset.inscConcepto) {
