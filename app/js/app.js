@@ -1176,7 +1176,6 @@ const App = (() => {
     const desglose = TUITION_KEYS.map((lk, i) => {
       const c = (state.inscripciones[lk] && typeof state.inscripciones[lk] === 'object') ? state.inscripciones[lk] : {};
       const total = inscripcionTotal(lk);
-      const neto = total * (1 - (desc.inscripcionPct || 0));
       const conceptoCells = CONCEPTOS.map(cp => `
         <td><input type="number" class="cell-input" value="${c[cp.key] || 0}" step="1"
           data-insc-level="${lk}" data-insc-concepto="${cp.key}"></td>`).join('');
@@ -1184,7 +1183,6 @@ const App = (() => {
         <td>${TUITION_LABELS[i]}</td>
         ${conceptoCells}
         <td style="color:var(--gold);font-weight:400;font-variant-numeric:tabular-nums">${N(total)}</td>
-        <td style="color:var(--cobalt);font-variant-numeric:tabular-nums">${N(Math.round(neto))}</td>
       </tr>`;
     }).join('');
 
@@ -1214,7 +1212,6 @@ const App = (() => {
             <th>Nivel</th>
             ${CONCEPTOS.map(cp => `<th>${cp.label}</th>`).join('')}
             <th>Total Bruto</th>
-            <th>Total Neto</th>
           </tr></thead>
           <tbody>${desglose}</tbody>
         </table>
@@ -1940,7 +1937,7 @@ const App = (() => {
     if (el.dataset.puestoIdx !== undefined && el.dataset.puestoField &&
       (el.dataset.puestoField === 'sueldo' || el.dataset.puestoField === 'count')) {
       const idx = +el.dataset.puestoIdx;
-      const raw2 = parseFloat(el.value);
+      const raw2 = parseFloat(String(el.value).replace(/[$,\s]/g, ''));
       if (!isNaN(raw2)) {
         if (!state.nominas.puestos[idx]) state.nominas.puestos[idx] = {};
         state.nominas.puestos[idx][el.dataset.puestoField] = Math.max(el.dataset.puestoField === 'count' ? 1 : 0, raw2);
@@ -1966,7 +1963,7 @@ const App = (() => {
       return scheduleUpdate();
     }
 
-    const raw = parseFloat(el.value);
+    const raw = parseFloat(String(el.value).replace(/[$,\s]/g, ''));
     if (isNaN(raw)) return;
 
     // Enrollment matrix — initial per grade
@@ -2155,6 +2152,26 @@ const App = (() => {
     state = patchState(loadState());
     document.querySelectorAll('.nav-item[data-view]').forEach(el =>
       el.addEventListener('click', () => navigate(el.dataset.view)));
+
+    // ── Formateo automático $ y comas en todos los inputs numéricos ──
+    // Al hacer focus: muestra el número puro para editar
+    // Al salir (blur): reformatea con $ y comas
+    document.addEventListener('focus', e => {
+      const el = e.target;
+      if (!el.matches('input.form-input, input.cell-input')) return;
+      const v = parseFloat(String(el.value).replace(/[$,\s]/g, ''));
+      if (!isNaN(v) && el.type !== 'checkbox') el.value = Math.round(v);
+    }, true);
+    document.addEventListener('blur', e => {
+      const el = e.target;
+      if (!el.matches('input.form-input, input.cell-input')) return;
+      if (el.dataset.puestoField === 'count' || el.dataset.direjField === 'puesto' ||
+        el.dataset.puestoField === 'nombre' || el.dataset.puestoField === 'sector' ||
+        el.dataset.direjField === 'nombre' || el.type === 'checkbox') return;
+      const v = parseFloat(String(el.value).replace(/[$,\s]/g, ''));
+      if (!isNaN(v)) el.value = MXN.format(Math.round(v));
+    }, true);
+
     navigate('dashboard');
   }
 
