@@ -246,6 +246,11 @@ const App = (() => {
    *   • Per-grade cap: if > 105% of capacidadMaxima → truncate at 105% (overpopulation)
    *   • School-wide cap: proportional reduction if total > topeTotalAlumnos
    */
+  /** Suma de capacidadMaxima de todos los grados — es el tope real de la escuela */
+  function calcTopeTotal() {
+    return GRADES.reduce((s, g) => s + (state.capacidadMaxima[g.key] || 0), 0) || 1;
+  }
+
   function calcMatricula() {
     const result = [];
 
@@ -295,9 +300,10 @@ const App = (() => {
       });
 
       // School-wide cap (proportional reduction)
-      const total = Object.values(cur).reduce((s, v) => s + v, 0);
-      if (total > state.topeTotalAlumnos) {
-        const f = state.topeTotalAlumnos / total;
+      const total   = Object.values(cur).reduce((s, v) => s + v, 0);
+      const topeEsc = calcTopeTotal();
+      if (topeEsc > 0 && total > topeEsc) {
+        const f = topeEsc / total;
         GRADES.forEach(g => { cur[g.key] = Math.round(cur[g.key] * f); });
       }
 
@@ -436,7 +442,7 @@ const App = (() => {
     const y1 = corrida[0], yN = corrida[corrida.length-1];
 
     const kpis = [
-      { label:'Matrícula Año 1',       val:N(y1.totalAlumnos)+' alumnos',  sub:`Capacidad ${N(state.topeTotalAlumnos)} · ${P(y1.totalAlumnos/state.topeTotalAlumnos)}`, cls:'', accent:'accent' },
+      { label:'Matrícula Año 1',       val:N(y1.totalAlumnos)+' alumnos',  sub:`Capacidad ${N(calcTopeTotal())} · ${P(y1.totalAlumnos/calcTopeTotal())}`, cls:'', accent:'accent' },
       { label:'Capital Requerido',      val:m2M(state.variables.capitalRequerido)+' MXN', sub:`${N(state.variables.numAcciones)} acciones · ${M(state.variables.costoAccion)} c/u`, cls:'gold', accent:'positive' },
       { label:'Ingresos Año 1',         val:m2M(y1.ingresoTotal),           sub:'Netos descontando becas', cls:'', accent:'positive' },
       { label:`Ingresos Año ${YEARS}`,  val:m2M(yN.ingresoTotal),           sub:`+${P(yN.ingresoTotal/y1.ingresoTotal-1)} vs Año 1`, cls:'', accent:'positive' },
@@ -519,8 +525,9 @@ const App = (() => {
           <span class="form-hint">Crecimiento anual de los alumnos nuevos que ingresan desde afuera.</span>
         </div>
         <div class="form-group">
-          <label class="form-label">Capacidad Total Instalada <span>(alumnos)</span></label>
-          <input type="number" class="form-input" value="${state.topeTotalAlumnos}" step="10" data-key="topeTotalAlumnos">
+          <label class="form-label">Capacidad Total Instalada <span>(suma por grado)</span></label>
+          <div style="padding:9px 2px;border-bottom:2px solid var(--beige);color:var(--gold);font-weight:400;font-size:15px;font-variant-numeric:tabular-nums">${N(calcTopeTotal())}</div>
+          <span class="form-hint">Se calcula automáticamente como la suma de las capacidades por grado (Matriz de Alumnos).</span>
         </div>
       </div>
     </div>
@@ -632,17 +639,16 @@ const App = (() => {
     });
 
     // Grand total + capacity rows
+    const topeEsc = calcTopeTotal();
     tableBody += `<tr class="tr-total">
       <td>TOTAL ALUMNOS</td>
-      <td><input type="number" class="cell-input" value="${state.topeTotalAlumnos}" step="10" min="0"
-        data-key="topeTotalAlumnos"
-        style="width:64px;text-align:right;font-size:11px;color:var(--gold);font-weight:400"></td>
+      <td style="text-align:right;font-size:11px;color:var(--gold);font-weight:400">${N(topeEsc)}</td>
       ${grandTotals.map(t => `<td>${N(t)}</td>`).join('')}
     </tr>
     <tr class="tr-sub">
       <td style="padding-left:4px">% Capacidad Instalada</td>
       <td></td>
-      ${grandTotals.map(t => `<td>${P(t/state.topeTotalAlumnos)}</td>`).join('')}
+      ${grandTotals.map(t => `<td>${P(t/topeEsc)}</td>`).join('')}
     </tr>`;
 
     return `
@@ -659,7 +665,7 @@ const App = (() => {
           </svg>
           Recalcular Proyección
         </button>
-        <span class="badge badge-oxford">Tope: ${N(state.topeTotalAlumnos)} alumnos</span>
+        <span class="badge badge-oxford">Tope: ${N(calcTopeTotal())} alumnos</span>
       </div>
     </div>
 
@@ -1014,7 +1020,7 @@ const App = (() => {
       <div class="card" style="margin-bottom:22px">
         <div class="corrida-year-header">
           <span class="corrida-year-num">${yr.ano}</span>
-          <span class="corrida-year-label">· ${N(yr.totalAlumnos)} alumnos · ${P(yr.totalAlumnos/state.topeTotalAlumnos)} capacidad</span>
+          <span class="corrida-year-label">· ${N(yr.totalAlumnos)} alumnos · ${P(yr.totalAlumnos/calcTopeTotal())} capacidad</span>
           <span class="badge ${yr.ebitda>=0?'badge-green':'badge-red'}" style="margin-left:auto">EBITDA ${M(yr.ebitda)}</span>
         </div>
         <div class="table-wrap">
@@ -1317,7 +1323,7 @@ const App = (() => {
   let updateTimer = null;
   function scheduleUpdate() {
     clearTimeout(updateTimer);
-    updateTimer = setTimeout(() => { saveState(); softRefresh(); }, 650);
+    updateTimer = setTimeout(() => { saveState(); softRefresh(); }, 250);
   }
 
   function softRefresh() {
