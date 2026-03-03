@@ -292,7 +292,7 @@ const App = (() => {
   /** Encabezado de columna "Ciclo N · YY-YY" para una entrada de corrida */
   function thCiclo(yr) {
     const y = yr.ano;
-    return `<th>Ciclo ${yr.i+1}<br><span style="font-size:10px;opacity:.6;font-weight:300">${y-1}-${String(y).slice(-2)}</span></th>`;
+    return `<th>Ciclo ${yr.i+1}<br><span style="font-size:10px;opacity:.6;font-weight:300">${y}-${String(y+1).slice(-2)}</span></th>`;
   }
 
   /** Suma de los conceptos de cuota para un nivel */
@@ -561,8 +561,8 @@ const App = (() => {
     const totalAcc   = v.numAcciones      || 100;
     const accModelo  = Math.round(totalAcc * pctModelo);
     const accVenta   = totalAcc - accModelo;
-    const valorAccion= accVenta > 0 ? cap / accVenta : 0;
-    const cashRecaudar = cap * (1 - pctModelo);
+    const valorAccion  = accVenta > 0 ? cap / accVenta : 0;
+    const cashRecaudar = cap;
     const tickets    = v.numTickets || 500;
     const valorTicket= tickets > 0 ? cap / tickets : 0;
     const ano0       = v.anoInicio || ANO_INICIO;
@@ -633,8 +633,8 @@ const App = (() => {
           </div>
           ${statRow('Acciones del Modelo', `${accModelo}`, `${P(pctModelo)} × ${totalAcc} acciones (aportación en especie)`)}
           ${statRow('Acciones a la Venta', `${accVenta}`, `${totalAcc} − ${accModelo} = ${accVenta} acciones disponibles para inversores`)}
-          ${statRow('Valor por Acción', M(valorAccion), `${M(cap)} ÷ ${accVenta} acciones`)}
-          ${statRow('Capital a Recaudar <span style="font-weight:300">(efectivo)</span>', M(cashRecaudar), `${M(cap)} × ${P(1-pctModelo)} · porción de inversores`)}
+          ${statRow('Valor por Acción', M(valorAccion), `${M(cap)} ÷ ${accVenta} acciones a la venta`)}
+          ${statRow('Capital a Recaudar <span style="font-weight:300">(efectivo)</span>', M(cashRecaudar), `${accVenta} acciones × ${M(valorAccion)} — inversores aportan el 100% del capital`)}
         </div>
       </div>
 
@@ -1161,16 +1161,31 @@ const App = (() => {
       ${annuals.map(a=>`<td style="color:var(--gold);font-weight:400">${(a.factor*100).toFixed(1)}%</td>`).join('')}
     </tr>`;
 
-    const totalFinalRow = `<tr class="tr-result">
-      <td colspan="2">TOTAL GASTOS OPERACIÓN</td>
-      ${annuals.map(a=>`<td>${M(a.total)}</td>`).join('')}
-    </tr>`;
+    const resumenRows = [
+      { label: 'Egresos Controlados', key: 'sumControlados', cls: '' },
+      { label: 'Egresos Fijos',       key: 'sumFijos',       cls: '' },
+      { label: 'Gastos Financieros',  key: 'sumFinancieros', cls: '' },
+    ].map(r => `<tr>
+      <td>${r.label}</td>
+      ${annuals.map(a => `<td>${M(a[r.key])}</td>`).join('')}
+    </tr>`).join('');
 
     return `
     <div class="section-header"><div>
       <div class="section-title">Gastos de Operación</div>
       <div class="section-sub">Controlados · Fijos · Financieros · escalan con matrícula / ${cap} alumnos ref.</div>
     </div></div>
+
+    <div class="card">
+      <div class="card-title">Resumen de Egresos</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Categoría</th>${corrida.map(thCiclo).join('')}</tr></thead>
+        <tbody>
+          ${resumenRows}
+          <tr class="tr-result"><td>TOTAL GASTOS OPERACIÓN</td>${annuals.map(a=>`<td>${M(a.total)}</td>`).join('')}</tr>
+        </tbody>
+      </table></div>
+    </div>
 
     <div class="card">
       <div class="card-title">Capacidad de Referencia</div>
@@ -1204,7 +1219,7 @@ const App = (() => {
       <div class="card-title">Gastos Financieros</div>
       <div class="table-wrap"><table>
         <thead><tr><th>Concepto</th><th>Monto base (MXN/año)</th>${corrida.map(thCiclo).join('')}</tr></thead>
-        <tbody>${seccionRows(go.financieros||[], 'financieros', false)}${totalFinalRow}</tbody>
+        <tbody>${seccionRows(go.financieros||[], 'financieros', false)}</tbody>
       </table></div>
     </div>`;
   }
