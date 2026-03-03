@@ -284,9 +284,10 @@ const App = (() => {
       // Legacy (se usa si puestos.length === 0)
       nominaCampusBase: 1509500,
       honorarios: 0,
-      asimilados: 120000,
-      fondoFiniquitos: 50000,
-      nominaTransicion: [2035159, 1257241, 572379, 0, 0, 0, 0],
+      asimilados: 0,
+      fondoFiniquitos: 0,
+      capacidadNominaRef: 400,      // alumnos = 100% de la nómina (igual que gastos op.)
+      nominaTransicion: [0, 0, 0, 0, 0, 0, 0],
       imssRate: 0.1890,
       infonavitRate: 0.0500,
       isrNominaRate: 0.1056,
@@ -354,14 +355,14 @@ const App = (() => {
 
   function loadState() {
     try {
-      const s = localStorage.getItem('lyl_state_v6');
+      const s = localStorage.getItem('lyl_state_v7');
       if (s) return JSON.parse(s);
     } catch (e) { }
     return deepCopy(DEFAULTS);
   }
 
   function saveState() {
-    try { localStorage.setItem('lyl_state_v6', JSON.stringify(state)); } catch (e) { }
+    try { localStorage.setItem('lyl_state_v7', JSON.stringify(state)); } catch (e) { }
     const b = document.getElementById('save-badge');
     if (b) b.textContent = '● Guardado ' + new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
   }
@@ -585,12 +586,22 @@ const App = (() => {
     return { totalSalarios, totalHonorarios, totalFiscal, costoCampus, tasa, campus, inf, puestos };
   }
 
-  function calcNomina(yearIdx) {
+  /**
+   * Costo mensual de nómina para el yearIdx dado.
+   * factorNomina = min(1, totalAlumnos / capacidadNominaRef)  — misma lógica que gastos op.
+   * Si totalAlumnos no se pasa (ej. vista de Resumen sin corrida), se asume factor = 1.
+   */
+  function calcNomina(yearIdx, totalAlumnos) {
     const inf = Math.pow(1 + state.variables.inflacion, yearIdx);
     const puestos = state.nominas.puestos || [];
     const puestosBase = puestos.reduce((s, p) => s + calcCostoPuesto(p).costoTotal, 0);
+
+    // Factor por matrícula (igual que gastos controlados)
+    const capNomina = state.nominas.capacidadNominaRef || 400;
+    const factorNomina = totalAlumnos != null ? Math.min(1, totalAlumnos / capNomina) : 1;
+
     // Si hay puestos definidos, su total ya incluye IMSS/ISN/etc — inflacionar directamente
-    const base = (puestosBase > 0 ? puestosBase : state.nominas.nominaCampusBase) * inf;
+    const base = (puestosBase > 0 ? puestosBase : state.nominas.nominaCampusBase) * inf * factorNomina;
     const asim = state.nominas.asimilados;
     const fondo = state.nominas.fondoFiniquitos;
     const transicion = state.nominas.nominaTransicion[yearIdx] || 0;
@@ -615,7 +626,7 @@ const App = (() => {
       fondo + transicion + de.costoCampus;
 
     return {
-      base, honor, asim, fondo, transicion, imss, infonavit,
+      base, honor, asim, fondo, transicion, imss, infonavit, factorNomina,
       isrNomina, impEst, aguinaldo, primaVac, primaAnt,
       dirEjecutivaCampus: de.costoCampus,
       totalMensual, totalAnual: totalMensual * 12
@@ -667,7 +678,7 @@ const App = (() => {
       const prontoPago = sumColegiaturas * (state.descuentos.prontoPagoPct || 0);
       const ingresoTotal = (sumInscripciones - descInscripcion) + sumColegiaturas - apoyosEcon - becas - prontoPago + sumCuotas;
 
-      const nomina = calcNomina(i);
+      const nomina = calcNomina(i, totalAlumnos);
       const gastosOpDet = calcGastos(i, totalAlumnos);
       const gastosOp = gastosOpDet.total;
       const egresoTotal = nomina.totalAnual + gastosOp;
@@ -1236,7 +1247,10 @@ const App = (() => {
     const nom = state.nominas;
     const nomY1 = calcNomina(0);
     const corrida = calcCorrida();
-    const annuals = Array.from({ length: YEARS }, (_, i) => calcNomina(i));
+    const annuals = corrida.map(yr => calcNomina(yr.i, yr.totalAlumnos));
+
+    // factor matrícula del año 1 para el encabezado
+    const capNomina = nom.capacidadNominaRef || 400;
 
     // ── Tabla de puestos ──────────────────────────────────────────
     const puestos = nom.puestos || [];
@@ -1365,13 +1379,17 @@ const App = (() => {
           ${corrida.map(thCiclo).join('')}
         </tr></thead>
         <tbody>
-          ${sumRowDirect('Sueldos Brutos (campus)', (i, inf) => totSueldoBruto * inf)}
-          ${sumRowDirect('IMSS Patronal', (i, inf) => totIMSS * inf)}
-          ${sumRowDirect('Infonavit (5% SDI)', (i, inf) => totInfo * inf)}
-          ${sumRowDirect('ISN (3%)', (i, inf) => totISN * inf)}
-          ${sumRowDirect('CRM / Provisiones (ley)', (i, inf) => totProv * inf)}
+          <tr><td style="opacity:.5;font-size:11px">Factor matrícula (${capNomina} al.=100%)</td>
+            ${annuals.map(a => `<td style="opacity:.5;font-size:11px;text-align:right">${(a.factorNomina * 100).toFixed(0)}%</td>`).join('')}
+          </tr>
+          ${sumRowDirect('Sueldos Brutos (campus)', (i, inf) => totSueldoBruto * inf * annuals[i].factorNomina)}
+          ${sumRowDirect('IMSS Patronal', (i, inf) => totIMSS * inf * annuals[i].factorNomina)}
+          ${sumRowDirect('Infonavit (5% SDI)', (i, inf) => totInfo * inf * annuals[i].factorNomina)}
+          ${sumRowDirect('ISN (3%)', (i, inf) => totISN * inf * annuals[i].factorNomina)}
+          ${sumRowDirect('CRM / Provisiones (ley)', (i, inf) => totProv * inf * annuals[i].factorNomina)}
           ${annuals[0].asim ? sumRow('Asimilados', a => a.asim) : ''}
           ${annuals[0].fondo ? sumRow('Fondo Finiquitos', a => a.fondo) : ''}
+          ${annuals[0].transicion ? sumRow('Nómina Transición (legado)', a => a.transicion) : ''}
           <tr style="opacity:.35"><td colspan="${YEARS + 1}"></td></tr>
           <tr><td style="color:var(--gold)">Honorarios Dir. Ejecutiva (campus)</td>${deRowCols}</tr>
           <tr class="tr-total">
@@ -1384,6 +1402,10 @@ const App = (() => {
           </tr>
         </tbody>
       </table></div>
+      <div style="margin-top:8px;font-size:11px;opacity:.55;padding:4px">
+        Capacidad de referencia: <input type="number" class="cell-input" value="${capNomina}" step="50" style="width:55px"
+          data-key="capacidadNominaRef" data-nested="nominas"> alumnos = 100% nómina
+      </div>
     </div>`;
 
     return `
