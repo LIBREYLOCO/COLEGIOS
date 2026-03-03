@@ -848,7 +848,6 @@ const App = (() => {
         <td style="color:var(--gold);font-variant-numeric:tabular-nums">${N(inscripcionTotal(lk))}</td>
         <td><input type="number" class="cell-input" value="${c[lk]}" data-ref-type="colegiaturas" data-ref-grade="${lk}"></td>
         <td style="color:var(--gold);font-variant-numeric:tabular-nums">${N(cuotaTotal(lk))}</td>
-        <td>${M(inscripcionTotal(lk) * (1-desc.inscripcionPct))}</td>
       </tr>`).join('');
 
     return `
@@ -866,21 +865,19 @@ const App = (() => {
             <th>Inscripción (MXN)</th>
             <th>Colegiatura/mes (MXN)</th>
             <th>Cuotas Anuales (MXN)</th>
-            <th>Inscripción Neta*</th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
-      <div class="form-hint mt-8">* Inscripción neta = bruta × (1 − ${P(desc.inscripcionPct)} descuento prom.)</div>
     </div>
 
     <div class="card">
       <div class="card-title">Descuentos y Apoyos</div>
       <div class="form-grid">
-        <div class="form-group"><label class="form-label">Descuento prom. Inscripciones</label>${pctInput(desc.inscripcionPct,'inscripcionPct','descuentos')}<span class="form-hint">Becas, cortesías, maestros</span></div>
-        <div class="form-group"><label class="form-label">Apoyos Económicos</label>${pctInput(desc.apoyosEconomicosPct,'apoyosEconomicosPct','descuentos')}<span class="form-hint">% sobre total colegiaturas</span></div>
-        <div class="form-group"><label class="form-label">Becas SEP + Maestros + Socios</label>${pctInput(desc.becasSepPct,'becasSepPct','descuentos')}<span class="form-hint">% sobre total colegiaturas</span></div>
-        <div class="form-group"><label class="form-label">Pronto Pago</label>${pctInput(desc.prontoPagoPct,'prontoPagoPct','descuentos')}<span class="form-hint">% desc. sobre colegiaturas por pago anticipado</span></div>
+        <div class="form-group"><label class="form-label">Descuento prom. Inscripciones</label>${pctInput(desc.inscripcionPct,'inscripcionPct','descuentos')}<span class="form-hint">Descuento promedio aplicado al total de inscripciones (becas, cortesías, maestros)</span></div>
+        <div class="form-group"><label class="form-label">Apoyos Económicos</label>${pctInput(desc.apoyosEconomicosPct,'apoyosEconomicosPct','descuentos')}<span class="form-hint">% sobre total de colegiaturas anuales</span></div>
+        <div class="form-group"><label class="form-label">Becas SEP + Maestros + Socios</label>${pctInput(desc.becasSepPct,'becasSepPct','descuentos')}<span class="form-hint">% sobre total de colegiaturas anuales</span></div>
+        <div class="form-group"><label class="form-label">Pronto Pago</label>${pctInput(desc.prontoPagoPct,'prontoPagoPct','descuentos')}<span class="form-hint">% de descuento sobre colegiaturas mes a mes por pago anticipado</span></div>
       </div>
     </div>`;
   }
