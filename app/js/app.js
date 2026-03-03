@@ -1373,6 +1373,8 @@ const App = (() => {
           ${sumRowDirect('Infonavit (5% SDI)', (i, inf) => totInfo * inf)}
           ${sumRowDirect('ISN (3%)', (i, inf) => totISN * inf)}
           ${sumRowDirect('CRM / Provisiones (ley)', (i, inf) => totProv * inf)}
+          ${annuals[0].asim ? sumRow('Asimilados', a => a.asim) : ''}
+          ${annuals[0].fondo ? sumRow('Fondo Finiquitos', a => a.fondo) : ''}
           <tr style="opacity:.35"><td colspan="${YEARS + 1}"></td></tr>
           <tr><td style="color:var(--gold)">Honorarios Dir. Ejecutiva (campus)</td>${deRowCols}</tr>
           <tr class="tr-total">
@@ -1415,9 +1417,11 @@ const App = (() => {
     const deRows = puestos.map((p, idx) => {
       const hon = (p.salario || 0) * tasa;
       return `<tr>
-        <td><input type="text" class="cell-input" value="${p.nombre}" style="width:230px;text-align:left"
+        <td><input type="text" class="cell-input" value="${p.nombre}"
+          style="min-width:250px;width:100%;text-align:left"
           data-direj-idx="${idx}" data-direj-field="nombre"></td>
-        <td style="color:var(--text-muted);font-size:11px">${p.puesto}</td>
+        <td><input type="text" class="cell-input" value="${p.puesto || ''}" style="width:130px"
+          data-direj-idx="${idx}" data-direj-field="puesto"></td>
         <td><input type="number" class="cell-input" value="${p.salario}" step="100" style="width:110px"
           data-direj-idx="${idx}" data-direj-field="salario"></td>
         <td style="text-align:right;color:var(--gold)">${M(hon)}</td>
@@ -1954,11 +1958,11 @@ const App = (() => {
       return scheduleUpdate();
     }
 
-    // Dir. Ejecutiva — nombre del trabajador (texto)
-    if (el.dataset.direjIdx !== undefined && el.dataset.direjField === 'nombre') {
+    // Dir. Ejecutiva — nombre / puesto del trabajador (texto)
+    if (el.dataset.direjIdx !== undefined && (el.dataset.direjField === 'nombre' || el.dataset.direjField === 'puesto')) {
       const idx = +el.dataset.direjIdx;
       if (!state.dirEjecutiva?.puestos?.[idx]) return;
-      state.dirEjecutiva.puestos[idx].nombre = el.value;
+      state.dirEjecutiva.puestos[idx][el.dataset.direjField] = el.value;
       return scheduleUpdate();
     }
 
