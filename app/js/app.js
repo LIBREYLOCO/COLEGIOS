@@ -323,6 +323,24 @@ const App = (() => {
         { label: 'Arrendamiento Bus', monto: 922302 },
         { label: 'Impuestos', monto: 1324774 }
       ]
+    },
+
+    // ── Nómina Dirección Ejecutiva (Honorarios corporativos compartidos entre campus) ──
+    dirEjecutiva: {
+      tasaHonorarios: 0.065,   // 6.5% costo fiscal sobre honorarios
+      totalCampus: 1,       // número de campus que comparten este costo
+      puestos: [
+        { nombre: 'DIRECCION EJECUTIVA', puesto: 'DGC', salario: 165641.11 },
+        { nombre: 'DIRECCIÓN DE FINANZAS Y PERFORMANCE', puesto: 'DFP', salario: 45000 },
+        { nombre: 'DIRECCIÓN DE MARCA Y CRECIMIENTO', puesto: 'DMC', salario: 25000 },
+        { nombre: 'GERENCIA DE PERSONAS Y CULTURA', puesto: 'DO', salario: 35000 },
+        { nombre: 'DIRECCIÓN DE OPERACIONES ACADÉMICAS', puesto: 'SOO', salario: 20000 },
+        { nombre: 'CALIDAD EDUCATIVA, ESTANDARIZACIÓN', puesto: 'ASISTENTE', salario: 20766.10 },
+        { nombre: 'DEAN OF ENGLISH (ZIBATA)', puesto: 'INTERNACIONALIZACIÓN', salario: 100000 },
+        { nombre: 'GERENCIA SISTEMAS', puesto: 'SISTEMAS', salario: 24000 },
+        { nombre: 'GERENCIA ADMINISTRATIVA APOYO', puesto: 'ADMINISTRACIÓN', salario: 15000 },
+        { nombre: 'DISEÑO MARCA', puesto: 'DISEÑADOR', salario: 25000 }
+      ]
     }
   };
 
@@ -336,14 +354,14 @@ const App = (() => {
 
   function loadState() {
     try {
-      const s = localStorage.getItem('lyl_state_v5');
+      const s = localStorage.getItem('lyl_state_v6');
       if (s) return JSON.parse(s);
     } catch (e) { }
     return deepCopy(DEFAULTS);
   }
 
   function saveState() {
-    try { localStorage.setItem('lyl_state_v5', JSON.stringify(state)); } catch (e) { }
+    try { localStorage.setItem('lyl_state_v6', JSON.stringify(state)); } catch (e) { }
     const b = document.getElementById('save-badge');
     if (b) b.textContent = '● Guardado ' + new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
   }
@@ -551,6 +569,22 @@ const App = (() => {
 
   // ============================================================
 
+  /** Calcula el costo de la nómina de Dirección Ejecutiva (honorarios) asignado a este campus */
+  function calcDirEjecutiva(yearIdx) {
+    const de = state.dirEjecutiva || {};
+    const tasa = de.tasaHonorarios ?? 0.065;
+    const campus = Math.max(1, Math.round(de.totalCampus || 1));
+    const inf = Math.pow(1 + state.variables.inflacion, yearIdx);
+    const puestos = de.puestos || [];
+
+    const totalSalarios = puestos.reduce((s, p) => s + (p.salario || 0), 0);
+    const totalHonorarios = totalSalarios * tasa;
+    const totalFiscal = totalSalarios + totalHonorarios;  // costo total de la dirección
+    const costoCampus = (totalFiscal / campus) * inf;     // porción de este campus, con inflación
+
+    return { totalSalarios, totalHonorarios, totalFiscal, costoCampus, tasa, campus, inf, puestos };
+  }
+
   function calcNomina(yearIdx) {
     const inf = Math.pow(1 + state.variables.inflacion, yearIdx);
     const puestos = state.nominas.puestos || [];
@@ -573,13 +607,17 @@ const App = (() => {
     const primaVac = usaPuestos ? 0 : sal * state.nominas.primaVacacionalRate;
     const primaAnt = usaPuestos ? 0 : sal * state.nominas.primaAntiguedadRate;
 
+    // Nómina dirección ejecutiva (honorarios corporativos ÷ campus)
+    const de = calcDirEjecutiva(yearIdx);
+
     const totalMensual = sal + asim + imss + infonavit + isrNomina +
       impEst + aguinaldo + primaVac + primaAnt +
-      fondo + transicion;
+      fondo + transicion + de.costoCampus;
 
     return {
       base, honor, asim, fondo, transicion, imss, infonavit,
       isrNomina, impEst, aguinaldo, primaVac, primaAnt,
+      dirEjecutivaCampus: de.costoCampus,
       totalMensual, totalAnual: totalMensual * 12
     };
   }
@@ -1297,39 +1335,57 @@ const App = (() => {
       </div>
     </div>`;
 
-    const obligations = [
-      ['IMSS Cuota Patronal (~18.9% s/nómina)', nomY1.imss],
-      ['Infonavit (5% s/nómina)', nomY1.infonavit],
-      ['ISR Nómina – Retención (~10.6%)', nomY1.isrNomina],
-      ['Impuesto Estatal s/Nómina (ISN ~3%)', nomY1.impEst],
-      ['Aguinaldo (15 días/360)', nomY1.aguinaldo],
-      ['Prima Vacacional (~0.41%)', nomY1.primaVac],
-      ['Prima de Antigüedad (~3.03%)', nomY1.primaAnt]
-    ].map(([l, v]) => `<div class="obligation-row"><span class="obligation-name">${l}</span><span class="obligation-amount">${M(v)}/mes</span></div>`).join('');
+    // ── Resumen consolidado 7 años ────────────────────────────────
+    // Datos de la tabla de puestos (campus)
+    const totSueldoBrutoMes = totCosto - totIMSS - totISN - totInfo - totProv; // = totSueldoBruto
+    const de0 = calcDirEjecutiva(0);
 
-    const nRows = [
-      ['Nómina Campus (base)', d => M(d.base)],
-      ['Asimilados', d => M(d.asim)],
-      ['Honorarios', d => M(d.honor)],
-      ['IMSS', d => M(d.imss)],
-      ['Infonavit', d => M(d.infonavit)],
-      ['ISR Nómina', d => M(d.isrNomina)],
-      ['Impuesto Estatal Nómina', d => M(d.impEst)],
-      ['Aguinaldo', d => M(d.aguinaldo)],
-      ['Prima Vacacional', d => M(d.primaVac)],
-      ['Prima de Antigüedad', d => M(d.primaAnt)],
-      ['Fondo Finiquitos', d => M(d.fondo)],
-      ['Nómina Transición (legado)', d => M(d.transicion)]
-    ].map(([l, fn]) => `<tr><td>${l}</td>${annuals.map(a => `<td>${fn(a)}</td>`).join('')}</tr>`).join('');
+    // Fila de honor. Dir.Ejec. ajustada por año (inflación ya en costoCampus×inf)
+    const deRowCols = annuals.map(a => `<td style="color:var(--gold)">${M(a.dirEjecutivaCampus || 0)}</td>`).join('');
 
-    const totalRow = `<tr class="tr-total"><td>TOTAL ANUAL</td>${annuals.map(a => `<td>${M(a.totalAnual)}</td>`).join('')}</tr>`;
+    // Filas del resumen (valores por año)
+    function sumRow(label, fn, style = '') {
+      const cells = annuals.map(a => `<td style="${style}">${M(fn(a))}</td>`).join('');
+      return `<tr><td>${label}</td>${cells}</tr>`;
+    }
+    function sumRowDirect(label, fn, style = '') {
+      // fn recibe el índice i y los pCosts inflacionados
+      const cells = Array.from({ length: YEARS }, (_, i) => {
+        const inf = Math.pow(1 + state.variables.inflacion, i);
+        return `<td style="${style}">${M(fn(i, inf))}</td>`;
+      }).join('');
+      return `<tr><td>${label}</td>${cells}</tr>`;
+    }
 
-    const transInputs = nom.nominaTransicion.map((v, i) => `
-      <div class="form-group">
-        <label class="form-label">Ciclo ${i + 1} · ${corrida[i].ano - 1}-${String(corrida[i].ano).slice(-2)} <span>MXN/mes</span></label>
-        <input type="number" class="form-input" value="${v}" step="10000"
-          data-key="nominaTransicion" data-transicion-idx="${i}" data-nested="nominas">
-      </div>`).join('');
+    const summaryCard = `
+    <div class="card" style="border-top:3px solid var(--cobalt)">
+      <div class="card-title" style="font-size:15px;letter-spacing:.5px">
+        RESUMEN NÓMINA TOTAL · PROYECCIÓN 7 AÑOS
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr>
+          <th style="text-align:left;min-width:220px">Concepto</th>
+          ${corrida.map(thCiclo).join('')}
+        </tr></thead>
+        <tbody>
+          ${sumRowDirect('Sueldos Brutos (campus)', (i, inf) => totSueldoBruto * inf)}
+          ${sumRowDirect('IMSS Patronal', (i, inf) => totIMSS * inf)}
+          ${sumRowDirect('Infonavit (5% SDI)', (i, inf) => totInfo * inf)}
+          ${sumRowDirect('ISN (3%)', (i, inf) => totISN * inf)}
+          ${sumRowDirect('CRM / Provisiones (ley)', (i, inf) => totProv * inf)}
+          <tr style="opacity:.35"><td colspan="${YEARS + 1}"></td></tr>
+          <tr><td style="color:var(--gold)">Honorarios Dir. Ejecutiva (campus)</td>${deRowCols}</tr>
+          <tr class="tr-total">
+            <td>TOTAL NÓMINA MENSUAL</td>
+            ${annuals.map(a => `<td style="color:var(--cobalt);font-weight:500">${M(a.totalMensual)}</td>`).join('')}
+          </tr>
+          <tr class="tr-ebitda">
+            <td>TOTAL NÓMINA ANUAL (×12)</td>
+            ${annuals.map(a => `<td style="color:var(--gold);font-weight:500">${M(a.totalAnual)}</td>`).join('')}
+          </tr>
+        </tbody>
+      </table></div>
+    </div>`;
 
     return `
     <div class="section-header"><div>
@@ -1337,49 +1393,110 @@ const App = (() => {
       <div class="section-sub">Sueldos y obligaciones patronales · Normativa México 2025</div>
     </div></div>
 
+    ${summaryCard}
+
     ${puestosCard}
 
-    <div class="info-note">Cálculos de prestaciones de ley: IMSS, Infonavit, ISN, aguinaldo, prima vacacional, prima de antigüedad y fondo de finiquitos.</div>
+    ${renderDirEjecutivaCard(corrida)}`;
+  }
 
-    <div class="two-col">
-      <div class="card">
-        <div class="card-title">Nómina Base (Mensual)</div>
-        <div class="form-grid">
-          <div class="form-group"><label class="form-label">Nómina Campus <span>(MXN/mes)</span></label><input type="number" class="form-input" value="${nom.nominaCampusBase}" step="1000" data-key="nominaCampusBase" data-nested="nominas"></div>
-          <div class="form-group"><label class="form-label">Asimilados <span>(MXN/mes)</span></label><input type="number" class="form-input" value="${nom.asimilados}" step="1000" data-key="asimilados" data-nested="nominas"></div>
-          <div class="form-group"><label class="form-label">Honorarios <span>(MXN/mes)</span></label><input type="number" class="form-input" value="${nom.honorarios}" step="1000" data-key="honorarios" data-nested="nominas"></div>
-          <div class="form-group"><label class="form-label">Fondo Finiquitos <span>(MXN/mes)</span></label><input type="number" class="form-input" value="${nom.fondoFiniquitos}" step="1000" data-key="fondoFiniquitos" data-nested="nominas"></div>
+  // ── Card: Dirección Ejecutiva (Honorarios) ───────────────────────────────────────
+  function renderDirEjecutivaCard(corrida) {
+    const de = state.dirEjecutiva || {};
+    const tasa = de.tasaHonorarios ?? 0.065;
+    const campus = Math.max(1, Math.round(de.totalCampus || 1));
+    const puestos = de.puestos || [];
+
+    const totalSalarios = puestos.reduce((s, p) => s + (p.salario || 0), 0);
+    const totalHonorarios = totalSalarios * tasa;
+    const totalFiscal = totalSalarios + totalHonorarios;
+    const costoCampus = totalFiscal / campus;
+
+    const deRows = puestos.map((p, idx) => {
+      const hon = (p.salario || 0) * tasa;
+      return `<tr>
+        <td><input type="text" class="cell-input" value="${p.nombre}" style="width:230px;text-align:left"
+          data-direj-idx="${idx}" data-direj-field="nombre"></td>
+        <td style="color:var(--text-muted);font-size:11px">${p.puesto}</td>
+        <td><input type="number" class="cell-input" value="${p.salario}" step="100" style="width:110px"
+          data-direj-idx="${idx}" data-direj-field="salario"></td>
+        <td style="text-align:right;color:var(--gold)">${M(hon)}</td>
+        <td style="text-align:right;color:var(--cobalt);font-weight:500">${M((p.salario || 0) + hon)}</td>
+      </tr>`;
+    }).join('');
+
+    // Proyección de costo campus a 7 años
+    const proyRow = corrida.map(yr => {
+      const inf = yr.infFactor;
+      return `<td style="color:var(--cobalt)">${M(costoCampus * inf)}</td>`;
+    }).join('');
+
+    return `
+    <div class="card" style="border-left:3px solid var(--gold)">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span style="color:var(--gold)">DIRECCIÓN EJECUTIVA — NÓMINA POR HONORARIOS</span>
+        <span class="badge badge-gold">Sub-nómina corporativa</span>
+      </div>
+
+      <div class="info-note" style="margin-bottom:16px">
+        Nómina compartida entre campus. El <strong>Costo Fiscal = Salario Neto × (1 + ${(tasa * 100).toFixed(1)}%)</strong>. El total se divide entre <strong>Total de Campus</strong> para obtener la porción de este colegio.
+      </div>
+
+      <div class="form-grid" style="margin-bottom:18px;grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">
+        <div class="form-group">
+          <label class="form-label">Tasa de Honorarios <span>(%)</span></label>
+          <input type="number" class="form-input" value="${(tasa * 100).toFixed(2)}" step="0.1"
+            data-key="tasaHonorarios" data-nested="dirEjecutiva">
+          <span class="form-hint">% del salario neto como costo fiscal ISR honorarios</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Total de Campus <span>(divisor)</span></label>
+          <input type="number" class="form-input" value="${campus}" step="1" min="1"
+            data-key="totalCampus" data-nested="dirEjecutiva">
+          <span class="form-hint">El costo total se divide entre este número</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="opacity:.6">Costo Total (todos los campus)</label>
+          <div style="padding:9px 4px;border-bottom:1px solid var(--beige);color:var(--text-muted)">${M(totalFiscal)}</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="color:var(--gold)">Costo Este Campus / Mes</label>
+          <div style="padding:9px 4px;border-bottom:2px solid var(--gold);color:var(--gold);font-size:16px;font-weight:400">${M(costoCampus)}</div>
         </div>
       </div>
-      <div class="card">
-        <div class="card-title">Obligaciones Patronales · Año 1 (Mensual)</div>
-        ${obligations}
-        <div class="divider"></div>
-        <div class="payroll-item total"><span class="payroll-item-label">TOTAL MENSUAL</span><span class="payroll-item-value">${M(nomY1.totalMensual)}</span></div>
-        <div class="payroll-item total"><span class="payroll-item-label">TOTAL ANUAL</span><span class="payroll-item-value">${M(nomY1.totalAnual)}</span></div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th style="text-align:left">Trabajador</th>
+            <th style="text-align:left">Puesto</th>
+            <th style="text-align:right">Salario Mensual Neto</th>
+            <th style="text-align:right;color:var(--gold)">Costo Honorarios (${(tasa * 100).toFixed(1)}%)</th>
+            <th style="text-align:right;color:var(--cobalt)">Total Costo Fiscal</th>
+          </tr></thead>
+          <tbody>
+            ${deRows}
+            <tr class="tr-total">
+              <td colspan="2">TOTALES</td>
+              <td style="text-align:right">${M(totalSalarios)}</td>
+              <td style="text-align:right;color:var(--gold)">${M(totalHonorarios)}</td>
+              <td style="text-align:right;color:var(--cobalt);font-weight:500">${M(totalFiscal)}</td>
+            </tr>
+            <tr class="tr-ebitda">
+              <td colspan="4">COSTO ESTE CAMPUS (÷ ${campus} campus)</td>
+              <td style="text-align:right;color:var(--gold);font-weight:500;font-size:15px">${M(costoCampus)}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-    </div>
 
-    <div class="card">
-      <div class="card-title">Tasas de Obligaciones Patronales</div>
-      <div class="rates-grid">
-        ${[['IMSS', 'imssRate'], ['Infonavit', 'infonavitRate'], ['ISR Nómina', 'isrNominaRate'], ['Imp. Estatal', 'impEstatalRate'], ['Aguinaldo', 'aguinaldoRate'], ['Prima Vacacional', 'primaVacacionalRate'], ['Prima Antigüedad', 'primaAntiguedadRate']].map(([l, k]) => `
-          <div class="form-group"><label class="form-label">${l}</label>${pctInput(nom[k], k, 'nominas')}</div>`).join('')}
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Nómina de Transición (Legado · Mensual)</div>
-      <div class="form-hint mb-8">Nómina del colegio existente absorbida durante los primeros años.</div>
-      <div class="form-grid">${transInputs}</div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Proyección Nómina Total Anual</div>
+      <div class="card-title" style="margin-top:20px">Proyección Costo Campus · 7 Años</div>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Concepto</th>${corrida.map(thCiclo).join('')}</tr></thead>
-          <tbody>${nRows}${totalRow}</tbody>
+          <tbody>
+            <tr class="tr-result"><td>Costo Dir. Ejec. este campus (inflacionado)</td>${proyRow}</tr>
+          </tbody>
         </table>
       </div>
     </div>`;
@@ -1837,6 +1954,14 @@ const App = (() => {
       return scheduleUpdate();
     }
 
+    // Dir. Ejecutiva — nombre del trabajador (texto)
+    if (el.dataset.direjIdx !== undefined && el.dataset.direjField === 'nombre') {
+      const idx = +el.dataset.direjIdx;
+      if (!state.dirEjecutiva?.puestos?.[idx]) return;
+      state.dirEjecutiva.puestos[idx].nombre = el.value;
+      return scheduleUpdate();
+    }
+
     const raw = parseFloat(el.value);
     if (isNaN(raw)) return;
 
@@ -1900,6 +2025,15 @@ const App = (() => {
       const ck = el.dataset.cuotaConcepto;
       if (!state.cuotas[lk] || typeof state.cuotas[lk] !== 'object') state.cuotas[lk] = {};
       state.cuotas[lk][ck] = raw;
+      return scheduleUpdate();
+    }
+
+    // Dir. Ejecutiva — campos numéricos (salario por persona)
+    if (el.dataset.direjIdx !== undefined && el.dataset.direjField === 'salario') {
+      const idx = +el.dataset.direjIdx;
+      if (!isNaN(raw) && state.dirEjecutiva?.puestos?.[idx]) {
+        state.dirEjecutiva.puestos[idx].salario = Math.max(0, raw);
+      }
       return scheduleUpdate();
     }
 
