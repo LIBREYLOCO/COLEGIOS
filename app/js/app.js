@@ -615,7 +615,9 @@ const App = (() => {
 
         tableBody += `<tr>
           <td><span style="padding-left:12px">${g.label}</span></td>
-          <td style="text-align:right;color:var(--text-muted);font-size:11px">${N(cap === Infinity ? 0 : cap)}</td>
+          <td><input type="number" class="cell-input" value="${cap === Infinity ? 0 : cap}" step="5" min="0"
+            data-key="${g.key}" data-cap-grade="true"
+            style="width:56px;text-align:right;font-size:11px;color:var(--text-muted)"></td>
           ${yearCells}
         </tr>`;
       });
@@ -632,7 +634,9 @@ const App = (() => {
     // Grand total + capacity rows
     tableBody += `<tr class="tr-total">
       <td>TOTAL ALUMNOS</td>
-      <td style="text-align:right;font-size:11px">${N(state.topeTotalAlumnos)}</td>
+      <td><input type="number" class="cell-input" value="${state.topeTotalAlumnos}" step="10" min="0"
+        data-key="topeTotalAlumnos"
+        style="width:64px;text-align:right;font-size:11px;color:var(--gold);font-weight:400"></td>
       ${grandTotals.map(t => `<td>${N(t)}</td>`).join('')}
     </tr>
     <tr class="tr-sub">
@@ -704,7 +708,7 @@ const App = (() => {
       <div class="form-hint mt-8" style="display:flex;gap:16px">
         <span><span style="color:var(--gold)">■</span> Dorado = crecimiento sobre base</span>
         <span><span style="color:var(--purple)">■ ⚠</span> Morado = sobrepoblación (&gt;105% cap)</span>
-        <span style="color:var(--text-muted)">Columna Año ${ANO_INICIO} es editable</span>
+        <span style="color:var(--text-muted)">Año ${ANO_INICIO} y columna Tope son editables</span>
       </div>
     </div>
 
@@ -1121,21 +1125,21 @@ const App = (() => {
   }
 
   const CC = {
-    blue:    '#0047AB',  blueA:  'rgba(0,71,171,.75)',   blueL: 'rgba(0,71,171,.14)',
-    gold:    '#C9A227',  goldA:  'rgba(201,162,39,.85)',  goldL: 'rgba(201,162,39,.15)',
-    cobalt:  '#0A3460',
-    green:   'rgba(201,162,39,.90)',
-    red:     'rgba(107,63,160,.85)',
-    grades:  ['rgba(0,71,171,.80)','rgba(201,162,39,.80)','rgba(107,63,160,.75)','rgba(10,52,96,.70)','rgba(201,162,39,.50)']
+    blue:    '#4A9FFF',  blueA:  'rgba(74,159,255,.75)',  blueL: 'rgba(74,159,255,.14)',
+    gold:    '#E5BC35',  goldA:  'rgba(229,188,53,.85)',   goldL: 'rgba(229,188,53,.14)',
+    cobalt:  '#2A70CC',
+    green:   'rgba(229,188,53,.90)',
+    red:     'rgba(168,127,216,.85)',
+    grades:  ['rgba(74,159,255,.80)','rgba(229,188,53,.80)','rgba(168,127,216,.75)','rgba(42,112,204,.70)','rgba(229,188,53,.50)']
   };
 
   const BASE_OPTS = {
     responsive:true, maintainAspectRatio:false,
     plugins:{
-      legend:{ labels:{ color:'rgba(0,33,71,.55)', font:{size:10,weight:'300'}, boxWidth:11, padding:14 }},
+      legend:{ labels:{ color:'rgba(156,184,212,.70)', font:{size:10,weight:'300'}, boxWidth:11, padding:14 }},
       tooltip:{
-        backgroundColor:'rgba(0,33,71,.95)', borderColor:'rgba(226,217,200,.3)', borderWidth:1,
-        titleColor:'rgba(255,255,255,.95)', bodyColor:'rgba(200,210,225,.9)', padding:9,
+        backgroundColor:'rgba(8,21,40,.97)', borderColor:'rgba(255,255,255,.12)', borderWidth:1,
+        titleColor:'rgba(220,233,245,.95)', bodyColor:'rgba(154,184,212,.90)', padding:9,
         callbacks:{ label: ctx => {
           const v = ctx.raw;
           return typeof v==='number' && Math.abs(v)>1000
@@ -1145,10 +1149,10 @@ const App = (() => {
       }
     },
     scales:{
-      x:{ ticks:{color:'rgba(0,33,71,.40)',font:{size:9.5}}, grid:{color:'rgba(226,217,200,.5)'} },
-      y:{ ticks:{color:'rgba(0,33,71,.40)',font:{size:9.5},
+      x:{ ticks:{color:'rgba(94,130,164,.70)',font:{size:9.5}}, grid:{color:'rgba(255,255,255,.06)'} },
+      y:{ ticks:{color:'rgba(94,130,164,.70)',font:{size:9.5},
         callback: v => Math.abs(v)>=1e6 ? (v/1e6).toFixed(0)+' M' : NUM.format(v)
-      }, grid:{color:'rgba(226,217,200,.5)'} }
+      }, grid:{color:'rgba(255,255,255,.06)'} }
     }
   };
 
