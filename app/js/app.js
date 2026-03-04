@@ -734,11 +734,12 @@ const App = (() => {
 
     const kpis = [
       { label: 'Matrícula Año 1', val: N(y1.totalAlumnos) + ' alumnos', sub: `Capacidad ${N(calcTopeTotal())} · ${P(y1.totalAlumnos / calcTopeTotal())}`, cls: '', accent: 'accent' },
-      { label: 'Capital Requerido', val: m2M(state.variables.capitalRequerido) + ' MXN', sub: `${N(state.variables.numAcciones)} acciones · ${N(state.variables.numTickets || 500)} tickets`, cls: 'gold', accent: 'positive' },
       { label: 'Ingresos Año 1', val: m2M(y1.ingresoTotal), sub: 'Netos descontando becas', cls: '', accent: 'positive' },
       { label: `Ingresos Año ${YEARS}`, val: m2M(yN.ingresoTotal), sub: `+${P(yN.ingresoTotal / y1.ingresoTotal - 1)} vs Año 1`, cls: '', accent: 'positive' },
+      { label: 'Nómina Mensual Año 1', val: m2M(y1.nomina.totalMensual), sub: `Factor matrícula ${P(y1.nomina.factorNomina)}`, cls: '', accent: 'neutral' },
       { label: `EBITDA Año ${YEARS}`, val: m2M(yN.ebitda), sub: 'Utilidad operativa neta', cls: 'gold', accent: 'positive' },
-      { label: 'Flujo Acumulado 7 Años', val: m2M(yN.cashAcumulado), sub: 'Dinero en bancos al cierre', cls: 'cobalt', accent: 'positive' }
+      { label: 'Margen EBITDA Año 1', val: P(y1.ebitda / y1.ingresoTotal), sub: 'Utilidad / Ingresos netos', cls: 'cobalt', accent: 'positive' },
+      { label: 'Flujo Acumulado 7 Años', val: m2M(yN.cashAcumulado), sub: 'Dinero en bancos al cierre', cls: '', accent: 'positive' }
     ];
 
     return `
@@ -764,8 +765,16 @@ const App = (() => {
       <div class="chart-card"><div class="chart-title">EBITDA y Flujo Acumulado</div><div class="chart-wrap"><canvas id="chart-ebitda"></canvas></div></div>
     </div>
     <div class="charts-grid">
+      <div class="chart-card"><div class="chart-title">Nómina Total · 7 Años</div><div class="chart-wrap"><canvas id="chart-nomina"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">Gastos de Operación · 7 Años</div><div class="chart-wrap"><canvas id="chart-gastos"></canvas></div></div>
+    </div>
+    <div class="charts-grid">
       <div class="chart-card"><div class="chart-title">Matrícula por Nivel · Proyección</div><div class="chart-wrap"><canvas id="chart-matricula"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">Desglose de Costos Año 1–7</div><div class="chart-wrap"><canvas id="chart-costos"></canvas></div></div>
+    </div>
+    <div class="charts-grid">
       <div class="chart-card"><div class="chart-title">Composición de Ingresos Año 1</div><div class="chart-wrap"><canvas id="chart-pie"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">Margen EBITDA % · Evolución</div><div class="chart-wrap"><canvas id="chart-margen"></canvas></div></div>
     </div>
 
     ${renderProyeccionTable(corrida)}`;
@@ -1818,14 +1827,19 @@ const App = (() => {
       _chartEbitda(corrida);
       _chartMatricula(corrida);
       _chartPie(corrida);
+      _chartNomina(corrida);
+      _chartGastos(corrida);
+      _chartCostos(corrida);
+      _chartMargen(corrida);
     });
   }
 
   function _chartIngEgr(corrida) {
     const el = document.getElementById('chart-ingegr'); if (!el) return;
+    const labels = corrida.map(y => `${String(y.ano).slice(-2)}-${String(y.ano + 1).slice(-2)}`);
     chartInstances.ingegr = new Chart(el, {
       type: 'bar', data: {
-        labels: corrida.map(y => y.ano),
+        labels,
         datasets: [
           { label: 'Ingresos', data: corrida.map(y => y.ingresoTotal), backgroundColor: CC.blueL, borderColor: CC.blueA, borderWidth: 2, borderRadius: 4 },
           { label: 'Egresos', data: corrida.map(y => y.egresoTotal), backgroundColor: 'rgba(107,63,160,.18)', borderColor: CC.red, borderWidth: 2, borderRadius: 4 }
@@ -1836,14 +1850,102 @@ const App = (() => {
 
   function _chartEbitda(corrida) {
     const el = document.getElementById('chart-ebitda'); if (!el) return;
+    const labels = corrida.map(y => `${String(y.ano).slice(-2)}-${String(y.ano + 1).slice(-2)}`);
     chartInstances.ebitda = new Chart(el, {
       type: 'bar', data: {
-        labels: corrida.map(y => y.ano),
+        labels,
         datasets: [
           { label: 'EBITDA', data: corrida.map(y => y.ebitda), type: 'bar', backgroundColor: CC.goldL, borderColor: CC.goldA, borderWidth: 2, borderRadius: 4 },
           { label: 'Flujo Acumulado', data: corrida.map(y => y.cashAcumulado), type: 'line', borderColor: CC.green, backgroundColor: 'transparent', borderWidth: 2, pointRadius: 4, pointBackgroundColor: CC.green }
         ]
       }, options: { ...BASE_OPTS }
+    });
+  }
+
+  function _chartNomina(corrida) {
+    const el = document.getElementById('chart-nomina'); if (!el) return;
+    const labels = corrida.map(y => `${String(y.ano).slice(-2)}-${String(y.ano + 1).slice(-2)}`);
+    chartInstances.nomina = new Chart(el, {
+      type: 'bar', data: {
+        labels,
+        datasets: [
+          { label: 'Nómina Campus', data: corrida.map(y => y.nomina.base), backgroundColor: CC.blueL, borderColor: CC.blueA, borderWidth: 2, borderRadius: 4, stack: 'n' },
+          { label: 'Honorarios Dir.Ejec.', data: corrida.map(y => y.nomina.dirEjecutivaCampus || 0), backgroundColor: CC.goldL, borderColor: CC.goldA, borderWidth: 2, borderRadius: 4, stack: 'n' }
+        ]
+      }, options: {
+        ...BASE_OPTS,
+        scales: {
+          x: { ...BASE_OPTS.scales.x, stacked: true },
+          y: { ...BASE_OPTS.scales.y, stacked: true }
+        }
+      }
+    });
+  }
+
+  function _chartGastos(corrida) {
+    const el = document.getElementById('chart-gastos'); if (!el) return;
+    const labels = corrida.map(y => `${String(y.ano).slice(-2)}-${String(y.ano + 1).slice(-2)}`);
+    const annuals = corrida.map(yr => calcGastos(yr.i, yr.totalAlumnos));
+    chartInstances.gastos = new Chart(el, {
+      type: 'bar', data: {
+        labels,
+        datasets: [
+          { label: 'Controlados', data: annuals.map(a => a.sumControlados), backgroundColor: 'rgba(0,71,171,.20)', borderColor: CC.blueA, borderWidth: 2, borderRadius: 4, stack: 'g' },
+          { label: 'Fijos', data: annuals.map(a => a.sumFijos), backgroundColor: CC.goldL, borderColor: CC.goldA, borderWidth: 2, borderRadius: 4, stack: 'g' },
+          { label: 'Financieros', data: annuals.map(a => a.sumFinancieros), backgroundColor: 'rgba(107,63,160,.20)', borderColor: CC.red, borderWidth: 2, borderRadius: 4, stack: 'g' }
+        ]
+      }, options: {
+        ...BASE_OPTS,
+        scales: {
+          x: { ...BASE_OPTS.scales.x, stacked: true },
+          y: { ...BASE_OPTS.scales.y, stacked: true }
+        }
+      }
+    });
+  }
+
+  function _chartCostos(corrida) {
+    const el = document.getElementById('chart-costos'); if (!el) return;
+    const labels = corrida.map(y => `${String(y.ano).slice(-2)}-${String(y.ano + 1).slice(-2)}`);
+    chartInstances.costos = new Chart(el, {
+      type: 'bar', data: {
+        labels,
+        datasets: [
+          { label: 'Nómina', data: corrida.map(y => y.nomina.totalAnual), backgroundColor: CC.blueL, borderColor: CC.blueA, borderWidth: 2, borderRadius: 4, stack: 'c' },
+          { label: 'Gastos Op.', data: corrida.map(y => y.gastosOp), backgroundColor: CC.goldL, borderColor: CC.goldA, borderWidth: 2, borderRadius: 4, stack: 'c' },
+          { label: 'Renta + Op.', data: corrida.map(y => y.rentaInmueble + y.operadora), backgroundColor: 'rgba(107,63,160,.22)', borderColor: CC.red, borderWidth: 2, borderRadius: 4, stack: 'c' }
+        ]
+      }, options: {
+        ...BASE_OPTS,
+        scales: {
+          x: { ...BASE_OPTS.scales.x, stacked: true },
+          y: { ...BASE_OPTS.scales.y, stacked: true }
+        }
+      }
+    });
+  }
+
+  function _chartMargen(corrida) {
+    const el = document.getElementById('chart-margen'); if (!el) return;
+    const labels = corrida.map(y => `${String(y.ano).slice(-2)}-${String(y.ano + 1).slice(-2)}`);
+    chartInstances.margen = new Chart(el, {
+      type: 'line', data: {
+        labels,
+        datasets: [
+          {
+            label: 'Margen EBITDA %',
+            data: corrida.map(y => y.ingresoTotal > 0 ? (y.ebitda / y.ingresoTotal) * 100 : 0),
+            borderColor: CC.goldA, backgroundColor: CC.goldL, borderWidth: 2,
+            pointRadius: 5, pointBackgroundColor: CC.goldA, fill: true, tension: 0.3
+          }
+        ]
+      }, options: {
+        ...BASE_OPTS,
+        scales: {
+          x: { ...BASE_OPTS.scales.x },
+          y: { ...BASE_OPTS.scales.y, ticks: { ...BASE_OPTS.scales.y.ticks, callback: v => v.toFixed(1) + '%' } }
+        }
+      }
     });
   }
 
