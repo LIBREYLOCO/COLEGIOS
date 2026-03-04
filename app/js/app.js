@@ -987,7 +987,7 @@ const App = (() => {
     <div class="section-header">
       <div>
         <div class="section-title">Matriz de Alumnos</div>
-        <div class="section-sub">Ciclos 1–${YEARS} (${corrida0[0].ano}–${corrida0[YEARS - 1].ano})
+        <div class="section-sub">Ciclos 1–${YEARS} (${String(corrida0[0].ano).slice(-2)}-${String(corrida0[0].ano + 1).slice(-2)} → ${String(corrida0[YEARS - 1].ano).slice(-2)}-${String(corrida0[YEARS - 1].ano + 1).slice(-2)})
           · Reinscripción <strong style="color:var(--gold)">${P(rein)}</strong>
           · Crecimiento <strong style="color:var(--cobalt)">+${P(crec)}/año</strong>
         </div>
@@ -1038,7 +1038,7 @@ const App = (() => {
             <tr>
               <th>Grado</th>
               <th style="text-align:right;min-width:56px">Tope</th>
-              ${allYears.map((y, i) => `<th class="${i === 0 ? 'col-year-0' : ''}">${y}</th>`).join('')}
+              ${allYears.map((y, i) => `<th class="${i === 0 ? 'col-year-0' : ''}"><span style="font-size:10px">${String(y).slice(-2)}-${String(y + 1).slice(-2)}</span></th>`).join('')}
             </tr>
           </thead>
           <tbody>${tableBody}</tbody>
