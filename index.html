@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modelo Financiero · L&L</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script
+    src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+</head>
+
+<body>
+
+  <!-- ══════════════════════════════════════════════════
+       PORTAL DE ACCESO · L&L Sistema Financiero Institucional
+       Carpeta de piel azul — logo grande, forma simétrica
+  ═══════════════════════════════════════════════════════ -->
+  <div id="login-portal">
+    <!-- Leather texture layers -->
+    <div class="lp-tex lp-tex-h"></div>
+    <div class="lp-tex lp-tex-v"></div>
+    <div class="lp-tex lp-tex-d"></div>
+
+    <!-- Gold corner ornaments -->
+    <div class="lp-orn lp-orn-tl"><svg width="60" height="60" viewBox="0 0 60 60" fill="none">
+        <path d="M2 2h32M2 2v32" stroke="#C5A059" stroke-width="1.5" opacity=".55" />
+        <path d="M2 10h8M10 2v8" stroke="#C5A059" stroke-width=".8" opacity=".30" />
+      </svg></div>
+    <div class="lp-orn lp-orn-tr"><svg width="60" height="60" viewBox="0 0 60 60" fill="none">
+        <path d="M58 2H26M58 2v32" stroke="#C5A059" stroke-width="1.5" opacity=".55" />
+        <path d="M58 10h-8M50 2v8" stroke="#C5A059" stroke-width=".8" opacity=".30" />
+      </svg></div>
+    <div class="lp-orn lp-orn-bl"><svg width="60" height="60" viewBox="0 0 60 60" fill="none">
+        <path d="M2 58h32M2 58V26" stroke="#C5A059" stroke-width="1.5" opacity=".55" />
+        <path d="M2 50h8M10 58v-8" stroke="#C5A059" stroke-width=".8" opacity=".30" />
+      </svg></div>
+    <div class="lp-orn lp-orn-br"><svg width="60" height="60" viewBox="0 0 60 60" fill="none">
+        <path d="M58 58H26M58 58V26" stroke="#C5A059" stroke-width="1.5" opacity=".55" />
+        <path d="M58 50h-8M50 58v-8" stroke="#C5A059" stroke-width=".8" opacity=".30" />
+      </svg></div>
+
+    <!-- Full-page centred layout — no card box -->
+    <div class="lp-cover">
+
+      <!-- LOGO — grande, protagonista -->
+      <div class="lp-logo-wrap">
+        <img src="img/logo.png" alt="L&amp;L" class="lp-logo">
+      </div>
+
+      <!-- Gold rule -->
+      <div class="lp-rule"><span></span><span class="lp-gem">◆</span><span></span></div>
+
+      <!-- Tagline — embossed gold text -->
+      <div class="lp-tagline-main">L&amp;L · Lógica Institucional &amp; Liquidez</div>
+      <div class="lp-tagline-sub">Sistema de Modelado Financiero Institucional</div>
+
+      <!-- Gold rule -->
+      <div class="lp-rule lp-rule-gap"><span></span><span class="lp-gem">◆</span><span></span></div>
+
+      <!-- Minimal form — just two fields + button -->
+      <form id="login-form" onsubmit="lplLogin(event)" class="lp-form">
+        <div class="lp-field">
+          <label class="lp-label">Correo electrónico</label>
+          <input type="email" id="lp-email" class="lp-input" placeholder="usuario@dominio.com" autocomplete="email"
+            required>
+        </div>
+        <div class="lp-field">
+          <label class="lp-label">Contraseña</label>
+          <div style="position:relative">
+            <input type="password" id="lp-pwd" class="lp-input" placeholder="••••••••" autocomplete="current-password"
+              required>
+            <button type="button" onclick="lplTogglePwd()" tabindex="-1" class="lp-eye">
+              <svg viewBox="0 0 20 20" fill="none" width="14" height="14">
+                <path d="M1.5 10s3-6 8.5-6 8.5 6 8.5 6-3 6-8.5 6S1.5 10 1.5 10z" stroke="currentColor"
+                  stroke-width="1.3" />
+                <circle cx="10" cy="10" r="2.5" stroke="currentColor" stroke-width="1.3" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="lp-error" id="lp-error">Acceso denegado — verifique sus credenciales.</div>
+        <button type="submit" class="lp-btn" id="lp-btn">
+          <span id="lp-btn-text">Accesar al sistema</span>
+          <span id="lp-btn-spin" class="lp-spinner" style="display:none"></span>
+        </button>
+      </form>
+
+      <!-- Engraved footer -->
+      <div class="lp-footer">Información confidencial &nbsp;·&nbsp; Uso interno exclusivo</div>
+    </div>
+  </div>
+
+  <style>
+    /* ═══════════════════════════════════════════════════════
+     PORTAL · Carpeta de piel azul Oxford — forma simétrica
+  ═══════════════════════════════════════════════════════ */
+    #login-portal {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      /* Rich Oxford blue leather — matches reference image */
+      background:
+        radial-gradient(ellipse 80% 60% at 15% 10%, #213D7A 0%, transparent 50%),
+        radial-gradient(ellipse 70% 70% at 85% 90%, #0D2255 0%, transparent 55%),
+        radial-gradient(ellipse 120% 120% at 50% 50%, #1A3068 0%, #0E1E4A 50%, #080F28 100%);
+      overflow: hidden;
+      animation: lp-open .9s cubic-bezier(.22, .68, 0, 1) both;
+      transition: opacity .7s ease, transform .7s ease;
+    }
+
+    #login-portal.lp-exit {
+      opacity: 0;
+      transform: scale(.98);
+      pointer-events: none;
+    }
+
+    @keyframes lp-open {
+      from {
+        opacity: 0
+      }
+
+      to {
+        opacity: 1
+      }
+    }
+
+    /* Leather grain — three overlapping layers */
+    .lp-tex {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .lp-tex-h {
+      background-image: repeating-linear-gradient(0deg, transparent, transparent 1px,
+          rgba(255, 255, 255, .016) 1px, rgba(255, 255, 255, .016) 2px);
+    }
+
+    .lp-tex-v {
+      background-image: repeating-linear-gradient(90deg, transparent, transparent 5px,
+          rgba(255, 255, 255, .010) 5px, rgba(255, 255, 255, .010) 6px);
+    }
+
+    .lp-tex-d {
+      background-image: repeating-linear-gradient(52deg, transparent, transparent 16px,
+          rgba(197, 160, 89, .012) 16px, rgba(197, 160, 89, .012) 17px);
+    }
+
+    /* Corners */
+    .lp-orn {
+      position: absolute;
+    }
+
+    .lp-orn-tl {
+      top: 16px;
+      left: 16px
+    }
+
+    .lp-orn-tr {
+      top: 16px;
+      right: 16px
+    }
+
+    .lp-orn-bl {
+      bottom: 16px;
+      left: 16px
+    }
+
+    .lp-orn-br {
+      bottom: 16px;
+      right: 16px
+    }
+
+    /* Cover — centred column on leather, no box whatsoever */
+    .lp-cover {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: min(580px, 92vw);
+      padding: 0 20px;
+      animation: lp-rise 1s cubic-bezier(.22, .68, 0, 1.1) .1s both;
+    }
+
+    @keyframes lp-rise {
+      from {
+        opacity: 0;
+        transform: translateY(20px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    /* ── LOGO ── BIG. Centre stage. */
+    .lp-logo-wrap {
+      width: 320px;
+      height: 320px;
+      margin-bottom: 20px;
+      filter:
+        drop-shadow(0 0 40px rgba(197, 160, 89, .60)) drop-shadow(0 10px 30px rgba(0, 0, 0, .65));
+      animation: lp-glow 3.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes lp-glow {
+      from {
+        filter: drop-shadow(0 0 22px rgba(197, 160, 89, .40)) drop-shadow(0 10px 30px rgba(0, 0, 0, .65));
+      }
+
+      to {
+        filter: drop-shadow(0 0 52px rgba(197, 160, 89, .80)) drop-shadow(0 12px 32px rgba(0, 0, 0, .70));
+      }
+    }
+
+    .lp-logo {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    /* Gold rules */
+    .lp-rule {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      width: 100%;
+      margin-bottom: 12px;
+    }
+
+    .lp-rule-gap {
+      margin-top: 10px;
+      margin-bottom: 24px;
+    }
+
+    .lp-rule span:not(.lp-gem) {
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(197, 160, 89, .65), transparent);
+    }
+
+    .lp-gem {
+      color: rgba(197, 160, 89, .65);
+      font-size: 8px;
+    }
+
+    /* Embossed taglines */
+    .lp-tagline-main {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 15px;
+      font-weight: 300;
+      letter-spacing: 3px;
+      color: rgba(197, 160, 89, .80);
+      text-align: center;
+      text-shadow: 0 1px 0 rgba(255, 220, 120, .30), 0 -1px 0 rgba(0, 0, 0, .55),
+        0 2px 8px rgba(0, 0, 0, .35), 0 0 30px rgba(197, 160, 89, .18);
+      margin-bottom: 6px;
+    }
+
+    .lp-tagline-sub {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 9px;
+      font-weight: 300;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: rgba(197, 160, 89, .45);
+      text-align: center;
+      text-shadow: 0 1px 0 rgba(0, 0, 0, .55), 0 -1px 0 rgba(255, 220, 100, .10);
+      margin-bottom: 0;
+    }
+
+    /* Form */
+    .lp-form {
+      width: 100%;
+    }
+
+    .lp-field {
+      margin-bottom: 14px;
+    }
+
+    .lp-label {
+      display: block;
+      font-size: 8px;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      font-family: 'Montserrat', sans-serif;
+      color: rgba(197, 160, 89, .50);
+      margin-bottom: 6px;
+      text-shadow: 0 1px 0 rgba(0, 0, 0, .6);
+    }
+
+    .lp-input {
+      width: 100%;
+      background: rgba(5, 15, 50, .55);
+      border: none;
+      border-bottom: 1px solid rgba(197, 160, 89, .30);
+      box-shadow: inset 0 2px 6px rgba(0, 0, 0, .50), inset 0 1px 2px rgba(0, 0, 0, .30);
+      border-radius: 2px;
+      padding: 12px 14px;
+      color: #DDD0B3;
+      font-size: 14px;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+      font-family: 'Montserrat', system-ui, sans-serif;
+    }
+
+    .lp-input::placeholder {
+      color: rgba(197, 160, 89, .20);
+    }
+
+    .lp-input:focus {
+      border-bottom-color: rgba(197, 160, 89, .75);
+      box-shadow: inset 0 2px 6px rgba(0, 0, 0, .5), 0 3px 0 rgba(197, 160, 89, .22);
+    }
+
+    .lp-eye {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: rgba(197, 160, 89, .38);
+      cursor: pointer;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+    }
+
+    .lp-eye:hover {
+      color: rgba(197, 160, 89, .75);
+    }
+
+    /* Error */
+    .lp-error {
+      font-size: 11px;
+      color: #E8A090;
+      margin-bottom: 12px;
+      margin-top: -4px;
+      display: none;
+      padding: 8px 12px;
+      background: rgba(160, 30, 20, .18);
+      border: 1px solid rgba(200, 55, 45, .25);
+      border-radius: 2px;
+    }
+
+    .lp-error.visible {
+      display: block;
+    }
+
+    /* Button — gold engraved plaque */
+    .lp-btn {
+      width: 100%;
+      margin-top: 8px;
+      padding: 14px;
+      background: transparent;
+      border: 1px solid rgba(197, 160, 89, .42);
+      border-radius: 2px;
+      box-shadow: inset 0 1px 4px rgba(0, 0, 0, .40), 0 1px 0 rgba(197, 160, 89, .16);
+      color: #C5A059;
+      font-size: 10px;
+      letter-spacing: 4.5px;
+      font-weight: 400;
+      text-transform: uppercase;
+      cursor: pointer;
+      font-family: 'Montserrat', sans-serif;
+      text-shadow: 0 1px 0 rgba(255, 220, 100, .28), 0 -1px 0 rgba(0, 0, 0, .55),
+        0 0 18px rgba(197, 160, 89, .18);
+      transition: all .25s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .lp-btn:hover {
+      border-color: rgba(197, 160, 89, .68);
+      color: #D9C070;
+      box-shadow: inset 0 1px 4px rgba(0, 0, 0, .3), 0 0 24px rgba(197, 160, 89, .16),
+        0 1px 0 rgba(197, 160, 89, .24);
+      text-shadow: 0 0 20px rgba(197, 160, 89, .50), 0 1px 0 rgba(255, 220, 100, .35);
+    }
+
+    .lp-btn:active {
+      transform: translateY(1px);
+    }
+
+    .lp-btn:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .lp-spinner {
+      width: 12px;
+      height: 12px;
+      border: 1.5px solid rgba(197, 160, 89, .25);
+      border-top-color: #C5A059;
+      border-radius: 50%;
+      animation: lp-spin .7s linear infinite;
+    }
+
+    @keyframes lp-spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    /* Footer engraved */
+    .lp-footer {
+      margin-top: 26px;
+      font-size: 7.5px;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      font-family: 'Montserrat', sans-serif;
+      color: rgba(197, 160, 89, .22);
+      text-shadow: 0 1px 0 rgba(0, 0, 0, .6);
+      text-align: center;
+    }
+  </style>
+
+  <script>
+    (function(){
+      if(sessionStorage.getItem('lil_auth')==='1'){
+        document.getElementById('login-portal').style.display='none';
+      }
+    })();
+    function lplLogin(e){
+      e.preventDefault();
+      const email=document.getElementById('lp-email').value.trim().toLowerCase();
+      const pwd=document.getElementById('lp-pwd').value;
+      const err=document.getElementById('lp-error');
+      const btn=document.getElementById('lp-btn');
+      const txt=document.getElementById('lp-btn-text');
+      const spin=document.getElementById('lp-btn-spin');
+      err.classList.remove('visible');
+      btn.disabled=true; txt.style.display='none'; spin.style.display='block';
+      setTimeout(()=>{
+        if(email==='stdmexico@me.com'&&pwd==='Newland72'){
+          sessionStorage.setItem('lil_auth','1');
+          const p=document.getElementById('login-portal');
+          p.classList.add('lp-exit');
+          setTimeout(()=>{p.style.display='none';},700);
+        } else {
+          err.classList.add('visible');
+          btn.disabled=false; txt.style.display='block'; spin.style.display='none';
+          const cover=document.querySelector('.lp-cover');
+          cover.style.transition='transform .4s cubic-bezier(.36,.07,.19,.97)';
+          ['-9px','9px','-6px','6px','0'].forEach((x,i)=>
+            setTimeout(()=>{cover.style.transform=`translateX(${x})`;},i*65)
+          );
+        }
+      },800);
+    }
+    function lplTogglePwd(){
+      const i=document.getElementById('lp-pwd');
+      i.type=i.type==='password'?'text':'password';
+    }
+    const NAV_GROUPS_KEY = 'lil_nav_groups';
+    function getGroupState() {
+      try { return JSON.parse(localStorage.getItem(NAV_GROUPS_KEY) || '{}'); } catch(e) { return {}; }
+    }
+    function toggleNavGroup(groupId) {
+      const list = document.getElementById('nav-group-' + groupId);
+      const label = document.querySelector('[data-group="' + groupId + '"]');
+      if (!list || !label) return;
+      const isCollapsed = list.classList.toggle('collapsed');
+      label.classList.toggle('collapsed', isCollapsed);
+      const state = getGroupState();
+      state[groupId] = isCollapsed;
+      localStorage.setItem(NAV_GROUPS_KEY, JSON.stringify(state));
+    }
+    function restoreNavGroups() {
+      const state = getGroupState();
+      Object.entries(state).forEach(([groupId, isCollapsed]) => {
+        if (isCollapsed) {
+          const list = document.getElementById('nav-group-' + groupId);
+          const label = document.querySelector('[data-group="' + groupId + '"]');
+          if (list) list.classList.add('collapsed');
+          if (label) label.classList.add('collapsed');
+        }
+      });
+    }
+    function toggleSidebar(){
+      const app=document.getElementById('app-layout');
+      if(!app) return;
+      const collapsed=app.classList.toggle('sidebar-collapsed');
+      localStorage.setItem('lil_sidebar_collapsed',collapsed?'1':'0');
+    }
+    document.addEventListener('DOMContentLoaded',()=>{
+      if(localStorage.getItem('lil_sidebar_collapsed')==='1'){
+        const app=document.getElementById('app-layout');
+        if(app) app.classList.add('sidebar-collapsed');
+      }
+    });
+  </script>
+
+
+  <div class="app-layout" id="app-layout">
+
+    <!-- ── Sidebar ── -->
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-logo-wrap">
+          <img src="img/logo.png" alt="L&amp;L logo">
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">L&amp;L</span>
+          <span class="brand-sub">Lógica &amp; Liquidez</span>
+        </div>
+        <button class="sidebar-collapse-btn" id="sidebar-toggle" onclick="toggleSidebar()"
+          title="Comprimir / expandir menú">
+          <svg id="sidebar-toggle-icon" viewBox="0 0 20 20" fill="none" width="16" height="16">
+            <path d="M13 5l-5 5 5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+              stroke-linejoin="round" />
+          </svg>
+        </button>
+      </div>
+
+      <ul class="nav-list" id="nav-list">
+        <li class="nav-item active" data-view="dashboard" onclick="toggleGroupOnNav(this)">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+            <rect x="3" y="3" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/>
+            <rect x="11" y="3" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/>
+            <rect x="3" y="11" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/>
+            <rect x="11" y="11" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+          <span>Dashboard</span>
+        </li>
+
+        <!-- ── Configuración ── -->
+        <li class="nav-section-label nav-group-toggle" data-group="configuracion" onclick="toggleNavGroup('configuracion')">
+          <span>Configuración</span><svg class="group-chevron" viewBox="0 0 14 14" fill="none" width="11" height="11"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        </li>
+        <ul class="nav-sub-list" id="nav-group-configuracion">
+          <li class="nav-item" data-view="variables">
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M10 7v6M7 10h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <span>Variables Iniciales</span>
+          </li>
+        </ul>
+
+        <!-- ── Ingresos ── -->
+        <li class="nav-section-label nav-group-toggle" data-group="ingresos" onclick="toggleNavGroup('ingresos')">
+          <span>Ingresos</span><svg class="group-chevron" viewBox="0 0 14 14" fill="none" width="11" height="11"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        </li>
+        <ul class="nav-sub-list" id="nav-group-ingresos">
+          <li class="nav-item" data-view="matricula">
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><circle cx="8" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M3 17c0-3 2-5 5-5s5 2 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14 9l2 2 2-2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            <span>Matriz de Alumnos</span>
+          </li>
+          <li class="nav-item" data-view="referencias">
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M4 5h12M4 10h8M4 15h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <span>Valores de Referencia</span>
+          </li>
+          <li class="nav-item" data-view="cuotas">
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><rect x="3" y="5" width="14" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M3 9h14" stroke="currentColor" stroke-width="1.3"/><path d="M7 13h2M12 13h1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            <span>Cuotas Escolares</span>
+          </li>
+          <li class="nav-item" data-view="inscripciones">
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M10 3v14M3 10h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="4" y="4" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.2" opacity=".4"/></svg>
+            <span>Inscripciones</span>
+          </li>
+          <li class="nav-item" data-view="ingresosadicionales">
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M10 3v14M3 10h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.3" opacity=".4"/></svg>
+            <span>Ingresos Adicionales</span>
+          </li>
+        </ul>
+
+        <!-- ── Egresos ── -->
+        <li class="nav-section-label nav-group-toggle" data-group="egresos" onclick="toggleNavGroup('egresos')">
+          <span>Egresos</span><svg class="group-chevron" viewBox="0 0 14 14" fill="none" width="11" height="11"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        </li>
+        <ul class="nav-sub-list" id="nav-group-egresos">
+          <li class="nav-item" data-view="nominas">
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><circle cx="8" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M3 17c0-3 2-5 5-5h1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M13 12v4M11 14h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            <span>Nóminas</span>
+          </li>
+          <li class="nav-item" data-view="gastos">
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M3 5h14M5 5V4a1 1 0 011-1h8a1 1 0 011 1v1" stroke="currentColor" stroke-width="1.4"/><rect x="3" y="5" width="14" height="12" rx="1" stroke="currentColor" stroke-width="1.4"/><path d="M7 10h6M7 13h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            <span>Gastos de Operación</span>
+          </li>
+        </ul>
+
+        <!-- ── Proyecciones ── -->
+        <li class="nav-section-label nav-group-toggle" data-group="proyecciones" onclick="toggleNavGroup('proyecciones')">
+          <span>Proyecciones</span><svg class="group-chevron" viewBox="0 0 14 14" fill="none" width="11" height="11"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        </li>
+        <ul class="nav-sub-list" id="nav-group-proyecciones">
+          <li class="nav-item" data-view="corrida">
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M3 15l4-5 3 2 3-4 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="2" y="3" width="16" height="13" rx="1.5" stroke="currentColor" stroke-width="1.3"/></svg>
+            <span>Corrida Anual</span>
+          </li>
+          <li class="nav-item" data-view="proyeccion">
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M3 15l3-5 3 2 3-5 3 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 17h14" stroke="currentColor" stroke-width="1.2" opacity=".4"/></svg>
+            <span>Proyección Financiera</span>
+          </li>
+        </ul>
+
+        <!-- ── Análisis Avanzado ── -->
+        <li class="nav-section-label nav-group-toggle" data-group="analisis" onclick="toggleNavGroup('analisis')">
+          <span>Análisis Avanzado</span><svg class="group-chevron" viewBox="0 0 14 14" fill="none" width="11" height="11"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        </li>
+        <ul class="nav-sub-list" id="nav-group-analisis">
+          <li class="nav-item" data-view="breakeven">
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M3 17L10 7l4 4 3-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="7" r="1.5" fill="currentColor"/></svg>
+            <span>Punto de Equilibrio</span>
+          </li>
+          <li class="nav-item" data-view="tirvanp">
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M10 7v3l2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <span>TIR &amp; VPN</span>
+          </li>
+          <li class="nav-item" data-view="escenarios">
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><rect x="3" y="5" width="5" height="11" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="10" y="3" width="5" height="13" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>
+            <span>Escenarios</span>
+          </li>
+          <li class="nav-item" data-view="flujomensual">
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M3 15l3-5 3 2 3-4 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="2" y="3" width="16" height="13" rx="1.5" stroke="currentColor" stroke-width="1.3"/></svg>
+            <span>Flujo Mensual</span>
+          </li>
+          <li class="nav-item" data-view="scenariosaved">
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M5 3h7l4 4v10a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.5"/><path d="M7 13l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>Escenarios Guardados</span>
+          </li>
+          <li class="nav-item" data-view="ratiomaestro">
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><circle cx="7" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><circle cx="14" cy="7" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M3 17c0-2.5 1.8-4 4-4s4 1.5 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14 12c1.5 0 3 1 3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            <span>Ratio Formadores-Alumnos</span>
+          </li>
+          <li class="nav-item" data-view="alertas">
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M10 3l7 13H3L10 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 9v3M10 14v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <span>Alertas</span>
+          </li>
+          <li class="nav-item" data-view="costoporal">
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M10 7v1.5m0 3V13m-2-3.5c0-.83.67-1.5 2-1.5s2 .67 2 1.5c0 .67-.5 1.2-2 1.5S8 12 8 13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            <span>Costo por Alumno</span>
+          </li>
+          <li class="nav-item" data-view="historial">
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M10 6v4.5l3 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>Historial de Cambios</span>
+          </li>
+        </ul>
+
+        <!-- ── Exportar ── -->
+        <li class="nav-section-label nav-group-toggle" data-group="exportar" onclick="toggleNavGroup('exportar')">
+          <span>Exportar</span><svg class="group-chevron" viewBox="0 0 14 14" fill="none" width="11" height="11"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        </li>
+        <ul class="nav-sub-list" id="nav-group-exportar">
+          <li class="nav-item" data-view="resumenejec">
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M4 3h12a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.4"/><path d="M6 7h8M6 10h5M6 13h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            <span>Resumen Ejecutivo PDF</span>
+          </li>
+          <li class="nav-item" data-view="reportes">
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M5 3h7l4 4v10a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.5"/><path d="M12 3v4h4" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M7 10h6M7 13h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <span>Reportes PDF</span>
+          </li>
+          <li class="nav-item" data-view="excelexport">
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M5 3h7l4 4v10a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.5"/><path d="M7 8l2 4 2-4M7 14h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>Exportar Excel</span>
+          </li>
+        </ul>
+
+      </ul>
+
+      <div class="sidebar-footer">
+        <button class="btn-export" id="btn-export-csv" onclick="App.exportCSV()">
+          <svg viewBox="0 0 16 16" fill="none">
+            <path d="M8 2v8M5 7l3 3 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+            <path d="M3 11v1.5A1.5 1.5 0 004.5 14h7a1.5 1.5 0 001.5-1.5V11" stroke="currentColor" stroke-width="1.4"
+              stroke-linecap="round" />
+          </svg>
+          Exportar CSV
+        </button>
+        <button class="btn-reset" id="btn-reset" onclick="App.resetState()">
+          <svg viewBox="0 0 16 16" fill="none">
+            <path d="M3 8a5 5 0 119.9-1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+            <path d="M13 3v4H9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"
+              stroke-linejoin="round" />
+          </svg>
+          Restablecer
+        </button>
+        <button class="btn-logout" id="btn-logout" onclick="App.logout()">
+          <svg viewBox="0 0 16 16" fill="none">
+            <path d="M6 8h7M10 5l3 3-3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"
+              stroke-linejoin="round" />
+            <path d="M9 3H4a1 1 0 00-1 1v8a1 1 0 001 1h5" stroke="currentColor" stroke-width="1.4"
+              stroke-linecap="round" />
+          </svg>
+          Cerrar sesión
+        </button>
+      </div>
+    </nav>
+
+    <!-- ── Main ── -->
+    <div class="main-wrapper">
+      <header class="content-header">
+        <div class="header-left">
+          <button class="sidebar-toggle" id="sidebar-toggle" onclick="App.toggleSidebar()">
+            <svg viewBox="0 0 20 20" fill="none">
+              <path d="M3 6h14M3 10h14M3 14h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
+          </button>
+          <h1 class="content-title" id="content-title">Dashboard</h1>
+        </div>
+        <div class="header-right">
+          <span class="save-badge" id="save-badge">● Guardado automáticamente</span>
+        </div>
+      </header>
+
+      <main class="content-body" id="content-body">
+        <!-- Dynamic content injected by app.js -->
+        <div class="loading-spinner">Cargando modelo...</div>
+      </main>
+    </div>
+
+  </div>
+
+  <!-- Toast notifications -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="js/app.js"></script>
+</body>
+
+</html>
