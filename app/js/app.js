@@ -86,14 +86,14 @@ const App = (() => {
     variables: {
       anoInicio: 2026,
       terreno: 40000,
-      capitalRequerido: 250000000,
+      capitalRequerido: 100000000,
       inflacion: 0.05,
       aumentoColegiatura: 0.06,
       porcentajeModelo: 0.30,
       porcentajeOperadora: 0.12,
       rentaInmuebleBase: 0,
       numAcciones: 100,
-      numTickets: 500,
+      numTickets: 100,
       // ── New enrollment variables ──
       tasaDesercion: 0.03,    // % alumnos que no continúan al siguiente grado
       tasaCaptacion: 0.05     // crecimiento anual de nuevos ingresos externos
@@ -1831,6 +1831,33 @@ const App = (() => {
   // ============================================================
   // 16. CHARTS
   // ============================================================
+  // Datalabels config: show TOTAL above each group of bars (sum of all datasets at same index)
+  const DL_TOTAL = {
+    datalabels: {
+      display: true,
+      align: 'end',
+      anchor: 'end',
+      color: 'rgba(26,43,72,.75)',
+      font: { size: 10, weight: '400', family: 'Montserrat, system-ui, sans-serif' },
+      formatter: (value, ctx) => {
+        // Sum all dataset values at this index
+        const datasets = ctx.chart.data.datasets;
+        const idx = ctx.dataIndex;
+        const total = datasets.reduce((s, ds) => {
+          const v = ds.data[idx];
+          return s + (typeof v === 'number' ? v : 0);
+        }, 0);
+        // Only show on the LAST visible dataset
+        const lastVisible = [...datasets].reverse().find(ds => !ds.hidden);
+        if (ctx.dataset !== lastVisible) return null;
+        // Format: use M for millions, K for thousands
+        if (Math.abs(total) >= 1e6) return (total / 1e6).toFixed(1) + ' M';
+        if (Math.abs(total) >= 1e3) return (total / 1e3).toFixed(0) + 'K';
+        return Math.round(total).toString();
+      }
+    }
+  };
+
   function destroyCharts() {
     Object.values(chartInstances).forEach(c => { if (c) c.destroy(); });
     chartInstances = {};
@@ -1847,7 +1874,7 @@ const App = (() => {
 
   const BASE_OPTS = {
     responsive: true, maintainAspectRatio: false,
-    plugins: {
+    plugins: { ...DL_TOTAL,
       legend: { labels: { color: 'rgba(26,43,72,.85)', font: { size: 12, weight: '400' }, boxWidth: 13, padding: 16 } },
       tooltip: {
         backgroundColor: 'rgba(8,21,40,.97)', borderColor: 'rgba(255,255,255,.12)', borderWidth: 1,
@@ -1875,6 +1902,8 @@ const App = (() => {
 
   function initCharts(corrida) {
     destroyCharts();
+    // Register datalabels plugin (shows totals above bars)
+    if (window.ChartDataLabels) Chart.register(ChartDataLabels);
     requestAnimationFrame(() => {
       _chartIngEgr(corrida);
       _chartEbitda(corrida);
@@ -1927,6 +1956,7 @@ const App = (() => {
         ]
       }, options: {
         ...BASE_OPTS,
+        plugins: { ...BASE_OPTS.plugins, ...DL_TOTAL },
         scales: {
           x: { ...BASE_OPTS.scales.x, stacked: true },
           y: { ...BASE_OPTS.scales.y, stacked: true }
@@ -1949,6 +1979,7 @@ const App = (() => {
         ]
       }, options: {
         ...BASE_OPTS,
+        plugins: { ...BASE_OPTS.plugins, ...DL_TOTAL },
         scales: {
           x: { ...BASE_OPTS.scales.x, stacked: true },
           y: { ...BASE_OPTS.scales.y, stacked: true }
@@ -1970,6 +2001,7 @@ const App = (() => {
         ]
       }, options: {
         ...BASE_OPTS,
+        plugins: { ...BASE_OPTS.plugins, ...DL_TOTAL },
         scales: {
           x: { ...BASE_OPTS.scales.x, stacked: true },
           y: { ...BASE_OPTS.scales.y, stacked: true }
@@ -1994,6 +2026,7 @@ const App = (() => {
         ]
       }, options: {
         ...BASE_OPTS,
+        plugins: { ...BASE_OPTS.plugins, ...DL_TOTAL },
         scales: {
           x: { ...BASE_OPTS.scales.x },
           y: { ...BASE_OPTS.scales.y, ticks: { ...BASE_OPTS.scales.y.ticks, callback: v => v.toFixed(1) + '%' } }
@@ -2033,7 +2066,7 @@ const App = (() => {
         }]
       }, options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: {
+        plugins: { ...DL_TOTAL,
           legend: { position: 'right', labels: { color: 'rgba(0,33,71,.65)', font: { size: 10 }, padding: 12, boxWidth: 12 } },
           tooltip: {
             ...BASE_OPTS.plugins.tooltip, callbacks: {
@@ -2066,7 +2099,7 @@ const App = (() => {
         }]
       }, options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: {
+        plugins: { ...DL_TOTAL,
           legend: { position: 'right', labels: { color: 'rgba(26,43,72,.85)', font: { size: 12, weight: '400' }, padding: 14, boxWidth: 13 } },
           tooltip: {
             ...BASE_OPTS.plugins.tooltip, callbacks: {
