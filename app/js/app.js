@@ -1795,7 +1795,7 @@ const App = (() => {
   const BASE_OPTS = {
     responsive: true, maintainAspectRatio: false,
     plugins: {
-      legend: { labels: { color: 'rgba(156,184,212,.70)', font: { size: 10, weight: '300' }, boxWidth: 11, padding: 14 } },
+      legend: { labels: { color: 'rgba(26,43,72,.85)', font: { size: 12, weight: '400' }, boxWidth: 13, padding: 16 } },
       tooltip: {
         backgroundColor: 'rgba(8,21,40,.97)', borderColor: 'rgba(255,255,255,.12)', borderWidth: 1,
         titleColor: 'rgba(220,233,245,.95)', bodyColor: 'rgba(154,184,212,.90)', padding: 9,
@@ -2481,10 +2481,19 @@ const App = (() => {
 
   function recalcular() { softRefresh(); toast('Proyección actualizada', 'success'); }
 
+  function logout() {
+    sessionStorage.removeItem('lil_auth');
+    const portal = document.getElementById('login-portal');
+    if (portal) {
+      portal.style.display = '';
+      portal.classList.remove('lp-exit');
+    }
+  }
+
   return {
     init, navigate, resetState, exportCSV, toggleSidebar, recalcular,
     addPuesto, removePuesto, toggleHonorarios,
-    generarPDF: _generarPDF
+    generarPDF: _generarPDF, logout
   };
 
 })();

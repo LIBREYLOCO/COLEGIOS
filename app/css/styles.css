@@ -231,12 +231,12 @@ button {
 }
 
 .nav-section-label {
-  font-size: 8.5px;
+  font-size: 9.5px;
   font-weight: 400;
-  letter-spacing: 2.2px;
-  color: rgba(255, 255, 255, .25);
+  letter-spacing: 2.5px;
+  color: rgba(197, 160, 89, .55);
   text-transform: uppercase;
-  padding: 16px 20px 5px;
+  padding: 18px 20px 6px;
   white-space: nowrap;
 }
 
@@ -244,10 +244,10 @@ button {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 20px;
-  font-size: 12.5px;
-  font-weight: 300;
-  color: rgba(255, 255, 255, .50);
+  padding: 11px 20px;
+  font-size: 13.5px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, .72);
   cursor: pointer;
   border-left: 2px solid transparent;
   transition: all .15s;
@@ -269,10 +269,10 @@ button {
 }
 
 .nav-icon {
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
-  opacity: .5;
+  opacity: .65;
   transition: opacity .15s;
 }
 
@@ -324,11 +324,35 @@ button {
 
 .btn-reset:hover {
   background: rgba(255, 255, 255, .05);
-  color: rgba(255, 255, 255, .55);
+  color: rgba(255, 255, 255, .60);
+}
+
+.btn-logout {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-radius: var(--radius);
+  font-size: 11px;
+  font-weight: 400;
+  transition: all .15s;
+  width: 100%;
+  justify-content: center;
+  white-space: nowrap;
+  background: rgba(197, 160, 89, .08);
+  color: rgba(197, 160, 89, .60);
+  border: 1px solid rgba(197, 160, 89, .20);
+}
+
+.btn-logout:hover {
+  background: rgba(197, 160, 89, .18);
+  color: var(--gold);
+  border-color: rgba(197, 160, 89, .42);
 }
 
 .btn-export svg,
-.btn-reset svg {
+.btn-reset svg,
+.btn-logout svg {
   width: 13px;
   height: 13px;
   flex-shrink: 0;
