@@ -2664,37 +2664,36 @@ const App = (() => {
   function renderRatioMaestro() {
     const corrida = calcCorrida();
     const puestos = state.nominas.puestos || [];
-    // Count all formadores (maestros, docentes, profesores, tutores)
-    const docenteKw = /maestro|docente|profesor|maestra|teacher|prof\.|tutor|formador/i;
-    const totalDocentes = puestos
-      .filter(p => docenteKw.test(p.nombre || ''))
-      .reduce((s, p) => s + (p.count || 1), 0);
 
-    // factorNomina = min(1, totalAlumnos / capacidadNominaRef)
-    // When enrollment < capacidad, nómina se reduce proporcionalmente,
-    // lo que implica que el número efectivo de formadores también es proporcional.
-    // Formadores efectivos = totalDocentes × factorNomina
+    // Base = TODO el personal (campus + dirección ejecutiva)
+    // La misma base se escala con factorNomina cuando matrícula < capacidad de referencia
+    const totalBase = puestos.reduce((s, p) => s + (p.count || 1), 0);
     const capRef = state.nominas.capacidadNominaRef || 400;
 
+    // También incluye los puestos de dirección ejecutiva (si aplica)
+    const dePersonas = (() => {
+      const de = state.dirEjecutiva || {};
+      return (de.puestos || []).reduce((s, p) => s + 1, 0);
+    })();
+    const totalBaseTotal = totalBase + dePersonas;
+
     const rows = corrida.map(yr => {
+      // factorNomina ya calculado: min(1, alumnos / capRef)
       const factor = Math.min(1, yr.totalAlumnos / capRef);
-      const formadoresEfectivos = totalDocentes > 0
-        ? totalDocentes * factor
-        : null;
+      const formadoresEfectivos = totalBaseTotal > 0 ? totalBaseTotal * factor : null;
       const ratio = formadoresEfectivos ? (yr.totalAlumnos / formadoresEfectivos).toFixed(1) : '—';
       const ratioNum = formadoresEfectivos ? yr.totalAlumnos / formadoresEfectivos : null;
       const semaforo = ratioNum === null ? '—'
-        : ratioNum <= 20 ? '🟢'
-        : ratioNum <= 30 ? '🟡' : '🔴';
-      const evaluacion = ratioNum === null ? 'Define puestos en Nóminas'
-        : ratioNum <= 20 ? 'Óptimo'
-        : ratioNum <= 30 ? 'Aceptable' : 'Alto — revisa dotación';
-      const factorPct = (factor * 100).toFixed(0);
+        : ratioNum <= 15 ? '🟢' : ratioNum <= 25 ? '🟡' : '🔴';
+      const evaluacion = ratioNum === null
+        ? 'Agrega puestos en Nóminas'
+        : ratioNum <= 15 ? 'Óptimo'
+        : ratioNum <= 25 ? 'Aceptable' : 'Alto — revisa dotación';
       return `<tr>
         <td>${yr.ano}–${yr.ano+1}</td>
         <td style="text-align:right">${N(yr.totalAlumnos)}</td>
-        <td style="text-align:right">${totalDocentes || '—'}</td>
-        <td style="text-align:right;color:var(--text-muted)">${factorPct}%
+        <td style="text-align:right">${totalBaseTotal || '—'}</td>
+        <td style="text-align:right;color:var(--text-muted)">${(factor*100).toFixed(0)}%
           <div style="font-size:9px">${formadoresEfectivos ? formadoresEfectivos.toFixed(1) + ' efectivos' : ''}</div>
         </td>
         <td style="text-align:right"><strong>${ratio}</strong></td>
@@ -2702,30 +2701,43 @@ const App = (() => {
       </tr>`;
     }).join('');
 
-    const sinDocentes = totalDocentes === 0
+    const sinPersonal = totalBaseTotal === 0
       ? `<div style="padding:12px;background:var(--bg);border-radius:6px;font-size:11px;color:var(--text-muted);margin-bottom:14px">
-          ⓘ No se encontraron puestos con "maestro", "docente", "profesor" o "formador" en el nombre.
-          Ve a <a href="#" onclick="App.navigate('nominas');return false" style="color:var(--cobalt)">Nóminas</a> y agrega los puestos docentes para activar este análisis.
+          ⓘ No se encontraron puestos definidos. Ve a
+          <a href="#" onclick="App.navigate('nominas');return false" style="color:var(--cobalt)">Nóminas</a>
+          y agrega los puestos del campus.
         </div>` : '';
 
     return `<div class="section-header"><div><div class="section-title">Ratio Formadores-Alumnos</div>
-      <div class="section-sub">Alumnos por formador efectivo · escala proporcionalmente con la matrícula vs. capacidad (ref: ${N(capRef)} alumnos)</div></div></div>
-    ${sinDocentes}
-    <div class="card"><div class="table-wrap"><table>
-      <thead><tr>
-        <th>Ciclo</th>
-        <th style="text-align:right">Matrícula</th>
-        <th style="text-align:right">Formadores Base</th>
-        <th style="text-align:right">Factor Plantilla</th>
-        <th style="text-align:right">Ratio</th>
-        <th>Evaluación</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table></div>
-    <div style="padding:12px 0 0;font-size:10px;color:var(--text-muted)">
-      🟢 ≤ 20 alumnos/formador — Óptimo &nbsp;·&nbsp; 🟡 21–30 — Aceptable &nbsp;·&nbsp; 🔴 > 30 — Alto<br>
-      <em>Factor Plantilla = matrícula / capacidad de referencia (${N(capRef)}). Cuando la matrícula crece, la plantilla efectiva crece proporcionalmente.</em>
-    </div></div>`;
+      <div class="section-sub">Todo el personal (campus + Dir. Ejecutiva) por alumno · escala con matrícula vs. capacidad (ref: ${N(capRef)})</div></div></div>
+    ${sinPersonal}
+    <div class="card">
+      <div style="display:flex;gap:24px;flex-wrap:wrap;padding:0 2px 14px;border-bottom:1px solid var(--border);margin-bottom:14px">
+        <div><div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted)">Personal campus</div>
+          <div style="font-size:20px;font-weight:300;color:var(--navy)">${totalBase}</div></div>
+        <div><div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted)">Dir. Ejecutiva</div>
+          <div style="font-size:20px;font-weight:300;color:var(--navy)">${dePersonas}</div></div>
+        <div><div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted)">Total base</div>
+          <div style="font-size:20px;font-weight:300;color:var(--gold)">${totalBaseTotal}</div></div>
+        <div><div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted)">Cap. referencia</div>
+          <div style="font-size:20px;font-weight:300;color:var(--text-muted)">${N(capRef)}</div></div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr>
+          <th>Ciclo</th>
+          <th style="text-align:right">Matrícula</th>
+          <th style="text-align:right">Personal Base</th>
+          <th style="text-align:right">Factor Plantilla</th>
+          <th style="text-align:right">Ratio</th>
+          <th>Evaluación</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+      <div style="padding:12px 0 0;font-size:10px;color:var(--text-muted)">
+        🟢 ≤ 15 alumnos/persona — Óptimo &nbsp;·&nbsp; 🟡 16–25 — Aceptable &nbsp;·&nbsp; 🔴 > 25 — Alto<br>
+        <em>Factor Plantilla = matrícula ÷ ${N(capRef)}. Ejemplo: 200 alumnos → 50% del personal base está activo.</em>
+      </div>
+    </div>`;
   }
 
   // ── VISTA 9: ALERTAS ───────────────────────────────────────────
