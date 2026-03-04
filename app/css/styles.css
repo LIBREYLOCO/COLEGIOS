@@ -1321,6 +1321,38 @@ tbody td:first-child {
 /* ══════════════════════════════════
    RESPONSIVE
 ══════════════════════════════════ */
+/* ── Collapsible nav groups ─────────────────────────────── */
+.nav-group-toggle {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+  transition: background .15s;
+}
+.nav-group-toggle:hover { background: rgba(255,255,255,.05); border-radius: 6px; }
+.group-chevron { color: rgba(255,255,255,.35); transition: transform .25s ease; flex-shrink: 0; }
+.nav-group-toggle.collapsed .group-chevron { transform: rotate(-90deg); }
+
+.nav-sub-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  max-height: 800px;
+  transition: max-height .28s ease, opacity .2s ease;
+  opacity: 1;
+}
+.nav-sub-list.collapsed {
+  max-height: 0;
+  opacity: 0;
+}
+
+/* When sidebar is icon-only, always show items, hide chevrons */
+.app-layout.sidebar-collapsed .nav-group-toggle { justify-content: center; }
+.app-layout.sidebar-collapsed .group-chevron { display: none; }
+.app-layout.sidebar-collapsed .nav-sub-list { max-height: 800px !important; opacity: 1 !important; }
+
 @media (max-width: 900px) {
   .app-layout {
     grid-template-columns: 1fr;
