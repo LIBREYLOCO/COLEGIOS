@@ -15,444 +15,193 @@
 <body>
 
   <!-- ══════════════════════════════════════════════════
-       PORTAL DE ACCESO · LIL Sistema Financiero Institucional
+       PORTAL DE ACCESO · L&L Sistema Financiero Institucional
+       Carpeta de piel grabada en oro — entrada de lujo
   ═══════════════════════════════════════════════════════ -->
   <div id="login-portal">
-    <!-- Animated background particles -->
-    <div class="lp-bg">
-      <div class="lp-particle" style="left:10%;top:20%;width:2px;height:140px;animation-delay:0s"></div>
-      <div class="lp-particle" style="left:25%;top:60%;width:2px;height:80px;animation-delay:.8s"></div>
-      <div class="lp-particle" style="left:75%;top:15%;width:2px;height:110px;animation-delay:.3s"></div>
-      <div class="lp-particle" style="left:88%;top:50%;width:2px;height:90px;animation-delay:1.2s"></div>
-      <div class="lp-particle" style="left:50%;top:80%;width:120px;height:2px;animation-delay:.6s"></div>
-      <div class="lp-particle" style="left:5%;top:75%;width:60px;height:2px;animation-delay:1.5s"></div>
-      <div class="lp-particle" style="right:5%;top:30%;width:80px;height:2px;animation-delay:.2s"></div>
-      <div class="lp-dot" style="left:35%;top:25%"></div>
-      <div class="lp-dot" style="left:65%;top:70%"></div>
-      <div class="lp-dot" style="left:15%;top:55%"></div>
-      <div class="lp-dot" style="right:20%;top:40%"></div>
+
+    <!-- Leather texture overlay -->
+    <div class="lp-leather"></div>
+
+    <!-- Gold corner ornaments -->
+    <div class="lp-orn lp-orn-tl"><svg width="48" height="48" viewBox="0 0 48 48" fill="none"><path d="M2 2h20M2 2v20" stroke="#C5A059" stroke-width="1.2" opacity=".7"/><path d="M8 2h6M2 8v6" stroke="#C5A059" stroke-width=".6" opacity=".4"/></svg></div>
+    <div class="lp-orn lp-orn-tr"><svg width="48" height="48" viewBox="0 0 48 48" fill="none"><path d="M46 2H26M46 2v20" stroke="#C5A059" stroke-width="1.2" opacity=".7"/><path d="M40 2h-6M46 8v6" stroke="#C5A059" stroke-width=".6" opacity=".4"/></svg></div>
+    <div class="lp-orn lp-orn-bl"><svg width="48" height="48" viewBox="0 0 48 48" fill="none"><path d="M2 46h20M2 46V26" stroke="#C5A059" stroke-width="1.2" opacity=".7"/><path d="M8 46h6M2 40v-6" stroke="#C5A059" stroke-width=".6" opacity=".4"/></svg></div>
+    <div class="lp-orn lp-orn-br"><svg width="48" height="48" viewBox="0 0 48 48" fill="none"><path d="M46 46H26M46 46V26" stroke="#C5A059" stroke-width="1.2" opacity=".7"/><path d="M40 46h-6M46 40v-6" stroke="#C5A059" stroke-width=".6" opacity=".4"/></svg></div>
+
+    <!-- Horizontal gold rule top -->
+    <div class="lp-rule lp-rule-top">
+      <span></span><span class="lp-rule-gem">◆</span><span></span>
     </div>
 
-    <!-- Gold corner accents -->
-    <div class="lp-corner lp-corner-tl"></div>
-    <div class="lp-corner lp-corner-tr"></div>
-    <div class="lp-corner lp-corner-bl"></div>
-    <div class="lp-corner lp-corner-br"></div>
-
-    <!-- Card -->
+    <!-- Card (embossed cover) -->
     <div class="lp-card">
-      <!-- Logo -->
-      <div class="lp-logo-wrap">
-        <img src="img/lil_logo.png" alt="LIL" class="lp-logo">
+      <!-- Embossed logo -->
+      <div class="lp-logo-ring">
+        <img src="img/lyl_logo.png" alt="L&amp;L" class="lp-logo">
       </div>
 
-      <!-- Header text -->
-      <div class="lp-tagline">Sistema de Modelado Financiero Institucional</div>
-      <div class="lp-divider"><span></span><span class="lp-diamond">◆</span><span></span></div>
+      <!-- Title -->
+      <div class="lp-title">Bienvenido al Sistema</div>
+      <div class="lp-brand">
+        <span class="lp-brand-ll">L<span>&amp;</span>L</span>
+        <span class="lp-brand-sub">Lógica · Institucional · Liquidez</span>
+      </div>
+
+      <!-- Inner gold divider -->
+      <div class="lp-inner-rule"><span></span><span>✦</span><span></span></div>
 
       <!-- Form -->
-      <form class="lp-form" id="login-form" onsubmit="lplLogin(event)">
+      <form id="login-form" onsubmit="lplLogin(event)">
         <div class="lp-field">
           <label class="lp-label">Correo electrónico</label>
-          <input type="email" id="lp-email" class="lp-input" placeholder="usuario@dominio.com" autocomplete="email"
-            required>
+          <input type="email" id="lp-email" class="lp-input"
+            placeholder="usuario@dominio.com" autocomplete="email" required>
         </div>
         <div class="lp-field">
           <label class="lp-label">Contraseña</label>
           <div class="lp-pwd-wrap">
-            <input type="password" id="lp-pwd" class="lp-input" placeholder="••••••••" autocomplete="current-password"
-              required>
-            <button type="button" class="lp-eye" onclick="lplTogglePwd()" tabindex="-1" title="Mostrar/ocultar">
-              <svg id="lp-eye-icon" viewBox="0 0 20 20" fill="none" width="16" height="16">
-                <path d="M1.5 10c0 0 3-6 8.5-6s8.5 6 8.5 6-3 6-8.5 6S1.5 10 1.5 10z" stroke="currentColor"
-                  stroke-width="1.4" />
-                <circle cx="10" cy="10" r="2.5" stroke="currentColor" stroke-width="1.4" />
+            <input type="password" id="lp-pwd" class="lp-input"
+              placeholder="••••••••" autocomplete="current-password" required>
+            <button type="button" class="lp-eye" onclick="lplTogglePwd()" tabindex="-1">
+              <svg viewBox="0 0 20 20" fill="none" width="15" height="15">
+                <path d="M1.5 10c0 0 3-6 8.5-6s8.5 6 8.5 6-3 6-8.5 6S1.5 10 1.5 10z" stroke="currentColor" stroke-width="1.3"/>
+                <circle cx="10" cy="10" r="2.5" stroke="currentColor" stroke-width="1.3"/>
               </svg>
             </button>
           </div>
         </div>
-        <div class="lp-error" id="lp-error">Credenciales incorrectas. Verifica e intenta de nuevo.</div>
+        <div class="lp-error" id="lp-error">Acceso denegado — verifique sus credenciales.</div>
         <button type="submit" class="lp-btn" id="lp-btn">
           <span id="lp-btn-text">Accesar al sistema</span>
-          <span id="lp-btn-spinner" class="lp-spinner" style="display:none"></span>
+          <span id="lp-btn-spin" class="lp-spinner" style="display:none"></span>
         </button>
       </form>
 
-      <div class="lp-footer-text">
-        L · I · L &nbsp;|&nbsp; Lógica · Institucional · Liquidez
+      <div class="lp-footer">
+        Información confidencial &nbsp;·&nbsp; Uso interno exclusivo
       </div>
+    </div>
+
+    <!-- Horizontal gold rule bottom -->
+    <div class="lp-rule lp-rule-bot">
+      <span></span><span class="lp-rule-gem">◆</span><span></span>
     </div>
   </div>
 
   <style>
-    /* ── Login Portal ─────────────────────────────────────── */
-    #login-portal {
-      position: fixed;
-      inset: 0;
-      z-index: 9999;
-      background: linear-gradient(135deg, #001228 0%, #002147 45%, #001a38 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      animation: lp-fadein .6s ease both;
-      transition: opacity .5s ease, transform .5s ease;
-      overflow: hidden;
-    }
-
-    #login-portal.lp-exit {
-      opacity: 0;
-      transform: scale(1.04);
-      pointer-events: none;
-    }
-
-    @keyframes lp-fadein {
-      from {
-        opacity: 0
-      }
-
-      to {
-        opacity: 1
-      }
-    }
-
-    /* Background particles */
-    .lp-bg {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      overflow: hidden;
-    }
-
-    .lp-particle {
-      position: absolute;
-      background: linear-gradient(to bottom, transparent, rgba(200, 168, 75, .35), transparent);
-      animation: lp-pulse 4s ease-in-out infinite alternate;
-      border-radius: 2px;
-    }
-
-    .lp-dot {
-      position: absolute;
-      width: 5px;
-      height: 5px;
-      border: 1px solid rgba(200, 168, 75, .4);
-      border-radius: 50%;
-      animation: lp-pulse 3s ease-in-out infinite alternate;
-    }
-
-    @keyframes lp-pulse {
-      0% {
-        opacity: .2;
-        transform: scale(1);
-      }
-
-      100% {
-        opacity: .7;
-        transform: scale(1.25);
-      }
-    }
-
-    /* Gold corner accents */
-    .lp-corner {
-      position: absolute;
-      width: 60px;
-      height: 60px;
-      border-color: rgba(200, 168, 75, .5);
-      border-style: solid;
-      animation: lp-fadein 1.2s ease both;
-    }
-
-    .lp-corner-tl {
-      top: 24px;
-      left: 24px;
-      border-width: 2px 0 0 2px;
-    }
-
-    .lp-corner-tr {
-      top: 24px;
-      right: 24px;
-      border-width: 2px 2px 0 0;
-    }
-
-    .lp-corner-bl {
-      bottom: 24px;
-      left: 24px;
-      border-width: 0 0 2px 2px;
-    }
-
-    .lp-corner-br {
-      bottom: 24px;
-      right: 24px;
-      border-width: 0 2px 2px 0;
-    }
-
-    /* Card */
-    .lp-card {
-      position: relative;
-      z-index: 2;
-      background: rgba(0, 8, 20, .72);
-      border: 1px solid rgba(200, 168, 75, .28);
-      border-radius: 12px;
-      padding: 44px 48px 36px;
-      width: 100%;
-      max-width: 420px;
-      backdrop-filter: blur(24px);
-      box-shadow: 0 32px 80px rgba(0, 0, 0, .6), 0 0 0 1px rgba(200, 168, 75, .1) inset,
-        0 1px 0 rgba(200, 168, 75, .3) inset;
-      animation: lp-slideup .7s cubic-bezier(.22, .68, 0, 1.2) both;
-    }
-
-    @keyframes lp-slideup {
-      from {
-        opacity: 0;
-        transform: translateY(28px)
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0)
-      }
-    }
-
-    /* Logo */
-    .lp-logo-wrap {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-
-    .lp-logo {
-      width: 130px;
-      height: 130px;
-      border-radius: 10px;
-      object-fit: cover;
-      box-shadow: 0 0 40px rgba(200, 168, 75, .22), 0 8px 24px rgba(0, 0, 0, .4);
-      border: 1px solid rgba(200, 168, 75, .3);
-    }
-
-    /* Tagline */
-    .lp-tagline {
-      text-align: center;
-      font-size: 11px;
-      letter-spacing: 1.4px;
-      color: rgba(200, 168, 75, .75);
-      text-transform: uppercase;
-      margin-bottom: 18px;
-      font-family: 'Montserrat', sans-serif;
-    }
-
-    /* Gold divider */
-    .lp-divider {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 28px;
-    }
-
-    .lp-divider span:not(.lp-diamond) {
-      flex: 1;
-      height: 1px;
-      background: linear-gradient(to right, transparent, rgba(200, 168, 75, .5), transparent);
-    }
-
-    .lp-diamond {
-      color: rgba(200, 168, 75, .6);
-      font-size: 8px;
-    }
-
-    /* Form fields */
-    .lp-field {
-      margin-bottom: 18px;
-    }
-
-    .lp-label {
-      display: block;
-      font-size: 10px;
-      letter-spacing: 1.2px;
-      text-transform: uppercase;
-      color: rgba(200, 168, 75, .7);
-      margin-bottom: 7px;
-      font-family: 'Montserrat', sans-serif;
-    }
-
-    .lp-input {
-      width: 100%;
-      background: rgba(255, 255, 255, .05);
-      border: 1px solid rgba(200, 168, 75, .25);
-      border-radius: 6px;
-      padding: 11px 14px;
-      color: #e8e0d0;
-      font-size: 13.5px;
-      outline: none;
-      transition: border-color .2s, box-shadow .2s;
-      font-family: 'Montserrat', system-ui, sans-serif;
-    }
-
-    .lp-input::placeholder {
-      color: rgba(255, 255, 255, .2);
-    }
-
-    .lp-input:focus {
-      border-color: rgba(200, 168, 75, .7);
-      box-shadow: 0 0 0 3px rgba(200, 168, 75, .1);
-    }
-
-    .lp-pwd-wrap {
-      position: relative;
-    }
-
-    .lp-pwd-wrap .lp-input {
-      padding-right: 42px;
-    }
-
-    .lp-eye {
-      position: absolute;
-      right: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      background: none;
-      border: none;
-      color: rgba(200, 168, 75, .55);
-      cursor: pointer;
-      padding: 4px;
-      display: flex;
-      align-items: center;
-    }
-
-    .lp-eye:hover {
-      color: rgba(200, 168, 75, .9);
-    }
-
-    /* Error */
-    .lp-error {
-      font-size: 11.5px;
-      color: #e88;
-      margin-bottom: 14px;
-      margin-top: -8px;
-      display: none;
-      padding: 8px 12px;
-      background: rgba(200, 50, 50, .12);
-      border-radius: 5px;
-      border: 1px solid rgba(200, 50, 50, .3);
-    }
-
-    .lp-error.visible {
-      display: block;
-    }
-
-    /* Button */
-    .lp-btn {
-      width: 100%;
-      padding: 13px;
-      border: none;
-      border-radius: 7px;
-      background: linear-gradient(135deg, #c8a84b 0%, #e2c56a 50%, #c8a84b 100%);
-      color: #001228;
-      font-size: 12px;
-      letter-spacing: 2px;
-      font-weight: 400;
-      text-transform: uppercase;
-      cursor: pointer;
-      font-family: 'Montserrat', sans-serif;
-      transition: opacity .2s, transform .15s, box-shadow .2s;
-      box-shadow: 0 4px 20px rgba(200, 168, 75, .35);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      margin-top: 6px;
-    }
-
-    .lp-btn:hover {
-      opacity: .9;
-      transform: translateY(-1px);
-      box-shadow: 0 8px 28px rgba(200, 168, 75, .45);
-    }
-
-    .lp-btn:active {
-      transform: translateY(0);
-    }
-
-    .lp-btn:disabled {
-      opacity: .6;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    .lp-spinner {
-      width: 14px;
-      height: 14px;
-      border: 2px solid rgba(0, 18, 40, .3);
-      border-top-color: #001228;
-      border-radius: 50%;
-      animation: lp-spin .7s linear infinite;
-    }
-
-    @keyframes lp-spin {
-      to {
-        transform: rotate(360deg)
-      }
-    }
-
-    /* Footer text */
-    .lp-footer-text {
-      text-align: center;
-      margin-top: 24px;
-      font-size: 9.5px;
-      letter-spacing: 2.5px;
-      color: rgba(200, 168, 75, .35);
-      text-transform: uppercase;
-      font-family: 'Montserrat', sans-serif;
-    }
+  #login-portal {
+    position:fixed; inset:0; z-index:9999;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    background:
+      radial-gradient(ellipse at 30% 20%, rgba(90,55,20,.45) 0%, transparent 55%),
+      radial-gradient(ellipse at 70% 80%, rgba(60,35,10,.50) 0%, transparent 55%),
+      linear-gradient(160deg, #2C1A08 0%, #1E1106 35%, #150D04 60%, #1A1005 100%);
+    transition: opacity .7s ease, transform .7s ease;
+    animation: lp-open .8s cubic-bezier(.22,.68,0,1.1) both;
+    overflow:hidden;
+  }
+  #login-portal.lp-exit { opacity:0; transform:scale(.97) translateY(-12px); pointer-events:none; }
+  @keyframes lp-open { from{opacity:0;transform:scale(1.03)} to{opacity:1;transform:scale(1)} }
+  .lp-leather {
+    position:absolute; inset:0; pointer-events:none;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,.04) 3px, rgba(0,0,0,.04) 4px),
+      repeating-linear-gradient(90deg, transparent, transparent 5px, rgba(197,160,89,.015) 5px, rgba(197,160,89,.015) 6px);
+  }
+  .lp-orn { position:absolute; }
+  .lp-orn-tl{top:18px;left:18px} .lp-orn-tr{top:18px;right:18px}
+  .lp-orn-bl{bottom:18px;left:18px} .lp-orn-br{bottom:18px;right:18px}
+  .lp-rule { display:flex; align-items:center; gap:12px; width:min(460px,90vw); padding:0 10px; position:relative; z-index:2; }
+  .lp-rule-top{margin-bottom:16px} .lp-rule-bot{margin-top:16px}
+  .lp-rule span:not(.lp-rule-gem) { flex:1; height:1px; background:linear-gradient(to right,transparent,rgba(197,160,89,.6),transparent); }
+  .lp-rule-gem { color:rgba(197,160,89,.6); font-size:8px; }
+  .lp-card {
+    position:relative; z-index:2; width:min(400px,90vw);
+    background:linear-gradient(160deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+    border:1px solid rgba(197,160,89,.22); border-radius:3px;
+    padding:34px 42px 28px;
+    box-shadow:0 40px 90px rgba(0,0,0,.75),inset 0 1px 0 rgba(197,160,89,.28),inset 0 -1px 0 rgba(197,160,89,.10);
+    animation:lp-rise .9s cubic-bezier(.22,.68,0,1.2) .1s both;
+  }
+  @keyframes lp-rise { from{opacity:0;transform:translateY(22px)} to{opacity:1;transform:translateY(0)} }
+  .lp-logo-ring {
+    width:108px; height:108px; margin:0 auto 16px; border-radius:50%;
+    border:2px solid rgba(197,160,89,.35); padding:4px;
+    box-shadow:0 0 0 1px rgba(197,160,89,.10),0 8px 28px rgba(0,0,0,.55),inset 0 2px 4px rgba(197,160,89,.12);
+    background:radial-gradient(circle, rgba(197,160,89,.08) 0%, rgba(0,0,0,.28) 100%);
+  }
+  .lp-logo { width:100%; height:100%; border-radius:50%; object-fit:cover; display:block; filter:drop-shadow(0 2px 8px rgba(197,160,89,.28)); }
+  .lp-title { text-align:center; color:rgba(197,160,89,.55); font-size:8.5px; letter-spacing:4px; text-transform:uppercase; font-family:Montserrat,sans-serif; margin-bottom:5px; }
+  .lp-brand { text-align:center; margin-bottom:14px; display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .lp-brand-ll { font-size:28px; font-weight:300; letter-spacing:8px; color:#C5A059; text-shadow:0 0 20px rgba(197,160,89,.32),0 2px 4px rgba(0,0,0,.5); font-family:Montserrat,sans-serif; }
+  .lp-brand-ll span{letter-spacing:0}
+  .lp-brand-sub { font-size:7.5px; letter-spacing:3px; color:rgba(197,160,89,.38); text-transform:uppercase; font-family:Montserrat,sans-serif; }
+  .lp-inner-rule { display:flex; align-items:center; gap:10px; margin-bottom:22px; }
+  .lp-inner-rule span:not(:nth-child(2)) { flex:1; height:1px; background:linear-gradient(to right,transparent,rgba(197,160,89,.30),transparent); }
+  .lp-inner-rule span:nth-child(2) { color:rgba(197,160,89,.38); font-size:7px; }
+  .lp-field { margin-bottom:15px; }
+  .lp-label { display:block; font-size:8px; letter-spacing:2px; text-transform:uppercase; color:rgba(197,160,89,.50); margin-bottom:6px; font-family:Montserrat,sans-serif; }
+  .lp-input { width:100%; background:rgba(0,0,0,.32); border:none; border-bottom:1px solid rgba(197,160,89,.28); padding:10px 11px; color:#E8DCC8; font-size:13px; outline:none; transition:border-color .2s,background .2s; font-family:Montserrat,system-ui,sans-serif; border-radius:2px; }
+  .lp-input::placeholder{color:rgba(255,255,255,.13)}
+  .lp-input:focus{border-bottom-color:rgba(197,160,89,.7);background:rgba(197,160,89,.06);box-shadow:0 2px 0 rgba(197,160,89,.18)}
+  .lp-pwd-wrap{position:relative} .lp-pwd-wrap .lp-input{padding-right:36px}
+  .lp-eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:rgba(197,160,89,.4);cursor:pointer;padding:4px;display:flex;align-items:center}
+  .lp-eye:hover{color:rgba(197,160,89,.8)}
+  .lp-error{font-size:10.5px;color:#E8A090;margin-bottom:11px;margin-top:-5px;display:none;padding:7px 10px;background:rgba(180,40,30,.12);border:1px solid rgba(200,60,50,.22);border-radius:2px}
+  .lp-error.visible{display:block}
+  .lp-btn {
+    width:100%; padding:12px; border:1px solid rgba(197,160,89,.45); border-radius:2px;
+    background:linear-gradient(to bottom, rgba(197,160,89,.20), rgba(150,115,55,.15));
+    color:#C5A059; font-size:9.5px; letter-spacing:3.5px; font-weight:400;
+    text-transform:uppercase; cursor:pointer; font-family:Montserrat,sans-serif;
+    transition:all .2s; box-shadow:0 2px 10px rgba(0,0,0,.35),inset 0 1px 0 rgba(197,160,89,.18);
+    display:flex; align-items:center; justify-content:center; gap:10px; margin-top:8px;
+  }
+  .lp-btn:hover{background:linear-gradient(to bottom,rgba(197,160,89,.32),rgba(165,128,65,.24));border-color:rgba(197,160,89,.7);color:#D9C070;box-shadow:0 4px 18px rgba(197,160,89,.18),inset 0 1px 0 rgba(197,160,89,.28)}
+  .lp-btn:active{transform:translateY(1px)} .lp-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+  .lp-spinner{width:12px;height:12px;border:1.5px solid rgba(197,160,89,.28);border-top-color:#C5A059;border-radius:50%;animation:lp-spin .7s linear infinite}
+  @keyframes lp-spin{to{transform:rotate(360deg)}}
+  .lp-footer{text-align:center;margin-top:20px;font-size:7px;letter-spacing:2.5px;color:rgba(197,160,89,.20);text-transform:uppercase;font-family:Montserrat,sans-serif}
   </style>
 
   <script>
-    (function () {
-      // If already authenticated this session, skip straight to app
-      if (sessionStorage.getItem('lil_auth') === '1') {
-        document.getElementById('login-portal').style.display = 'none';
+    (function(){
+      if(sessionStorage.getItem('lil_auth')==='1'){
+        document.getElementById('login-portal').style.display='none';
       }
     })();
-
-    function lplLogin(e) {
+    function lplLogin(e){
       e.preventDefault();
-      const email = document.getElementById('lp-email').value.trim().toLowerCase();
-      const pwd = document.getElementById('lp-pwd').value;
-      const err = document.getElementById('lp-error');
-      const btn = document.getElementById('lp-btn');
-      const txt = document.getElementById('lp-btn-text');
-      const spin = document.getElementById('lp-btn-spinner');
-
+      const email=document.getElementById('lp-email').value.trim().toLowerCase();
+      const pwd=document.getElementById('lp-pwd').value;
+      const err=document.getElementById('lp-error');
+      const btn=document.getElementById('lp-btn');
+      const txt=document.getElementById('lp-btn-text');
+      const spin=document.getElementById('lp-btn-spin');
       err.classList.remove('visible');
-
-      // Show loading
-      btn.disabled = true;
-      txt.style.display = 'none';
-      spin.style.display = 'block';
-
-      setTimeout(() => {
-        if (email === 'stdmexico@me.com' && pwd === 'Newland72') {
-          sessionStorage.setItem('lil_auth', '1');
-          const portal = document.getElementById('login-portal');
-          portal.classList.add('lp-exit');
-          setTimeout(() => { portal.style.display = 'none'; }, 500);
+      btn.disabled=true; txt.style.display='none'; spin.style.display='block';
+      setTimeout(()=>{
+        if(email==='stdmexico@me.com'&&pwd==='Newland72'){
+          sessionStorage.setItem('lil_auth','1');
+          const p=document.getElementById('login-portal');
+          p.classList.add('lp-exit');
+          setTimeout(()=>{p.style.display='none';},700);
         } else {
           err.classList.add('visible');
-          btn.disabled = false;
-          txt.style.display = 'block';
-          spin.style.display = 'none';
-          // Shake the card
-          const card = document.querySelector('.lp-card');
-          card.style.animation = 'none';
-          card.style.transform = 'translateX(-8px)';
-          setTimeout(() => { card.style.transition = 'transform .35s cubic-bezier(.36,.07,.19,.97)'; card.style.transform = 'translateX(8px)'; }, 50);
-          setTimeout(() => { card.style.transform = 'translateX(-5px)'; }, 150);
-          setTimeout(() => { card.style.transform = 'translateX(0)'; }, 280);
+          btn.disabled=false; txt.style.display='block'; spin.style.display='none';
+          const card=document.querySelector('.lp-card');
+          card.style.transition='transform .4s cubic-bezier(.36,.07,.19,.97)';
+          ['-10px','10px','-6px','6px','0'].forEach((x,i)=>
+            setTimeout(()=>{card.style.transform=`translateX(${x})`;},i*60)
+          );
         }
-      }, 900); // Simulated auth delay for feel
+      },800);
     }
-
-    function lplTogglePwd() {
-      const inp = document.getElementById('lp-pwd');
-      inp.type = inp.type === 'password' ? 'text' : 'password';
+    function lplTogglePwd(){
+      const inp=document.getElementById('lp-pwd');
+      inp.type=inp.type==='password'?'text':'password';
     }
   </script>
 
