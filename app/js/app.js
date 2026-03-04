@@ -2376,66 +2376,101 @@ const App = (() => {
   function renderTIRVPN() {
     const corrida = calcCorrida();
     const capital = state.variables.capitalRequerido || 0;
-    const tasaDesc = state.variables.tasaDescuento || 0.12;
+    const tasaDesc = state.variables.tasaDescuento ?? 0.12;
     const flujos = [-capital, ...corrida.map(y => y.ebitda)];
+
     // NPV
     const vpn = flujos.reduce((s, f, i) => s + f / Math.pow(1 + tasaDesc, i), 0);
+
     // IRR — Newton-Raphson
     function calcIRR(flows) {
       let r = 0.15;
       for (let iter = 0; iter < 200; iter++) {
         let f = 0, df = 0;
-        flows.forEach((cf, t) => {
-          f  += cf / Math.pow(1 + r, t);
-          df -= t * cf / Math.pow(1 + r, t + 1);
-        });
+        flows.forEach((cf, t) => { f += cf / Math.pow(1+r,t); df -= t*cf / Math.pow(1+r,t+1); });
         if (Math.abs(df) < 1e-10) break;
-        const nr = r - f / df;
-        if (Math.abs(nr - r) < 1e-8) { r = nr; break; }
+        const nr = r - f/df;
+        if (Math.abs(nr-r) < 1e-8) { r = nr; break; }
         r = nr;
       }
       return r;
     }
     const tir = calcIRR(flujos);
+
+    // Payback
     const payback = (() => {
       let acc = -capital;
       for (let i = 0; i < corrida.length; i++) {
         acc += corrida[i].ebitda;
-        if (acc >= 0) return `${i + 1} año${i > 0 ? 's' : ''}`;
+        if (acc >= 0) return `${i+1} año${i > 0 ? 's' : ''}`;
       }
       return `>${corrida.length} años`;
     })();
-    const vpnFmt = vpn >= 0 ? `<span style="color:var(--emerald);font-weight:500">${M(vpn)}</span>` : `<span style="color:#c0392b;font-weight:500">${M(vpn)}</span>`;
-    const tirFmt = tir > tasaDesc ? `<span style="color:var(--emerald);font-weight:500">${(tir*100).toFixed(2)}%</span>` : `<span style="color:#c0392b;font-weight:500">${(tir*100).toFixed(2)}%</span>`;
+
+    const vpnColor = vpn >= 0 ? 'var(--emerald)' : '#c0392b';
+    const tirColor = tir > tasaDesc ? 'var(--emerald)' : '#c0392b';
+    const vpnFmt = `<span style="color:${vpnColor};font-weight:500">${M(vpn)}</span>`;
+    const tirFmt = `<span style="color:${tirColor};font-weight:500">${(tir*100).toFixed(2)}%</span>`;
+
     const flowRows = flujos.map((f, i) => {
       const discounted = f / Math.pow(1 + tasaDesc, i);
+      const label = i === 0 ? 'Inversión Inicial' : `Año ${i} (${corrida[i-1].ano}–${corrida[i-1].ano+1})`;
       return `<tr>
-        <td>${i === 0 ? 'Inversión Inicial' : `Año ${i} (${corrida[i-1].ano}–${corrida[i-1].ano+1})`}</td>
+        <td>${label}</td>
         <td style="text-align:right;${f<0?'color:#c0392b':''}">${M(f)}</td>
         <td style="text-align:right;color:var(--text-muted)">${M(discounted)}</td>
       </tr>`;
     }).join('');
+
     return `<div class="section-header"><div><div class="section-title">TIR &amp; VPN</div>
-      <div class="section-sub">Tasa Interna de Retorno · Valor Presente Neto · Payback</div></div>
-      <button class="toggle-btn" onclick="App.navigate('variables')">
-        <svg viewBox="0 0 16 16" fill="none"><path d="M8 2v8M5 7l3 3 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-        Ajustar tasa
-      </button></div>
+      <div class="section-sub">Tasa Interna de Retorno · Valor Presente Neto · Payback</div></div></div>
+
+    <!-- ── Ajuste de tasa de descuento inline ── -->
+    <div class="card" style="margin-bottom:18px;padding:16px 22px">
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px">Tasa de Descuento (WACC)</div>
+          <div style="font-size:10px;color:var(--text-muted);max-width:340px">
+            Rendimiento mínimo exigido al capital invertido. Para colegios en México: 10–15% es rango típico.
+            Si TIR > Tasa, el proyecto es viable.
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <input type="range" min="1" max="30" step="0.5"
+            value="${(tasaDesc*100).toFixed(1)}"
+            style="width:160px;accent-color:var(--emerald);cursor:pointer"
+            oninput="App.setTasaDescuento(this.value/100);document.getElementById('tasa-val').textContent=parseFloat(this.value).toFixed(1)+'%'">
+          <div id="tasa-val" style="font-size:22px;font-weight:300;color:var(--navy);min-width:54px">${(tasaDesc*100).toFixed(1)}%</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${[8,10,12,15,18,20].map(n =>
+            `<button onclick="App.setTasaDescuento(${n/100})"
+              style="padding:4px 10px;border-radius:4px;font-size:11px;
+              border:1px solid ${Math.abs(tasaDesc*100-n)<0.1?'var(--emerald)':'var(--border)'};
+              background:${Math.abs(tasaDesc*100-n)<0.1?'var(--emerald)':'transparent'};
+              color:${Math.abs(tasaDesc*100-n)<0.1?'#fff':'var(--text-muted)'};
+              cursor:pointer;transition:all .15s">${n}%</button>`).join('')}
+        </div>
+      </div>
+    </div>
+
     <div class="cards-row" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px">
-      <div class="card" style="border-top:3px solid var(--emerald);text-align:center;padding:18px">
+      <div class="card" style="border-top:3px solid ${tirColor};text-align:center;padding:18px">
         <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px">TIR</div>
         <div style="font-size:28px;font-weight:300">${tirFmt}</div>
-        <div style="font-size:10px;color:var(--text-muted);margin-top:4px">vs tasa de descuento ${(tasaDesc*100).toFixed(1)}%</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:4px">
+          ${tir > tasaDesc ? '✅ TIR > Tasa — Proyecto viable' : '⚠️ TIR < Tasa — Revisar supuestos'}
+        </div>
       </div>
-      <div class="card" style="border-top:3px solid var(--cobalt);text-align:center;padding:18px">
-        <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px">VPN · ${(tasaDesc*100).toFixed(0)}% tasa</div>
+      <div class="card" style="border-top:3px solid ${vpnColor};text-align:center;padding:18px">
+        <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px">VPN · ${(tasaDesc*100).toFixed(1)}% tasa</div>
         <div style="font-size:28px;font-weight:300">${vpnFmt}</div>
-        <div style="font-size:10px;color:var(--text-muted);margin-top:4px">${vpn >= 0 ? 'Proyecto viable' : 'Proyecto inviable a esta tasa'}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:4px">${vpn >= 0 ? '✅ Proyecto crea valor' : '⚠️ Proyecto destruye valor a esta tasa'}</div>
       </div>
       <div class="card" style="border-top:3px solid var(--gold);text-align:center;padding:18px">
         <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px">Payback</div>
         <div style="font-size:28px;font-weight:300;color:var(--gold)">${payback}</div>
-        <div style="font-size:10px;color:var(--text-muted);margin-top:4px">Recuperación de inversión</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:4px">Recuperación de la inversión</div>
       </div>
       <div class="card" style="border-top:3px solid var(--navy);text-align:center;padding:18px">
         <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px">Inversión Base</div>
@@ -2443,8 +2478,8 @@ const App = (() => {
         <div style="font-size:10px;color:var(--text-muted);margin-top:4px">Capital requerido Año 0</div>
       </div>
     </div>
-    <div class="card"><div class="card-title">Flujos Descontados</div><div class="table-wrap"><table>
-      <thead><tr><th>Período</th><th style="text-align:right">Flujo Nominal</th><th style="text-align:right">Flujo Descontado (${(tasaDesc*100).toFixed(0)}%)</th></tr></thead>
+    <div class="card"><div class="card-title">Flujos Descontados al ${(tasaDesc*100).toFixed(1)}%</div><div class="table-wrap"><table>
+      <thead><tr><th>Período</th><th style="text-align:right">Flujo Nominal</th><th style="text-align:right">Flujo Descontado</th></tr></thead>
       <tbody>${flowRows}</tbody>
     </table></div></div>`;
   }
@@ -3157,6 +3192,17 @@ const App = (() => {
     document.head.appendChild(s);
   }
 
+  function setTasaDescuento(tasa) {
+    tasa = Math.max(0.01, Math.min(0.50, parseFloat(tasa) || 0.12));
+    if (!state.variables) state.variables = {};
+    state.variables.tasaDescuento = tasa;
+    saveState();
+    if (currentView === 'tirvanp') {
+      const body = document.getElementById('content-body');
+      if (body) body.innerHTML = renderTIRVPN();
+    }
+  }
+
   function setHorizonte(n) {
     n = Math.max(1, Math.min(10, parseInt(n) || 7));
     state.horizonte = n;
@@ -3173,7 +3219,7 @@ const App = (() => {
     init, navigate, resetState, exportCSV, toggleSidebar, recalcular,
     addPuesto, removePuesto, toggleHonorarios,
     generarPDF: _generarPDF, logout, setHorizonte,
-    saveCurrentScenario, loadScenario, deleteScenario, exportExcel
+    saveCurrentScenario, loadScenario, deleteScenario, exportExcel, setTasaDescuento
   };
 
 })();
