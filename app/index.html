@@ -95,9 +95,10 @@
     display:flex; flex-direction:column;
     align-items:center; justify-content:center;
     background:
-      radial-gradient(ellipse at 30% 20%, rgba(90,55,20,.45) 0%, transparent 55%),
-      radial-gradient(ellipse at 70% 80%, rgba(60,35,10,.50) 0%, transparent 55%),
-      linear-gradient(160deg, #2C1A08 0%, #1E1106 35%, #150D04 60%, #1A1005 100%);
+      radial-gradient(ellipse at 25% 15%, rgba(30,58,120,.60) 0%, transparent 50%),
+      radial-gradient(ellipse at 75% 85%, rgba(15,35,80,.70) 0%, transparent 55%),
+      radial-gradient(ellipse at 50% 50%, rgba(26,43,100,.30) 0%, transparent 70%),
+      linear-gradient(160deg, #0D1E40 0%, #1A2B58 30%, #162348 65%, #0F1A38 100%);
     transition: opacity .7s ease, transform .7s ease;
     animation: lp-open .8s cubic-bezier(.22,.68,0,1.1) both;
     overflow:hidden;
@@ -107,8 +108,9 @@
   .lp-leather {
     position:absolute; inset:0; pointer-events:none;
     background-image:
-      repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,.04) 3px, rgba(0,0,0,.04) 4px),
-      repeating-linear-gradient(90deg, transparent, transparent 5px, rgba(197,160,89,.015) 5px, rgba(197,160,89,.015) 6px);
+      repeating-linear-gradient(  0deg, transparent, transparent 2px, rgba(255,255,255,.018) 2px, rgba(255,255,255,.018) 3px),
+      repeating-linear-gradient( 90deg, transparent, transparent 4px, rgba(255,255,255,.010) 4px, rgba(255,255,255,.010) 5px),
+      repeating-linear-gradient(135deg, transparent, transparent 8px, rgba(197,160,89,.008) 8px, rgba(197,160,89,.008) 9px);
   }
   .lp-orn { position:absolute; }
   .lp-orn-tl{top:18px;left:18px} .lp-orn-tr{top:18px;right:18px}
@@ -119,7 +121,7 @@
   .lp-rule-gem { color:rgba(197,160,89,.6); font-size:8px; }
   .lp-card {
     position:relative; z-index:2; width:min(400px,90vw);
-    background:linear-gradient(160deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+    background:linear-gradient(160deg, rgba(255,255,255,.055) 0%, rgba(20,45,100,.25) 100%);
     border:1px solid rgba(197,160,89,.22); border-radius:3px;
     padding:24px 42px 28px;
     box-shadow:0 40px 90px rgba(0,0,0,.75),inset 0 1px 0 rgba(197,160,89,.28),inset 0 -1px 0 rgba(197,160,89,.10);
