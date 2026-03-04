@@ -121,18 +121,22 @@
     position:relative; z-index:2; width:min(400px,90vw);
     background:linear-gradient(160deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
     border:1px solid rgba(197,160,89,.22); border-radius:3px;
-    padding:34px 42px 28px;
+    padding:24px 42px 28px;
     box-shadow:0 40px 90px rgba(0,0,0,.75),inset 0 1px 0 rgba(197,160,89,.28),inset 0 -1px 0 rgba(197,160,89,.10);
     animation:lp-rise .9s cubic-bezier(.22,.68,0,1.2) .1s both;
   }
   @keyframes lp-rise { from{opacity:0;transform:translateY(22px)} to{opacity:1;transform:translateY(0)} }
   .lp-logo-ring {
-    width:108px; height:108px; margin:0 auto 16px; border-radius:50%;
-    border:2px solid rgba(197,160,89,.35); padding:4px;
-    box-shadow:0 0 0 1px rgba(197,160,89,.10),0 8px 28px rgba(0,0,0,.55),inset 0 2px 4px rgba(197,160,89,.12);
-    background:radial-gradient(circle, rgba(197,160,89,.08) 0%, rgba(0,0,0,.28) 100%);
+    width:200px; height:200px; margin:0 auto 10px;
+    background:none; border:none; padding:0; box-shadow:none; border-radius:0;
+    filter: drop-shadow(0 0 32px rgba(197,160,89,.50)) drop-shadow(0 8px 24px rgba(0,0,0,.55));
+    animation: lp-glow 3s ease-in-out infinite alternate;
   }
-  .lp-logo { width:100%; height:100%; border-radius:50%; object-fit:cover; display:block; filter:drop-shadow(0 2px 8px rgba(197,160,89,.28)); }
+  @keyframes lp-glow {
+    from { filter: drop-shadow(0 0 18px rgba(197,160,89,.35)) drop-shadow(0 8px 24px rgba(0,0,0,.55)); }
+    to   { filter: drop-shadow(0 0 40px rgba(197,160,89,.70)) drop-shadow(0 8px 28px rgba(0,0,0,.6)); }
+  }
+  .lp-logo { width:100%; height:100%; object-fit:contain; display:block; border-radius:0; filter:none; }
   .lp-title { text-align:center; color:rgba(197,160,89,.55); font-size:8.5px; letter-spacing:4px; text-transform:uppercase; font-family:Montserrat,sans-serif; margin-bottom:5px; }
   .lp-brand { text-align:center; margin-bottom:14px; display:flex; flex-direction:column; align-items:center; gap:3px; }
   .lp-brand-ll { font-size:28px; font-weight:300; letter-spacing:8px; color:#C5A059; text-shadow:0 0 20px rgba(197,160,89,.32),0 2px 4px rgba(0,0,0,.5); font-family:Montserrat,sans-serif; }
