@@ -129,7 +129,7 @@ const App = (() => {
       Bachillerato: 0.05
     },
 
-    // ── Proyección dinámica: deserción y entrada por nivel y por año (YEARS-1 valores) ──
+    // ── Proyección dinámica: deserción y entrada por nivel y por año (getYears()-1 valores) ──
     // entradaPorNivel[nivel][t] = alumnos que entran al grado inicial del nivel en el Año t+1
     // Para Kínder, este valor se SUMA al cascade mat→k1 (k1 no es grado de entrada independiente)
     entradaPorNivel: {
@@ -397,7 +397,7 @@ const App = (() => {
   // ============================================================
 
   /**
-   * Computes enrollment for all 16 grades across all YEARS.
+   * Computes enrollment for all 16 grades across all getYears().
    * Returns array[yearIdx] → { gradeKey: count }
    *
    * Cascade rules (year t ≥ 1, idx = t-1):
@@ -761,9 +761,9 @@ const App = (() => {
     const kpis = [
       { label: 'Matrícula Año 1', val: N(y1.totalAlumnos) + ' alumnos', sub: `Capacidad ${N(calcTopeTotal())} · ${P(y1.totalAlumnos / calcTopeTotal())}`, cls: '', accent: 'accent' },
       { label: 'Ingresos Año 1', val: m2M(y1.ingresoTotal), sub: 'Netos descontando becas', cls: '', accent: 'positive' },
-      { label: `Ingresos Año ${YEARS}`, val: m2M(yN.ingresoTotal), sub: `+${P(yN.ingresoTotal / y1.ingresoTotal - 1)} vs Año 1`, cls: '', accent: 'positive' },
+      { label: `Ingresos Año ${getYears()}`, val: m2M(yN.ingresoTotal), sub: `+${P(yN.ingresoTotal / y1.ingresoTotal - 1)} vs Año 1`, cls: '', accent: 'positive' },
       { label: 'Nómina Mensual Año 1', val: m2M(y1.nomina.totalMensual), sub: `Factor matrícula ${P(y1.nomina.factorNomina)}`, cls: '', accent: 'neutral' },
-      { label: `EBITDA Año ${YEARS}`, val: m2M(yN.ebitda), sub: 'Utilidad operativa neta', cls: 'gold', accent: 'positive' },
+      { label: `EBITDA Año ${getYears()}`, val: m2M(yN.ebitda), sub: 'Utilidad operativa neta', cls: 'gold', accent: 'positive' },
       { label: 'Margen EBITDA Año 1', val: P(y1.ebitda / y1.ingresoTotal), sub: 'Utilidad / Ingresos netos', cls: 'cobalt', accent: 'positive' },
       { label: 'Flujo Acumulado 7 Años', val: m2M(yN.cashAcumulado), sub: 'Dinero en bancos al cierre', cls: '', accent: 'positive' }
     ];
@@ -772,7 +772,7 @@ const App = (() => {
     <div class="section-header">
       <div>
         <div class="section-title">Dashboard · Resumen Ejecutivo</div>
-        <div class="section-sub">Lógica &amp; Liquidez · Ciclos 1–${YEARS} (${corrida[0].ano}–${corrida[YEARS - 1].ano})</div>
+        <div class="section-sub">Lógica &amp; Liquidez · Ciclos 1–${getYears()} (${corrida[0].ano}–${corrida[getYears() - 1].ano})</div>
       </div>
       <div class="badge badge-oxford">México · Ciclo escolar Sept–Ago</div>
     </div>
@@ -844,7 +844,7 @@ const App = (() => {
         <div class="form-group">
           <label class="form-label">Año de inicio — Ciclo 1 <span>(año calendario)</span></label>
           ${numInput(ano0, 'anoInicio', 'variables', '1')}
-          <span class="form-hint">Ciclo 1 = ${ano0 - 1}-${String(ano0).slice(-2)} · La corrida proyecta los ${YEARS} ciclos siguientes</span>
+          <span class="form-hint">Ciclo 1 = ${ano0 - 1}-${String(ano0).slice(-2)} · La corrida proyecta los ${getYears()} ciclos siguientes</span>
         </div>
       </div>
     </div>
@@ -948,7 +948,7 @@ const App = (() => {
       const anyActive = grades.some(g => activos[g.key] !== false);
 
       tableBody += `<tr class="tr-level-header">
-        <td colspan="${YEARS + 2}">▸ ${lv.key}
+        <td colspan="${getYears() + 2}">▸ ${lv.key}
           ${!anyActive ? '<span style="font-size:9px;color:var(--text-faint);margin-left:8px">(inactivo)</span>' : ''}
         </td>
       </tr>`;
@@ -1022,7 +1022,7 @@ const App = (() => {
     <div class="section-header">
       <div>
         <div class="section-title">Matriz de Alumnos</div>
-        <div class="section-sub">Ciclos 1–${YEARS} (${String(corrida0[0].ano).slice(-2)}-${String(corrida0[0].ano + 1).slice(-2)} → ${String(corrida0[YEARS - 1].ano).slice(-2)}-${String(corrida0[YEARS - 1].ano + 1).slice(-2)})
+        <div class="section-sub">Ciclos 1–${getYears()} (${String(corrida0[0].ano).slice(-2)}-${String(corrida0[0].ano + 1).slice(-2)} → ${String(corrida0[getYears() - 1].ano).slice(-2)}-${String(corrida0[getYears() - 1].ano + 1).slice(-2)})
           · Reinscripción <strong style="color:var(--gold)">${P(rein)}</strong>
           · Crecimiento <strong style="color:var(--cobalt)">+${P(crec)}/año</strong>
         </div>
@@ -1062,7 +1062,7 @@ const App = (() => {
     </div>
 
     <div class="card">
-      <div class="card-title">Proyección de Matrícula · Ciclos 1–${YEARS}
+      <div class="card-title">Proyección de Matrícula · Ciclos 1–${getYears()}
         <span class="form-hint" style="margin-left:12px;font-size:10px;text-transform:none;letter-spacing:0">
           ☑ activa / ☐ desactiva cada grado
         </span>
@@ -1396,7 +1396,7 @@ const App = (() => {
     }
     function sumRowDirect(label, fn, style = '') {
       // fn recibe el índice i y los pCosts inflacionados
-      const cells = Array.from({ length: YEARS }, (_, i) => {
+      const cells = Array.from({ length: getYears() }, (_, i) => {
         const inf = Math.pow(1 + state.variables.inflacion, i);
         return `<td style="${style}">${M(fn(i, inf))}</td>`;
       }).join('');
@@ -1425,7 +1425,7 @@ const App = (() => {
           ${annuals[0].asim ? sumRow('Asimilados', a => a.asim) : ''}
           ${annuals[0].fondo ? sumRow('Fondo Finiquitos', a => a.fondo) : ''}
           ${annuals[0].transicion ? sumRow('Nómina Transición (legado)', a => a.transicion) : ''}
-          <tr style="opacity:.35"><td colspan="${YEARS + 1}"></td></tr>
+          <tr style="opacity:.35"><td colspan="${getYears() + 1}"></td></tr>
           <tr><td style="color:var(--gold)">Honorarios Dir. Ejecutiva (campus)</td>${deRowCols}</tr>
           <tr class="tr-total">
             <td>TOTAL NÓMINA MENSUAL</td>
@@ -2123,12 +2123,12 @@ const App = (() => {
       body = HDR + `<div class="kpi-grid">
         <div class="kpi"><div class="kpi-label">Matrícula Año 1</div><div class="kpi-val">${fn2(y1.totalAlumnos)}</div><div class="kpi-sub">${fp(y1.totalAlumnos / cap)} de capacidad (tope ${fn2(cap)})</div></div>
         <div class="kpi cobalt"><div class="kpi-label">Ingresos Año 1</div><div class="kpi-val">${fm(y1.ingresoTotal)}</div><div class="kpi-sub">Netos tras becas y descuentos</div></div>
-        <div class="kpi cobalt"><div class="kpi-label">Ingresos Año ${YEARS}</div><div class="kpi-val">${fm(yN.ingresoTotal)}</div><div class="kpi-sub">+${fp(yN.ingresoTotal / y1.ingresoTotal - 1)} vs Año 1</div></div>
+        <div class="kpi cobalt"><div class="kpi-label">Ingresos Año ${getYears()}</div><div class="kpi-val">${fm(yN.ingresoTotal)}</div><div class="kpi-sub">+${fp(yN.ingresoTotal / y1.ingresoTotal - 1)} vs Año 1</div></div>
         <div class="kpi"><div class="kpi-label">Nómina Mensual Año 1</div><div class="kpi-val">${fm(y1.nomina.totalMensual)}</div><div class="kpi-sub">Factor matrícula ${fp(y1.nomina.factorNomina)}</div></div>
-        <div class="kpi gold"><div class="kpi-label">EBITDA Año ${YEARS}</div><div class="kpi-val">${fm(yN.ebitda)}</div><div class="kpi-sub">Utilidad operativa neta</div></div>
+        <div class="kpi gold"><div class="kpi-label">EBITDA Año ${getYears()}</div><div class="kpi-val">${fm(yN.ebitda)}</div><div class="kpi-sub">Utilidad operativa neta</div></div>
         <div class="kpi cobalt"><div class="kpi-label">Flujo Acumulado</div><div class="kpi-val">${fm(yN.cashAcumulado)}</div><div class="kpi-sub">Saldo bancario al cierre</div></div>
       </div>
-      <h2>Proyección de Resultados · ${YEARS} Ciclos</h2>
+      <h2>Proyección de Resultados · ${getYears()} Ciclos</h2>
       <table><thead>${TH(['Concepto', ...ciclos])}</thead><tbody>
         ${TD(['Matrícula (alumnos)', ...corrida.map(y => fn2(y.totalAlumnos))])}
         ${TD(['Ingresos Totales', ...corrida.map(y => fm(y.ingresoTotal))], 'tr-sub')}
@@ -2192,7 +2192,7 @@ const App = (() => {
         ${TD(['TOTAL GASTOS', ...an.map(a => fm(a.total))], 'tr-total')}
         </tbody></table>`;
     } else if (tipo === 'proyeccion') {
-      body = HDR + `<h2>Proyección Financiera Ejecutiva · ${YEARS} Ciclos</h2>
+      body = HDR + `<h2>Proyección Financiera Ejecutiva · ${getYears()} Ciclos</h2>
       <table><thead>${TH(['Concepto', ...ciclos])}</thead><tbody>` + [
           ['Matrícula total', y => fn2(y.totalAlumnos), ''],
           ['% Ocupación', y => fp(y.totalAlumnos / calcTopeTotal()), ''],
@@ -2213,7 +2213,7 @@ const App = (() => {
       body = HDR + `<h2>Proyección de Matrícula por Nivel</h2>
       <table><thead>${TH(['Nivel / Grado', ...ciclos])}</thead><tbody>` +
         LEVELS.flatMap(lv => [
-          `<tr><td colspan="${YEARS + 1}" style="background:#002147;color:#fff;padding:3px 7px;font-size:7.5pt">${lv.key}</td></tr>`,
+          `<tr><td colspan="${getYears() + 1}" style="background:#002147;color:#fff;padding:3px 7px;font-size:7.5pt">${lv.key}</td></tr>`,
           ...GRADES.filter(g => g.level === lv.key).map(g => TD([g.label, ...mat.map(yr => fn2(yr[g.key] || 0))]))
         ]).join('') +
         TD(['TOTAL ALUMNOS', ...mat.map(yr => fn2(GRADES.reduce((s, g) => s + (yr[g.key] || 0), 0)))], 'tr-total') +
