@@ -2307,18 +2307,454 @@ const App = (() => {
   // ============================================================
   // 18. NAVIGATION
   // ============================================================
+
+  // ============================================================
+  // ── ANÁLISIS AVANZADO — 8 NUEVAS VISTAS ──────────────────────
+  // ============================================================
+
+  // ── VISTA 1: PUNTO DE EQUILIBRIO ──────────────────────────────
+  function renderBreakEven() {
+    const corrida = calcCorrida();
+    const cap = calcTopeTotal() || 999;
+    // For each year, binary-search enrollment that makes EBITDA ≥ 0
+    function beAlumnos(yearIdx) {
+      const yr = corrida[yearIdx];
+      if (yr.ebitda >= 0) return '—';            // already profitable
+      // Estimate: EBITDA = IngresoTotal - Egresos - Renta - Operadora
+      // IngresoTotal ≈ alumnos × (ingreso_por_alumno_año1)
+      const ingPerAlumno = yr.totalAlumnos > 0 ? yr.ingresoTotal / yr.totalAlumnos : 0;
+      const fixedCosts = yr.gastosOp + yr.rentaInmueble;
+      const nomRate = yr.nomina.totalAnual / Math.max(1, yr.totalAlumnos);
+      // Simplified: EBITDA = n·ingPerAlumno – n·nomRate – fixedCosts – operadora(n)
+      // operadora = max(0, sub)·opPct where sub = n·(ing-nom) – fixedCosts
+      const opPct = state.variables.porcentajeOperadora;
+      // Iterative solve
+      for (let n = 1; n <= cap; n += 1) {
+        const ing = n * ingPerAlumno;
+        const nom = n * nomRate;
+        const sub = ing - nom - fixedCosts;
+        const ebitda = sub - Math.max(0, sub) * opPct - yr.rentaInmueble;
+        if (ebitda >= 0) return n;
+      }
+      return '>' + cap;
+    }
+    const rows = corrida.map((yr, i) => {
+      const be = beAlumnos(i);
+      const delta = typeof be === 'number' ? yr.totalAlumnos - be : null;
+      const pct = yr.totalAlumnos > 0 ? Math.min(100, (yr.totalAlumnos / cap) * 100) : 0;
+      const beStr = typeof be === 'number' ? N(be) : be;
+      const status = yr.ebitda >= 0 ? 'be-ok' : 'be-warn';
+      const icon = yr.ebitda >= 0 ? '✅' : '⚠️';
+      const deltaStr = delta !== null ? (delta >= 0 ? `<span style="color:var(--emerald)">+${N(delta)} excedente</span>` : `<span style="color:#c0392b">${N(delta)} faltan</span>`) : '—';
+      return `<tr class="${status}">
+        <td>${yr.ano}–${yr.ano+1}</td>
+        <td style="text-align:right">${N(yr.totalAlumnos)}</td>
+        <td style="text-align:right"><strong>${beStr}</strong></td>
+        <td>${deltaStr}</td>
+        <td>${icon} ${yr.ebitda >= 0 ? 'Rentable' : 'En pérdida'}</td>
+        <td>
+          <div style="background:var(--border);border-radius:4px;height:8px;width:100%;min-width:80px">
+            <div style="background:${yr.ebitda>=0?'var(--emerald)':'#e74c3c'};height:8px;border-radius:4px;width:${pct.toFixed(1)}%"></div>
+          </div>
+          <div style="font-size:9px;color:var(--text-muted);margin-top:2px">${pct.toFixed(1)}% de cap. (${N(cap)} máx)</div>
+        </td>
+      </tr>`;
+    }).join('');
+    return `<div class="section-header"><div><div class="section-title">Punto de Equilibrio</div>
+      <div class="section-sub">Alumnos mínimos para EBITDA ≥ 0 · por ciclo escolar</div></div></div>
+    <div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Ciclo</th><th style="text-align:right">Matrícula</th><th style="text-align:right">Break-Even</th><th>Diferencia</th><th>Estado</th><th>Ocupación</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    <div style="padding:14px 0 4px;font-size:11px;color:var(--text-muted)">
+      ⚠ El break-even es una estimación lineal basada en proporciones del Año 1. Para un análisis preciso ajusta las variables del modelo.
+    </div>
+    </div>`;
+  }
+
+  // ── VISTA 2: TIR & VPN ─────────────────────────────────────────
+  function renderTIRVPN() {
+    const corrida = calcCorrida();
+    const capital = state.variables.capitalRequerido || 0;
+    const tasaDesc = state.variables.tasaDescuento || 0.12;
+    const flujos = [-capital, ...corrida.map(y => y.ebitda)];
+    // NPV
+    const vpn = flujos.reduce((s, f, i) => s + f / Math.pow(1 + tasaDesc, i), 0);
+    // IRR — Newton-Raphson
+    function calcIRR(flows) {
+      let r = 0.15;
+      for (let iter = 0; iter < 200; iter++) {
+        let f = 0, df = 0;
+        flows.forEach((cf, t) => {
+          f  += cf / Math.pow(1 + r, t);
+          df -= t * cf / Math.pow(1 + r, t + 1);
+        });
+        if (Math.abs(df) < 1e-10) break;
+        const nr = r - f / df;
+        if (Math.abs(nr - r) < 1e-8) { r = nr; break; }
+        r = nr;
+      }
+      return r;
+    }
+    const tir = calcIRR(flujos);
+    const payback = (() => {
+      let acc = -capital;
+      for (let i = 0; i < corrida.length; i++) {
+        acc += corrida[i].ebitda;
+        if (acc >= 0) return `${i + 1} año${i > 0 ? 's' : ''}`;
+      }
+      return `>${corrida.length} años`;
+    })();
+    const vpnFmt = vpn >= 0 ? `<span style="color:var(--emerald);font-weight:500">${M(vpn)}</span>` : `<span style="color:#c0392b;font-weight:500">${M(vpn)}</span>`;
+    const tirFmt = tir > tasaDesc ? `<span style="color:var(--emerald);font-weight:500">${(tir*100).toFixed(2)}%</span>` : `<span style="color:#c0392b;font-weight:500">${(tir*100).toFixed(2)}%</span>`;
+    const flowRows = flujos.map((f, i) => {
+      const discounted = f / Math.pow(1 + tasaDesc, i);
+      return `<tr>
+        <td>${i === 0 ? 'Inversión Inicial' : `Año ${i} (${corrida[i-1].ano}–${corrida[i-1].ano+1})`}</td>
+        <td style="text-align:right;${f<0?'color:#c0392b':''}">${M(f)}</td>
+        <td style="text-align:right;color:var(--text-muted)">${M(discounted)}</td>
+      </tr>`;
+    }).join('');
+    return `<div class="section-header"><div><div class="section-title">TIR &amp; VPN</div>
+      <div class="section-sub">Tasa Interna de Retorno · Valor Presente Neto · Payback</div></div>
+      <button class="toggle-btn" onclick="App.navigate('variables')">
+        <svg viewBox="0 0 16 16" fill="none"><path d="M8 2v8M5 7l3 3 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        Ajustar tasa
+      </button></div>
+    <div class="cards-row" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px">
+      <div class="card" style="border-top:3px solid var(--emerald);text-align:center;padding:18px">
+        <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px">TIR</div>
+        <div style="font-size:28px;font-weight:300">${tirFmt}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:4px">vs tasa de descuento ${(tasaDesc*100).toFixed(1)}%</div>
+      </div>
+      <div class="card" style="border-top:3px solid var(--cobalt);text-align:center;padding:18px">
+        <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px">VPN · ${(tasaDesc*100).toFixed(0)}% tasa</div>
+        <div style="font-size:28px;font-weight:300">${vpnFmt}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:4px">${vpn >= 0 ? 'Proyecto viable' : 'Proyecto inviable a esta tasa'}</div>
+      </div>
+      <div class="card" style="border-top:3px solid var(--gold);text-align:center;padding:18px">
+        <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px">Payback</div>
+        <div style="font-size:28px;font-weight:300;color:var(--gold)">${payback}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:4px">Recuperación de inversión</div>
+      </div>
+      <div class="card" style="border-top:3px solid var(--navy);text-align:center;padding:18px">
+        <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px">Inversión Base</div>
+        <div style="font-size:28px;font-weight:300;color:var(--navy)">${M(capital)}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:4px">Capital requerido Año 0</div>
+      </div>
+    </div>
+    <div class="card"><div class="card-title">Flujos Descontados</div><div class="table-wrap"><table>
+      <thead><tr><th>Período</th><th style="text-align:right">Flujo Nominal</th><th style="text-align:right">Flujo Descontado (${(tasaDesc*100).toFixed(0)}%)</th></tr></thead>
+      <tbody>${flowRows}</tbody>
+    </table></div></div>`;
+  }
+
+  // ── VISTA 3: ANÁLISIS DE ESCENARIOS ────────────────────────────
+  function renderEscenarios() {
+    const corrida = calcCorrida();
+    // Scenario multipliers on growth + reinscription
+    const scenarios = [
+      { name: 'Conservador', growthMult: 0.5, reinMult: 0.97, color: '#e74c3c', icon: '📉' },
+      { name: 'Base',        growthMult: 1.0, reinMult: 1.00, color: 'var(--cobalt)', icon: '📊' },
+      { name: 'Optimista',   growthMult: 1.5, reinMult: 1.03, color: 'var(--emerald)', icon: '📈' }
+    ];
+    function calcScenario(sc) {
+      const savedCrec = state.tasaCrecimientoNuevoIngreso;
+      const savedRein = state.tasaReinscripcion;
+      state.tasaCrecimientoNuevoIngreso = (savedCrec ?? 0.05) * sc.growthMult;
+      state.tasaReinscripcion = Math.min(0.99, (savedRein ?? 0.85) * sc.reinMult);
+      const c = calcCorrida();
+      state.tasaCrecimientoNuevoIngreso = savedCrec;
+      state.tasaReinscripcion = savedRein;
+      return c;
+    }
+    const scData = scenarios.map(sc => ({ ...sc, corrida: calcScenario(sc) }));
+    const years = corrida.map(y => `${y.ano}`);
+    const kpis = ['EBITDA Año 1', 'EBITDA Año Final', 'Flujo Acumulado', 'Matrícula Año Final'];
+    const tableRows = kpis.map(kpi => {
+      const cells = scData.map(sc => {
+        const y1 = sc.corrida[0], yn = sc.corrida[sc.corrida.length-1];
+        let val;
+        if (kpi === 'EBITDA Año 1') val = M(y1.ebitda);
+        else if (kpi === 'EBITDA Año Final') val = M(yn.ebitda);
+        else if (kpi === 'Flujo Acumulado') val = M(yn.cashAcumulado);
+        else val = N(yn.totalAlumnos) + ' alumnos';
+        const cls = val.includes('-') ? 'num-negative' : '';
+        return `<td class="${cls}" style="color:${sc.color}">${val}</td>`;
+      }).join('');
+      return `<tr><td><strong>${kpi}</strong></td>${cells}</tr>`;
+    }).join('');
+    return `<div class="section-header"><div><div class="section-title">Análisis de Escenarios</div>
+      <div class="section-sub">Conservador · Base · Optimista — usando variables actuales ±50%</div></div></div>
+    <div class="card" style="margin-bottom:18px"><div class="table-wrap"><table>
+      <thead><tr><th>KPI</th>${scData.map(sc=>`<th style="color:${sc.color}">${sc.icon} ${sc.name}</th>`).join('')}</tr></thead>
+      <tbody>${tableRows}</tbody>
+    </table></div></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px">
+      ${scData.map(sc => `<div class="card" style="border-top:3px solid ${sc.color}">
+        <div class="card-title" style="color:${sc.color}">${sc.icon} Escenario ${sc.name}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px">
+          Crecimiento NI: ${((state.tasaCrecimientoNuevoIngreso??0.05)*sc.growthMult*100).toFixed(1)}% ·
+          Reinscripción: ${(Math.min(0.99,(state.tasaReinscripcion??0.85)*sc.reinMult)*100).toFixed(1)}%
+        </div>
+        ${sc.corrida.slice(0,4).map(y=>`
+          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:11px">
+            <span>${y.ano}</span>
+            <span style="color:${y.ebitda>=0?sc.color:'#c0392b'}">${M(y.ebitda)}</span>
+          </div>`).join('')}
+      </div>`).join('')}
+    </div>`;
+  }
+
+  // ── VISTA 4: FLUJO MENSUAL AÑO 1 ───────────────────────────────
+  function renderFlujoMensual() {
+    const corrida = calcCorrida();
+    const yr = corrida[0];
+    const MESES = ['Sep','Oct','Nov','Dic','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago'];
+    // Distribute annual figures across 10 active months (Jul & Ago = vacation, low income)
+    const weightIngresos = [1,1,1,0.8,1,1,1,1,1,1,0.5,0.3]; // Aug/Jul lower
+    const weightNomina   = [1,1,1,1,1,1,1,1,1,1,1,1];         // uniform
+    const sumW = weightIngresos.reduce((s,v)=>s+v,0);
+    const ingMensual   = yr.ingresoTotal / sumW;
+    const nomMensual   = yr.nomina.totalAnual / 12;
+    const gastMensual  = yr.gastosOp / 12;
+    const rentaMensual = yr.rentaInmueble / 12;
+    let acum = 0;
+    const rows = MESES.map((mes, i) => {
+      const ing  = ingMensual * weightIngresos[i];
+      const egr  = nomMensual * weightNomina[i] + gastMensual + rentaMensual;
+      const flujo = ing - egr;
+      acum += flujo;
+      const cls = flujo >= 0 ? '' : 'num-negative';
+      const acumCls = acum >= 0 ? 'num-gold' : 'num-negative';
+      return `<tr>
+        <td><strong>${mes}</strong></td>
+        <td style="text-align:right">${M(ing)}</td>
+        <td style="text-align:right;color:#c0392b">${M(egr)}</td>
+        <td style="text-align:right" class="${cls}">${M(flujo)}</td>
+        <td style="text-align:right" class="${acumCls}">${M(acum)}</td>
+        <td>
+          <div style="background:var(--border);border-radius:3px;height:6px;width:100%;min-width:60px">
+            <div style="background:${flujo>=0?'var(--emerald)':'#e74c3c'};height:6px;border-radius:3px;width:${Math.min(100,Math.abs(flujo)/ingMensual*100).toFixed(0)}%"></div>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+    return `<div class="section-header"><div><div class="section-title">Flujo Mensual Año 1</div>
+      <div class="section-sub">Distribución estimada del primer ciclo escolar (Sep ${yr.ano} – Ago ${yr.ano+1})</div></div></div>
+    <div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Mes</th><th style="text-align:right">Ingresos</th><th style="text-align:right">Egresos</th><th style="text-align:right">Flujo</th><th style="text-align:right">Acumulado</th><th>Balance</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    <div style="padding:14px 0 4px;font-size:10px;color:var(--text-muted)">
+      ⚠ Los pesos mensuales son estimados. Julio-Agosto reflejan vacaciones con menor recaudación. Ajusta las variables para mayor precisión.
+    </div></div>`;
+  }
+
+  // ── VISTA 5: ESCENARIOS GUARDADOS ──────────────────────────────
+  const SC_KEY = 'lil_saved_scenarios';
+  function getSavedScenarios() {
+    try { return JSON.parse(localStorage.getItem(SC_KEY) || '[]'); }
+    catch(e) { return []; }
+  }
+  function saveCurrentScenario(name) {
+    const list = getSavedScenarios();
+    const snap = { name, ts: Date.now(), state: JSON.parse(JSON.stringify(state)) };
+    list.unshift(snap);
+    localStorage.setItem(SC_KEY, JSON.stringify(list.slice(0, 20)));
+    navigate('scenariosaved');
+    toast(`Escenario "${name}" guardado`, 'success');
+  }
+  function loadScenario(idx) {
+    const list = getSavedScenarios();
+    if (!list[idx]) return;
+    Object.assign(state, JSON.parse(JSON.stringify(list[idx].state)));
+    saveState();
+    navigate('dashboard');
+    toast(`Escenario "${list[idx].name}" cargado`, 'success');
+    requestAnimationFrame(() => initCharts(calcCorrida()));
+  }
+  function deleteScenario(idx) {
+    const list = getSavedScenarios();
+    list.splice(idx, 1);
+    localStorage.setItem(SC_KEY, JSON.stringify(list));
+    navigate('scenariosaved');
+  }
+  function renderScenarioSaved() {
+    const list = getSavedScenarios();
+    const corrida = calcCorrida();
+    const y1 = corrida[0], yn = corrida[corrida.length-1];
+    const savedRows = list.length === 0
+      ? '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px">No hay escenarios guardados aún.</td></tr>'
+      : list.map((sc, i) => {
+          const d = new Date(sc.ts).toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'});
+          const yr = sc.state.variables?.anoInicio || '?';
+          return `<tr>
+            <td><strong>${sc.name}</strong><div style="font-size:9px;color:var(--text-muted)">${d}</div></td>
+            <td style="text-align:right">${sc.state.variables?.capitalRequerido ? M(sc.state.variables.capitalRequerido) : '—'}</td>
+            <td style="text-align:right">${yr}</td>
+            <td>
+              <button class="toggle-btn" style="padding:4px 10px;font-size:10px" onclick="App.loadScenario(${i})">Cargar</button>
+            </td>
+            <td>
+              <button onclick="App.deleteScenario(${i})" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:14px">✕</button>
+            </td>
+          </tr>`;
+        }).join('');
+    const nameInputId = 'sc-name-input-' + Date.now();
+    return `<div class="section-header"><div><div class="section-title">Escenarios Guardados</div>
+      <div class="section-sub">Guarda el estado actual y compara entre versiones del modelo</div></div></div>
+    <div class="card" style="margin-bottom:18px">
+      <div class="card-title">Guardar estado actual</div>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <input type="text" id="sc-name-input" class="form-input" placeholder="Nombre del escenario (ej. Escenario Base 2026)"
+          style="flex:1;min-width:200px" value="Escenario ${new Date().toLocaleDateString('es-MX')}">
+        <button class="toggle-btn" style="padding:8px 18px" onclick="App.saveCurrentScenario(document.getElementById('sc-name-input').value)">
+          💾 Guardar escenario actual
+        </button>
+      </div>
+      <div style="margin-top:12px;font-size:10px;color:var(--text-muted)">
+        Estado actual: Capital ${M(state.variables.capitalRequerido)} · ${getYears()} años · EBITDA Año 1: ${M(y1.ebitda)} · Flujo final: ${M(yn.cashAcumulado)}
+      </div>
+    </div>
+    <div class="card"><div class="card-title">Escenarios guardados (${list.length})</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Nombre</th><th style="text-align:right">Capital</th><th style="text-align:right">Año Inicio</th><th>Acción</th><th></th></tr></thead>
+        <tbody>${savedRows}</tbody>
+      </table></div>
+    </div>`;
+  }
+
+  // ── VISTA 6: RATIO MAESTRO-ALUMNO ──────────────────────────────
+  function renderRatioMaestro() {
+    const corrida = calcCorrida();
+    const puestos = state.nominas.puestos || [];
+    // Count docentes — puestos with "maestro", "docente", "profesor", "teacher" in name
+    const docenteKw = /maestro|docente|profesor|maestra|teacher|prof\./i;
+    const totalDocentes = puestos
+      .filter(p => docenteKw.test(p.nombre || ''))
+      .reduce((s, p) => s + (p.count || 1), 0);
+    const rows = corrida.map(yr => {
+      const ratio = totalDocentes > 0 ? (yr.totalAlumnos / totalDocentes).toFixed(1) : '—';
+      const rationNum = totalDocentes > 0 ? yr.totalAlumnos / totalDocentes : null;
+      const cls = rationNum === null ? '' : rationNum <= 20 ? 'be-ok' : rationNum <= 30 ? 'be-warn' : 'be-err';
+      const semaforo = rationNum === null ? '—' : rationNum <= 20 ? '🟢' : rationNum <= 30 ? '🟡' : '🔴';
+      return `<tr class="${cls}">
+        <td>${yr.ano}–${yr.ano+1}</td>
+        <td style="text-align:right">${N(yr.totalAlumnos)}</td>
+        <td style="text-align:right">${totalDocentes || '—'}</td>
+        <td style="text-align:right"><strong>${ratio}</strong></td>
+        <td>${semaforo} ${rationNum===null?'Define puestos en Nóminas':rationNum<=20?'Óptimo':rationNum<=30?'Aceptable':'Alto — revisa dotación'}</td>
+      </tr>`;
+    }).join('');
+    const sinDocentes = totalDocentes === 0 ? `<div style="padding:12px;background:var(--bg);border-radius:6px;font-size:11px;color:var(--text-muted);margin-bottom:14px">
+      ⓘ No se encontraron puestos con "maestro", "docente" o "profesor" en el nombre. Ve a <a href="#" onclick="App.navigate('nominas');return false" style="color:var(--cobalt)">Nóminas</a> y agrega los puestos docentes para activar este análisis.
+    </div>` : '';
+    return `<div class="section-header"><div><div class="section-title">Ratio Maestro-Alumno</div>
+      <div class="section-sub">Alumnos por docente · KPI de calidad educativa y eficiencia de nómina</div></div></div>
+    ${sinDocentes}
+    <div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Ciclo</th><th style="text-align:right">Matrícula</th><th style="text-align:right">Docentes</th><th style="text-align:right">Ratio</th><th>Evaluación</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    <div style="padding:12px 0 0;font-size:10px;color:var(--text-muted)">
+      🟢 ≤ 20 alumnos/maestro — Óptimo &nbsp;·&nbsp; 🟡 21–30 — Aceptable &nbsp;·&nbsp; 🔴 > 30 — Alto
+    </div></div>`;
+  }
+
+  // ── VISTA 9: ALERTAS ───────────────────────────────────────────
+  function renderAlertas() {
+    const corrida = calcCorrida();
+    const cap = calcTopeTotal() || Infinity;
+    const alerts = [];
+    // Check each year
+    corrida.forEach((yr, i) => {
+      const ebitdaPct = yr.ingresoTotal > 0 ? yr.ebitda / yr.ingresoTotal : 0;
+      const ocupPct   = cap < Infinity ? yr.totalAlumnos / cap : null;
+      if (yr.ebitda < 0)
+        alerts.push({ sev:'rojo', ciclo:`${yr.ano}–${yr.ano+1}`, msg:`EBITDA NEGATIVO (${M(yr.ebitda)})`, desc:'El proyecto opera en pérdida este ciclo.' });
+      else if (ebitdaPct < 0.05)
+        alerts.push({ sev:'amarillo', ciclo:`${yr.ano}–${yr.ano+1}`, msg:`Margen EBITDA muy bajo (${(ebitdaPct*100).toFixed(1)}%)`, desc:'Margen inferior al 5% — riesgo de pérdida ante variaciones menores.' });
+      else if (ebitdaPct < 0.15)
+        alerts.push({ sev:'info', ciclo:`${yr.ano}–${yr.ano+1}`, msg:`Margen EBITDA moderado (${(ebitdaPct*100).toFixed(1)}%)`, desc:'Margen entre 5–15%. Vigilar crecimiento de costos.' });
+      if (ocupPct !== null && ocupPct < 0.50)
+        alerts.push({ sev:'amarillo', ciclo:`${yr.ano}–${yr.ano+1}`, msg:`Ocupación baja (${(ocupPct*100).toFixed(0)}% de capacidad)`, desc:`Solo ${N(yr.totalAlumnos)} alumnos de ${N(cap)} máximos. Matrícula insuficiente.` });
+      else if (ocupPct !== null && ocupPct > 0.95)
+        alerts.push({ sev:'info', ciclo:`${yr.ano}–${yr.ano+1}`, msg:`Capacidad casi agotada (${(ocupPct*100).toFixed(0)}%)`, desc:'Considera expansión de infraestructura.' });
+    });
+    const rojos = alerts.filter(a=>a.sev==='rojo').length;
+    const amarillos = alerts.filter(a=>a.sev==='amarillo').length;
+    const info = alerts.filter(a=>a.sev==='info').length;
+    const sevColor = { rojo:'#c0392b', amarillo:'#e67e22', info:'var(--cobalt)' };
+    const sevIcon  = { rojo:'🔴', amarillo:'🟡', info:'🔵' };
+    const alertCards = alerts.length === 0
+      ? '<div class="card" style="text-align:center;padding:32px;color:var(--emerald)"><div style="font-size:32px">✅</div><div style="font-weight:500;margin-top:8px">Sin alertas — el modelo está en buena forma</div></div>'
+      : alerts.map(a => `<div class="card" style="border-left:4px solid ${sevColor[a.sev]};margin-bottom:12px;padding:14px 18px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:16px">${sevIcon[a.sev]}</span>
+            <div>
+              <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted)">${a.ciclo}</div>
+              <div style="font-weight:500;color:${sevColor[a.sev]}">${a.msg}</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${a.desc}</div>
+            </div>
+          </div>
+        </div>`).join('');
+    return `<div class="section-header"><div><div class="section-title">Alertas del Sistema</div>
+      <div class="section-sub">Semáforos automáticos · ${rojos} críticas · ${amarillos} advertencias · ${info} informativas</div></div></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px">
+      <div class="card" style="border-top:3px solid #c0392b;text-align:center;padding:14px">
+        <div style="font-size:24px;color:#c0392b;font-weight:300">${rojos}</div>
+        <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted)">Críticas</div>
+      </div>
+      <div class="card" style="border-top:3px solid #e67e22;text-align:center;padding:14px">
+        <div style="font-size:24px;color:#e67e22;font-weight:300">${amarillos}</div>
+        <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted)">Advertencias</div>
+      </div>
+      <div class="card" style="border-top:3px solid var(--cobalt);text-align:center;padding:14px">
+        <div style="font-size:24px;color:var(--cobalt);font-weight:300">${info}</div>
+        <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted)">Informativas</div>
+      </div>
+    </div>
+    ${alertCards}`;
+  }
+
+  // ── VISTA 10: EXPORTAR EXCEL ────────────────────────────────────
+  function renderExcelExport() {
+    return `<div class="section-header"><div><div class="section-title">Exportar Excel</div>
+      <div class="section-sub">Genera un archivo .xlsx con toda la corrida financiera</div></div></div>
+    <div class="card" style="padding:28px;text-align:center">
+      <div style="font-size:40px;margin-bottom:12px">📊</div>
+      <div style="font-size:15px;font-weight:400;color:var(--navy);margin-bottom:8px">Exportar modelo financiero a Excel</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:24px;max-width:420px;margin-left:auto;margin-right:auto">
+        Genera un archivo <code>.xlsx</code> con la corrida anual completa, matrícula por grado y KPIs ejecutivos.
+        Requiere conexión a internet para cargar la librería SheetJS.
+      </div>
+      <button class="toggle-btn" style="padding:12px 28px;font-size:13px" onclick="App.exportExcel()">
+        ⬇ Descargar Excel (.xlsx)
+      </button>
+    </div>`;
+  }
+
   const VIEW_TITLES = {
     dashboard: 'Dashboard', variables: 'Variables Iniciales', matricula: 'Matriz de Alumnos',
     referencias: 'Valores de Referencia', cuotas: 'Cuotas Escolares',
     inscripciones: 'Inscripciones y Re-inscripciones',
     nominas: 'Nóminas', gastos: 'Gastos de Operación',
-    corrida: 'Corrida Anual', proyeccion: 'Proyección Financiera', reportes: 'Reportes PDF'
+    corrida: 'Corrida Anual', proyeccion: 'Proyección Financiera', reportes: 'Reportes PDF',
+    breakeven: 'Punto de Equilibrio', tirvanp: 'TIR & VPN',
+    escenarios: 'Análisis de Escenarios', flujomensual: 'Flujo Mensual Año 1',
+    scenariosaved: 'Escenarios Guardados', ratiomaestro: 'Ratio Maestro-Alumno',
+    alertas: 'Alertas del Sistema', excelexport: 'Exportar Excel'
   };
   const RENDERERS = {
     dashboard: renderDashboard, variables: renderVariables, matricula: renderMatricula,
     referencias: renderReferencias, cuotas: renderCuotas, inscripciones: renderInscripciones,
     nominas: renderNominas, gastos: renderGastos, corrida: renderCorrida, proyeccion: renderProyeccion,
-    reportes: renderReportes
+    reportes: renderReportes,
+    breakeven: renderBreakEven, tirvanp: renderTIRVPN,
+    escenarios: renderEscenarios, flujomensual: renderFlujoMensual,
+    scenariosaved: renderScenarioSaved, ratiomaestro: renderRatioMaestro,
+    alertas: renderAlertas, excelexport: renderExcelExport
   };
 
   function navigate(view) {
@@ -2620,6 +3056,76 @@ const App = (() => {
     }
   }
 
+  function exportExcel() {
+    // Load SheetJS dynamically if not already loaded
+    function doExport() {
+      const XLSX = window.XLSX;
+      const corrida = calcCorrida();
+      const mat = calcMatricula();
+      const fecha = new Date().toLocaleDateString('es-MX');
+      const wb = XLSX.utils.book_new();
+
+      // Sheet 1: Corrida Anual
+      const header = ['Concepto', ...corrida.map(y => `${y.ano}-${y.ano+1}`)];
+      const rows = [
+        header,
+        ['Matrícula Total', ...corrida.map(y => y.totalAlumnos)],
+        ['INGRESOS'],
+        ['Inscripciones Netas', ...corrida.map(y => Math.round(y.sumInscripciones - y.descInscripcion))],
+        ['Total Colegiaturas', ...corrida.map(y => Math.round(y.sumColegiaturas))],
+        ['Cuotas Escolares', ...corrida.map(y => Math.round(y.sumCuotas))],
+        ['Apoyos Económicos', ...corrida.map(y => -Math.round(y.apoyosEcon))],
+        ['Becas SEP/Maestros', ...corrida.map(y => -Math.round(y.becas))],
+        ['TOTAL INGRESOS', ...corrida.map(y => Math.round(y.ingresoTotal))],
+        ['EGRESOS'],
+        ['Nómina Total', ...corrida.map(y => -Math.round(y.nomina.totalAnual))],
+        ['Gastos de Operación', ...corrida.map(y => -Math.round(y.gastosOp))],
+        ['TOTAL EGRESOS', ...corrida.map(y => -Math.round(y.egresoTotal))],
+        ['RESULTADO OPERATIVO', ...corrida.map(y => Math.round(y.subtotal))],
+        ['Comisión Operadora', ...corrida.map(y => -Math.round(y.operadora))],
+        ['Renta Inmueble', ...corrida.map(y => -Math.round(y.rentaInmueble))],
+        ['EBITDA', ...corrida.map(y => Math.round(y.ebitda))],
+        ['Flujo Acumulado', ...corrida.map(y => Math.round(y.cashAcumulado))],
+        ['Utilidad/Acción', ...corrida.map(y => Math.round(y.utilidadPorAccion))]
+      ];
+      const ws1 = XLSX.utils.aoa_to_sheet(rows);
+      XLSX.utils.book_append_sheet(wb, ws1, 'Corrida Anual');
+
+      // Sheet 2: Matrícula
+      const matHeader = ['Grado', ...corrida.map(y => `${y.ano}`)];
+      const matRows = [matHeader, ...GRADES.map(g => [g.label, ...mat.map(yr => yr[g.key] || 0)])];
+      const ws2 = XLSX.utils.aoa_to_sheet(matRows);
+      XLSX.utils.book_append_sheet(wb, ws2, 'Matrícula');
+
+      // Sheet 3: KPIs
+      const y1 = corrida[0], yn = corrida[corrida.length-1];
+      const capital = state.variables.capitalRequerido || 0;
+      const kpiRows = [
+        ['KPI', 'Valor'],
+        ['Fecha de generación', fecha],
+        ['Capital Requerido', capital],
+        ['Matrícula Año 1', y1.totalAlumnos],
+        ['Ingresos Año 1', Math.round(y1.ingresoTotal)],
+        ['EBITDA Año 1', Math.round(y1.ebitda)],
+        [`Matrícula Año ${corrida.length}`, yn.totalAlumnos],
+        [`EBITDA Año ${corrida.length}`, Math.round(yn.ebitda)],
+        ['Flujo Acumulado Final', Math.round(yn.cashAcumulado)],
+      ];
+      const ws3 = XLSX.utils.aoa_to_sheet(kpiRows);
+      XLSX.utils.book_append_sheet(wb, ws3, 'KPIs');
+
+      XLSX.writeFile(wb, `LyL_Modelo_Financiero_${new Date().getFullYear()}.xlsx`);
+      toast('Excel generado exitosamente', 'success');
+    }
+
+    if (window.XLSX) { doExport(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    s.onload = doExport;
+    s.onerror = () => toast('No se pudo cargar SheetJS — verifica conexión', 'error');
+    document.head.appendChild(s);
+  }
+
   function setHorizonte(n) {
     n = Math.max(1, Math.min(10, parseInt(n) || 7));
     state.horizonte = n;
@@ -2635,7 +3141,8 @@ const App = (() => {
   return {
     init, navigate, resetState, exportCSV, toggleSidebar, recalcular,
     addPuesto, removePuesto, toggleHonorarios,
-    generarPDF: _generarPDF, logout, setHorizonte
+    generarPDF: _generarPDF, logout, setHorizonte,
+    saveCurrentScenario, loadScenario, deleteScenario, exportExcel
   };
 
 })();
