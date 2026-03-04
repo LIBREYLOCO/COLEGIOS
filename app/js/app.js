@@ -91,7 +91,7 @@ const App = (() => {
       aumentoColegiatura: 0.06,
       porcentajeModelo: 0.30,
       porcentajeOperadora: 0.12,
-      rentaInmuebleBase: 15000000,
+      rentaInmuebleBase: 0,
       numAcciones: 100,
       numTickets: 500,
       // ── New enrollment variables ──
@@ -800,7 +800,7 @@ const App = (() => {
     </div>
     <div class="charts-grid">
       <div class="chart-card"><div class="chart-title">Composición de Ingresos Año 1</div><div class="chart-wrap"><canvas id="chart-pie"></canvas></div></div>
-      <div class="chart-card"><div class="chart-title">Margen EBITDA % · Evolución</div><div class="chart-wrap"><canvas id="chart-margen"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">Composición de Egresos Año 1</div><div class="chart-wrap"><canvas id="chart-gastos-pie"></canvas></div></div>
     </div>
 
     ${renderProyeccionTable(corrida)}`;
@@ -2035,6 +2035,39 @@ const App = (() => {
         responsive: true, maintainAspectRatio: false,
         plugins: {
           legend: { position: 'right', labels: { color: 'rgba(0,33,71,.65)', font: { size: 10 }, padding: 12, boxWidth: 12 } },
+          tooltip: {
+            ...BASE_OPTS.plugins.tooltip, callbacks: {
+              label: ctx => {
+                const t = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                return ` ${ctx.label}: ${M(ctx.raw)} (${(ctx.raw / t * 100).toFixed(1)}%)`;
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // ── Pie de composición de EGRESOS Año 1 ──
+    const elGP = document.getElementById('chart-gastos-pie'); if (!elGP) return;
+    const yr1 = corrida[0];
+    const gpData = [
+      { label: 'Nómina Total', val: yr1.nomina.totalAnual },
+      { label: 'Gastos de Operación', val: yr1.gastosOp },
+      { label: 'Renta Inmueble', val: yr1.rentaInmueble },
+      { label: 'Comisión Operadora', val: yr1.operadora }
+    ].filter(d => d.val > 0);
+    chartInstances.gastosPie = new Chart(elGP, {
+      type: 'doughnut', data: {
+        labels: gpData.map(d => d.label),
+        datasets: [{
+          data: gpData.map(d => d.val),
+          backgroundColor: ['rgba(42,112,204,.82)', 'rgba(197,160,89,.82)', 'rgba(168,127,216,.80)', 'rgba(74,159,255,.75)'],
+          borderColor: '#FFFFFF', borderWidth: 3
+        }]
+      }, options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'right', labels: { color: 'rgba(26,43,72,.85)', font: { size: 12, weight: '400' }, padding: 14, boxWidth: 13 } },
           tooltip: {
             ...BASE_OPTS.plugins.tooltip, callbacks: {
               label: ctx => {
