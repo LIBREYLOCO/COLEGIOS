@@ -16,7 +16,7 @@
 
   <!-- ══════════════════════════════════════════════════
        PORTAL DE ACCESO · L&L Sistema Financiero Institucional
-       Carpeta de piel azul grabada en oro
+       Carpeta de piel azul — logo grande, forma simétrica
   ═══════════════════════════════════════════════════════ -->
   <div id="login-portal">
     <!-- Leather texture layers -->
@@ -25,59 +25,45 @@
     <div class="lp-tex lp-tex-d"></div>
 
     <!-- Gold corner ornaments -->
-    <div class="lp-orn lp-orn-tl"><svg width="56" height="56" viewBox="0 0 56 56" fill="none">
-        <path d="M2 2h28M2 2v28" stroke="#C5A059" stroke-width="1.4" opacity=".6" />
-        <path d="M2 8h8M8 2v8" stroke="#C5A059" stroke-width=".7" opacity=".35" />
-      </svg></div>
-    <div class="lp-orn lp-orn-tr"><svg width="56" height="56" viewBox="0 0 56 56" fill="none">
-        <path d="M54 2H26M54 2v28" stroke="#C5A059" stroke-width="1.4" opacity=".6" />
-        <path d="M54 8h-8M48 2v8" stroke="#C5A059" stroke-width=".7" opacity=".35" />
-      </svg></div>
-    <div class="lp-orn lp-orn-bl"><svg width="56" height="56" viewBox="0 0 56 56" fill="none">
-        <path d="M2 54h28M2 54V26" stroke="#C5A059" stroke-width="1.4" opacity=".6" />
-        <path d="M2 48h8M8 54v-8" stroke="#C5A059" stroke-width=".7" opacity=".35" />
-      </svg></div>
-    <div class="lp-orn lp-orn-br"><svg width="56" height="56" viewBox="0 0 56 56" fill="none">
-        <path d="M54 54H26M54 54V26" stroke="#C5A059" stroke-width="1.4" opacity=".6" />
-        <path d="M54 48h-8M48 54v-8" stroke="#C5A059" stroke-width=".7" opacity=".35" />
-      </svg></div>
+    <div class="lp-orn lp-orn-tl"><svg width="60" height="60" viewBox="0 0 60 60" fill="none"><path d="M2 2h32M2 2v32" stroke="#C5A059" stroke-width="1.5" opacity=".55"/><path d="M2 10h8M10 2v8" stroke="#C5A059" stroke-width=".8" opacity=".30"/></svg></div>
+    <div class="lp-orn lp-orn-tr"><svg width="60" height="60" viewBox="0 0 60 60" fill="none"><path d="M58 2H26M58 2v32" stroke="#C5A059" stroke-width="1.5" opacity=".55"/><path d="M58 10h-8M50 2v8" stroke="#C5A059" stroke-width=".8" opacity=".30"/></svg></div>
+    <div class="lp-orn lp-orn-bl"><svg width="60" height="60" viewBox="0 0 60 60" fill="none"><path d="M2 58h32M2 58V26" stroke="#C5A059" stroke-width="1.5" opacity=".55"/><path d="M2 50h8M10 58v-8" stroke="#C5A059" stroke-width=".8" opacity=".30"/></svg></div>
+    <div class="lp-orn lp-orn-br"><svg width="60" height="60" viewBox="0 0 60 60" fill="none"><path d="M58 58H26M58 58V26" stroke="#C5A059" stroke-width="1.5" opacity=".55"/><path d="M58 50h-8M50 58v-8" stroke="#C5A059" stroke-width=".8" opacity=".30"/></svg></div>
 
-    <!-- All content directly on leather — no card -->
+    <!-- Full-page centred layout — no card box -->
     <div class="lp-cover">
 
-      <!-- Logo embossed on leather -->
+      <!-- LOGO — grande, protagonista -->
       <div class="lp-logo-wrap">
         <img src="img/lyl_logo.png" alt="L&amp;L" class="lp-logo">
       </div>
 
-      <!-- Gold rule top -->
+      <!-- Gold rule -->
       <div class="lp-rule"><span></span><span class="lp-gem">◆</span><span></span></div>
 
-      <!-- Embossed main title -->
-      <div class="lp-title-main">L &amp; L</div>
-      <div class="lp-title-sub">Lógica · Institucional · Liquidez</div>
-      <div class="lp-title-system">Sistema de Modelado Financiero</div>
+      <!-- Tagline — embossed gold text -->
+      <div class="lp-tagline-main">L&amp;L · Lógica Institucional &amp; Liquidez</div>
+      <div class="lp-tagline-sub">Sistema de Modelado Financiero Institucional</div>
 
-      <!-- Gold rule bottom -->
+      <!-- Gold rule -->
       <div class="lp-rule lp-rule-gap"><span></span><span class="lp-gem">◆</span><span></span></div>
 
-      <!-- Form — minimal, embossed into the leather -->
+      <!-- Minimal form — just two fields + button -->
       <form id="login-form" onsubmit="lplLogin(event)" class="lp-form">
         <div class="lp-field">
           <label class="lp-label">Correo electrónico</label>
-          <input type="email" id="lp-email" class="lp-input" placeholder="usuario@dominio.com" autocomplete="email"
-            required>
+          <input type="email" id="lp-email" class="lp-input"
+            placeholder="usuario@dominio.com" autocomplete="email" required>
         </div>
         <div class="lp-field">
           <label class="lp-label">Contraseña</label>
           <div style="position:relative">
-            <input type="password" id="lp-pwd" class="lp-input" placeholder="••••••••" autocomplete="current-password"
-              required>
+            <input type="password" id="lp-pwd" class="lp-input"
+              placeholder="••••••••" autocomplete="current-password" required>
             <button type="button" onclick="lplTogglePwd()" tabindex="-1" class="lp-eye">
               <svg viewBox="0 0 20 20" fill="none" width="14" height="14">
-                <path d="M1.5 10s3-6 8.5-6 8.5 6 8.5 6-3 6-8.5 6S1.5 10 1.5 10z" stroke="currentColor"
-                  stroke-width="1.3" />
-                <circle cx="10" cy="10" r="2.5" stroke="currentColor" stroke-width="1.3" />
+                <path d="M1.5 10s3-6 8.5-6 8.5 6 8.5 6-3 6-8.5 6S1.5 10 1.5 10z" stroke="currentColor" stroke-width="1.3"/>
+                <circle cx="10" cy="10" r="2.5" stroke="currentColor" stroke-width="1.3"/>
               </svg>
             </button>
           </div>
@@ -89,416 +75,223 @@
         </button>
       </form>
 
-      <!-- Engraved footer text -->
+      <!-- Engraved footer -->
       <div class="lp-footer">Información confidencial &nbsp;·&nbsp; Uso interno exclusivo</div>
     </div>
   </div>
 
   <style>
-    /* ═══════════════════════════════════════════════════
-     PORTAL · Carpeta fina de piel azul Oxford grabada en oro
-  ═══════════════════════════════════════════════════ */
-    #login-portal {
-      position: fixed;
-      inset: 0;
-      z-index: 9999;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      /* Deep navy leather — richer, more leather-like depth */
-      background:
-        radial-gradient(ellipse 70% 60% at 20% 15%, #1E3A7A 0%, transparent 55%),
-        radial-gradient(ellipse 80% 70% at 80% 80%, #0A1F55 0%, transparent 55%),
-        radial-gradient(ellipse 100% 100% at 50% 50%, #152660 0%, #0A1636 60%, #060E24 100%);
-      overflow: hidden;
-      animation: lp-open .9s cubic-bezier(.22, .68, 0, 1) both;
-      transition: opacity .7s ease, transform .7s ease;
-    }
+  /* ═══════════════════════════════════════════════════════
+     PORTAL · Carpeta de piel azul Oxford — forma simétrica
+  ═══════════════════════════════════════════════════════ */
+  #login-portal {
+    position: fixed; inset: 0; z-index: 9999;
+    display: flex; align-items: center; justify-content: center;
+    /* Rich Oxford blue leather — matches reference image */
+    background:
+      radial-gradient(ellipse 80% 60% at 15% 10%, #213D7A 0%, transparent 50%),
+      radial-gradient(ellipse 70% 70% at 85% 90%, #0D2255 0%, transparent 55%),
+      radial-gradient(ellipse 120% 120% at 50% 50%, #1A3068 0%, #0E1E4A 50%, #080F28 100%);
+    overflow: hidden;
+    animation: lp-open .9s cubic-bezier(.22,.68,0,1) both;
+    transition: opacity .7s ease, transform .7s ease;
+  }
+  #login-portal.lp-exit { opacity:0; transform:scale(.98); pointer-events:none; }
+  @keyframes lp-open { from{opacity:0} to{opacity:1} }
 
-    #login-portal.lp-exit {
-      opacity: 0;
-      transform: scale(.98);
-      pointer-events: none;
-    }
+  /* Leather grain — three overlapping layers */
+  .lp-tex { position:absolute; inset:0; pointer-events:none; }
+  .lp-tex-h {
+    background-image: repeating-linear-gradient(
+      0deg, transparent, transparent 1px,
+      rgba(255,255,255,.016) 1px, rgba(255,255,255,.016) 2px
+    );
+  }
+  .lp-tex-v {
+    background-image: repeating-linear-gradient(
+      90deg, transparent, transparent 5px,
+      rgba(255,255,255,.010) 5px, rgba(255,255,255,.010) 6px
+    );
+  }
+  .lp-tex-d {
+    background-image: repeating-linear-gradient(
+      52deg, transparent, transparent 16px,
+      rgba(197,160,89,.012) 16px, rgba(197,160,89,.012) 17px
+    );
+  }
 
-    @keyframes lp-open {
-      from {
-        opacity: 0
-      }
+  /* Corners */
+  .lp-orn { position:absolute; }
+  .lp-orn-tl{top:16px;left:16px} .lp-orn-tr{top:16px;right:16px}
+  .lp-orn-bl{bottom:16px;left:16px} .lp-orn-br{bottom:16px;right:16px}
 
-      to {
-        opacity: 1
-      }
-    }
+  /* Cover — centred column on leather, no box whatsoever */
+  .lp-cover {
+    position: relative; z-index: 2;
+    display: flex; flex-direction: column; align-items: center;
+    width: min(580px, 92vw);
+    padding: 0 20px;
+    animation: lp-rise 1s cubic-bezier(.22,.68,0,1.1) .1s both;
+  }
+  @keyframes lp-rise { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
 
-    /* Leather texture — three overlapping grain layers */
-    .lp-tex {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-    }
+  /* ── LOGO ── BIG. Centre stage. */
+  .lp-logo-wrap {
+    width: 320px; height: 320px;
+    margin-bottom: 20px;
+    filter:
+      drop-shadow(0 0 40px rgba(197,160,89,.60))
+      drop-shadow(0 10px 30px rgba(0,0,0,.65));
+    animation: lp-glow 3.5s ease-in-out infinite alternate;
+  }
+  @keyframes lp-glow {
+    from { filter: drop-shadow(0 0 22px rgba(197,160,89,.40)) drop-shadow(0 10px 30px rgba(0,0,0,.65)); }
+    to   { filter: drop-shadow(0 0 52px rgba(197,160,89,.80)) drop-shadow(0 12px 32px rgba(0,0,0,.70)); }
+  }
+  .lp-logo { width:100%; height:100%; object-fit:contain; display:block; }
 
-    .lp-tex-h {
-      background-image: repeating-linear-gradient(0deg,
-          transparent,
-          transparent 2px,
-          rgba(255, 255, 255, .022) 2px,
-          rgba(255, 255, 255, .022) 3px);
-    }
+  /* Gold rules */
+  .lp-rule { display:flex; align-items:center; gap:14px; width:100%; margin-bottom:12px; }
+  .lp-rule-gap { margin-top:10px; margin-bottom:24px; }
+  .lp-rule span:not(.lp-gem) {
+    flex:1; height:1px;
+    background:linear-gradient(to right, transparent, rgba(197,160,89,.65), transparent);
+  }
+  .lp-gem { color:rgba(197,160,89,.65); font-size:8px; }
 
-    .lp-tex-v {
-      background-image: repeating-linear-gradient(90deg,
-          transparent,
-          transparent 6px,
-          rgba(255, 255, 255, .012) 6px,
-          rgba(255, 255, 255, .012) 7px);
-    }
+  /* Embossed taglines */
+  .lp-tagline-main {
+    font-family:'Montserrat',sans-serif; font-size:15px; font-weight:300;
+    letter-spacing:3px; color:rgba(197,160,89,.80); text-align:center;
+    text-shadow: 0 1px 0 rgba(255,220,120,.30), 0 -1px 0 rgba(0,0,0,.55),
+                 0 2px 8px rgba(0,0,0,.35), 0 0 30px rgba(197,160,89,.18);
+    margin-bottom:6px;
+  }
+  .lp-tagline-sub {
+    font-family:'Montserrat',sans-serif; font-size:9px; font-weight:300;
+    letter-spacing:4px; text-transform:uppercase;
+    color:rgba(197,160,89,.45); text-align:center;
+    text-shadow: 0 1px 0 rgba(0,0,0,.55), 0 -1px 0 rgba(255,220,100,.10);
+    margin-bottom:0;
+  }
 
-    .lp-tex-d {
-      background-image: repeating-linear-gradient(52deg,
-          transparent,
-          transparent 18px,
-          rgba(255, 255, 255, .009) 18px,
-          rgba(255, 255, 255, .009) 19px);
-    }
+  /* Form */
+  .lp-form { width:100%; }
+  .lp-field { margin-bottom:14px; }
+  .lp-label {
+    display:block; font-size:8px; letter-spacing:2.5px; text-transform:uppercase;
+    font-family:'Montserrat',sans-serif; color:rgba(197,160,89,.50); margin-bottom:6px;
+    text-shadow: 0 1px 0 rgba(0,0,0,.6);
+  }
+  .lp-input {
+    width:100%;
+    background:rgba(5,15,50,.55);
+    border:none;
+    border-bottom:1px solid rgba(197,160,89,.30);
+    box-shadow: inset 0 2px 6px rgba(0,0,0,.50), inset 0 1px 2px rgba(0,0,0,.30);
+    border-radius:2px; padding:12px 14px;
+    color:#DDD0B3; font-size:14px;
+    outline:none; transition:border-color .2s, box-shadow .2s;
+    font-family:'Montserrat',system-ui,sans-serif;
+  }
+  .lp-input::placeholder { color:rgba(197,160,89,.20); }
+  .lp-input:focus {
+    border-bottom-color:rgba(197,160,89,.75);
+    box-shadow: inset 0 2px 6px rgba(0,0,0,.5), 0 3px 0 rgba(197,160,89,.22);
+  }
+  .lp-eye {
+    position:absolute; right:10px; top:50%; transform:translateY(-50%);
+    background:none; border:none; color:rgba(197,160,89,.38);
+    cursor:pointer; padding:4px; display:flex; align-items:center;
+  }
+  .lp-eye:hover { color:rgba(197,160,89,.75); }
 
-    /* Corner ornaments */
-    .lp-orn {
-      position: absolute;
-    }
+  /* Error */
+  .lp-error {
+    font-size:11px; color:#E8A090; margin-bottom:12px; margin-top:-4px;
+    display:none; padding:8px 12px;
+    background:rgba(160,30,20,.18); border:1px solid rgba(200,55,45,.25);
+    border-radius:2px;
+  }
+  .lp-error.visible { display:block; }
 
-    .lp-orn-tl {
-      top: 18px;
-      left: 18px;
-    }
+  /* Button — gold engraved plaque */
+  .lp-btn {
+    width:100%; margin-top:8px; padding:14px;
+    background:transparent;
+    border:1px solid rgba(197,160,89,.42); border-radius:2px;
+    box-shadow: inset 0 1px 4px rgba(0,0,0,.40), 0 1px 0 rgba(197,160,89,.16);
+    color:#C5A059; font-size:10px; letter-spacing:4.5px; font-weight:400;
+    text-transform:uppercase; cursor:pointer;
+    font-family:'Montserrat',sans-serif;
+    text-shadow: 0 1px 0 rgba(255,220,100,.28), 0 -1px 0 rgba(0,0,0,.55),
+                 0 0 18px rgba(197,160,89,.18);
+    transition:all .25s;
+    display:flex; align-items:center; justify-content:center; gap:10px;
+  }
+  .lp-btn:hover {
+    border-color:rgba(197,160,89,.68);
+    color:#D9C070;
+    box-shadow: inset 0 1px 4px rgba(0,0,0,.3), 0 0 24px rgba(197,160,89,.16),
+                0 1px 0 rgba(197,160,89,.24);
+    text-shadow: 0 0 20px rgba(197,160,89,.50), 0 1px 0 rgba(255,220,100,.35);
+  }
+  .lp-btn:active { transform:translateY(1px); }
+  .lp-btn:disabled { opacity:.45; cursor:not-allowed; transform:none; }
 
-    .lp-orn-tr {
-      top: 18px;
-      right: 18px;
-    }
+  .lp-spinner {
+    width:12px; height:12px;
+    border:1.5px solid rgba(197,160,89,.25); border-top-color:#C5A059;
+    border-radius:50%; animation:lp-spin .7s linear infinite;
+  }
+  @keyframes lp-spin { to{transform:rotate(360deg)} }
 
-    .lp-orn-bl {
-      bottom: 18px;
-      left: 18px;
-    }
-
-    .lp-orn-br {
-      bottom: 18px;
-      right: 18px;
-    }
-
-    /* Cover — no box, just centered column on the leather */
-    .lp-cover {
-      position: relative;
-      z-index: 2;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      width: min(480px, 92vw);
-      animation: lp-rise .9s cubic-bezier(.22, .68, 0, 1.1) .1s both;
-    }
-
-    @keyframes lp-rise {
-      from {
-        opacity: 0;
-        transform: translateY(18px)
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0)
-      }
-    }
-
-    /* Logo — large, drop shadow only, no ring */
-    .lp-logo-wrap {
-      width: 190px;
-      height: 190px;
-      margin-bottom: 16px;
-      filter: drop-shadow(0 0 28px rgba(197, 160, 89, .55)) drop-shadow(0 6px 20px rgba(0, 0, 0, .6));
-      animation: lp-glow 3s ease-in-out infinite alternate;
-    }
-
-    @keyframes lp-glow {
-      from {
-        filter: drop-shadow(0 0 16px rgba(197, 160, 89, .38)) drop-shadow(0 6px 20px rgba(0, 0, 0, .6));
-      }
-
-      to {
-        filter: drop-shadow(0 0 38px rgba(197, 160, 89, .72)) drop-shadow(0 8px 24px rgba(0, 0, 0, .65));
-      }
-    }
-
-    .lp-logo {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      display: block;
-      border-radius: 0;
-    }
-
-    /* Gold rule */
-    .lp-rule {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      width: 100%;
-      margin-bottom: 14px;
-    }
-
-    .lp-rule-gap {
-      margin-top: 10px;
-      margin-bottom: 22px;
-    }
-
-    .lp-rule span:not(.lp-gem) {
-      flex: 1;
-      height: 1px;
-      background: linear-gradient(to right, transparent, rgba(197, 160, 89, .70), transparent);
-    }
-
-    .lp-gem {
-      color: rgba(197, 160, 89, .70);
-      font-size: 8px;
-    }
-
-    /* ── EMBOSSED TEXT EFFECT ──
-     Emboss = dark shadow below + lighter highlight above, text same color as bg slightly lighter */
-    .lp-title-main {
-      font-family: 'Montserrat', sans-serif;
-      font-size: 52px;
-      font-weight: 300;
-      letter-spacing: 18px;
-      color: #C5A059;
-      /* Embossed lettering: highlight top-left, shadow bottom-right */
-      text-shadow:
-        0 1px 0 rgba(255, 220, 120, .45),
-        0 -1px 0 rgba(0, 0, 0, .50),
-        0 2px 6px rgba(0, 0, 0, .40),
-        0 0 30px rgba(197, 160, 89, .25);
-      margin-bottom: 6px;
-      text-align: center;
-    }
-
-    .lp-title-sub {
-      font-family: 'Montserrat', sans-serif;
-      font-size: 11px;
-      font-weight: 300;
-      letter-spacing: 4.5px;
-      text-transform: uppercase;
-      color: rgba(197, 160, 89, .60);
-      text-shadow:
-        0 1px 0 rgba(255, 220, 100, .18),
-        0 -1px 0 rgba(0, 0, 0, .45),
-        0 1px 4px rgba(0, 0, 0, .30);
-      margin-bottom: 4px;
-      text-align: center;
-    }
-
-    .lp-title-system {
-      font-family: 'Montserrat', sans-serif;
-      font-size: 9px;
-      font-weight: 300;
-      letter-spacing: 5px;
-      text-transform: uppercase;
-      color: rgba(197, 160, 89, .38);
-      text-shadow: 0 1px 0 rgba(0, 0, 0, .5), 0 -1px 0 rgba(255, 220, 100, .08);
-      margin-bottom: 4px;
-      text-align: center;
-    }
-
-    /* Form */
-    .lp-form {
-      width: 100%;
-    }
-
-    .lp-field {
-      margin-bottom: 14px;
-    }
-
-    .lp-label {
-      display: block;
-      font-size: 8px;
-      letter-spacing: 2.2px;
-      text-transform: uppercase;
-      font-family: 'Montserrat', sans-serif;
-      color: rgba(197, 160, 89, .48);
-      margin-bottom: 5px;
-      /* Subtle engraved label */
-      text-shadow: 0 1px 0 rgba(0, 0, 0, .6), 0 -1px 0 rgba(255, 220, 100, .08);
-    }
-
-    .lp-input {
-      width: 100%;
-      background: rgba(5, 18, 55, .55);
-      /* Inset groove = engraved into the leather */
-      border: none;
-      border-bottom: 1px solid rgba(197, 160, 89, .32);
-      box-shadow: inset 0 2px 5px rgba(0, 0, 0, .45), inset 0 1px 2px rgba(0, 0, 0, .30);
-      border-radius: 2px;
-      padding: 11px 13px;
-      color: #D8CBAA;
-      font-size: 13.5px;
-      outline: none;
-      transition: border-color .2s, box-shadow .2s;
-      font-family: 'Montserrat', system-ui, sans-serif;
-    }
-
-    .lp-input::placeholder {
-      color: rgba(197, 160, 89, .22);
-    }
-
-    .lp-input:focus {
-      border-bottom-color: rgba(197, 160, 89, .75);
-      box-shadow: inset 0 2px 5px rgba(0, 0, 0, .5), 0 2px 0 rgba(197, 160, 89, .25);
-    }
-
-    .lp-eye {
-      position: absolute;
-      right: 8px;
-      top: 50%;
-      transform: translateY(-50%);
-      background: none;
-      border: none;
-      color: rgba(197, 160, 89, .38);
-      cursor: pointer;
-      padding: 4px;
-      display: flex;
-      align-items: center;
-    }
-
-    .lp-eye:hover {
-      color: rgba(197, 160, 89, .75);
-    }
-
-    /* Error */
-    .lp-error {
-      font-size: 11px;
-      color: #E8A090;
-      margin-bottom: 10px;
-      margin-top: -4px;
-      display: none;
-      padding: 7px 10px;
-      background: rgba(150, 30, 20, .18);
-      border: 1px solid rgba(200, 60, 50, .22);
-      border-radius: 2px;
-      text-shadow: 0 1px 2px rgba(0, 0, 0, .4);
-    }
-
-    .lp-error.visible {
-      display: block;
-    }
-
-    /* Button — gold engraved plaque look */
-    .lp-btn {
-      width: 100%;
-      margin-top: 6px;
-      padding: 14px;
-      background: transparent;
-      border: 1px solid rgba(197, 160, 89, .45);
-      border-radius: 2px;
-      /* Inset shadow for engraved plaque feel */
-      box-shadow: inset 0 1px 3px rgba(0, 0, 0, .4), 0 1px 0 rgba(197, 160, 89, .18);
-      color: #C5A059;
-      font-size: 10px;
-      letter-spacing: 4px;
-      font-weight: 400;
-      text-transform: uppercase;
-      cursor: pointer;
-      font-family: 'Montserrat', sans-serif;
-      /* Engraved text */
-      text-shadow:
-        0 1px 0 rgba(255, 220, 100, .30),
-        0 -1px 0 rgba(0, 0, 0, .55),
-        0 0 16px rgba(197, 160, 89, .20);
-      transition: all .25s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-    }
-
-    .lp-btn:hover {
-      border-color: rgba(197, 160, 89, .72);
-      color: #D9C070;
-      box-shadow: inset 0 1px 3px rgba(0, 0, 0, .3), 0 0 20px rgba(197, 160, 89, .18), 0 1px 0 rgba(197, 160, 89, .25);
-      text-shadow: 0 0 18px rgba(197, 160, 89, .45), 0 1px 0 rgba(255, 220, 100, .35);
-    }
-
-    .lp-btn:active {
-      transform: translateY(1px);
-    }
-
-    .lp-btn:disabled {
-      opacity: .45;
-      cursor: not-allowed;
-      transform: none;
-    }
-
-    .lp-spinner {
-      width: 12px;
-      height: 12px;
-      border: 1.5px solid rgba(197, 160, 89, .25);
-      border-top-color: #C5A059;
-      border-radius: 50%;
-      animation: lp-spin .7s linear infinite;
-    }
-
-    @keyframes lp-spin {
-      to {
-        transform: rotate(360deg)
-      }
-    }
-
-    /* Footer — engraved fine print */
-    .lp-footer {
-      margin-top: 24px;
-      font-size: 7.5px;
-      letter-spacing: 2.5px;
-      text-transform: uppercase;
-      font-family: 'Montserrat', sans-serif;
-      color: rgba(197, 160, 89, .22);
-      text-shadow: 0 1px 0 rgba(0, 0, 0, .6), 0 -1px 0 rgba(255, 220, 100, .05);
-      text-align: center;
-    }
+  /* Footer engraved */
+  .lp-footer {
+    margin-top:26px; font-size:7.5px; letter-spacing:2.5px;
+    text-transform:uppercase; font-family:'Montserrat',sans-serif;
+    color:rgba(197,160,89,.22);
+    text-shadow: 0 1px 0 rgba(0,0,0,.6);
+    text-align:center;
+  }
   </style>
 
   <script>
-    (function () {
-      if (sessionStorage.getItem('lil_auth') === '1') {
-        document.getElementById('login-portal').style.display = 'none';
+    (function(){
+      if(sessionStorage.getItem('lil_auth')==='1'){
+        document.getElementById('login-portal').style.display='none';
       }
     })();
-    function lplLogin(e) {
+    function lplLogin(e){
       e.preventDefault();
-      const email = document.getElementById('lp-email').value.trim().toLowerCase();
-      const pwd = document.getElementById('lp-pwd').value;
-      const err = document.getElementById('lp-error');
-      const btn = document.getElementById('lp-btn');
-      const txt = document.getElementById('lp-btn-text');
-      const spin = document.getElementById('lp-btn-spin');
+      const email=document.getElementById('lp-email').value.trim().toLowerCase();
+      const pwd=document.getElementById('lp-pwd').value;
+      const err=document.getElementById('lp-error');
+      const btn=document.getElementById('lp-btn');
+      const txt=document.getElementById('lp-btn-text');
+      const spin=document.getElementById('lp-btn-spin');
       err.classList.remove('visible');
-      btn.disabled = true; txt.style.display = 'none'; spin.style.display = 'block';
-      setTimeout(() => {
-        if (email === 'stdmexico@me.com' && pwd === 'Newland72') {
-          sessionStorage.setItem('lil_auth', '1');
-          const p = document.getElementById('login-portal');
+      btn.disabled=true; txt.style.display='none'; spin.style.display='block';
+      setTimeout(()=>{
+        if(email==='stdmexico@me.com'&&pwd==='Newland72'){
+          sessionStorage.setItem('lil_auth','1');
+          const p=document.getElementById('login-portal');
           p.classList.add('lp-exit');
-          setTimeout(() => { p.style.display = 'none'; }, 700);
+          setTimeout(()=>{p.style.display='none';},700);
         } else {
           err.classList.add('visible');
-          btn.disabled = false; txt.style.display = 'block'; spin.style.display = 'none';
-          const cover = document.querySelector('.lp-cover');
-          cover.style.transition = 'transform .4s cubic-bezier(.36,.07,.19,.97)';
-          ['-8px', '8px', '-5px', '5px', '0'].forEach((x, i) =>
-            setTimeout(() => { cover.style.transform = `translateX(${x})`; }, i * 65)
+          btn.disabled=false; txt.style.display='block'; spin.style.display='none';
+          const cover=document.querySelector('.lp-cover');
+          cover.style.transition='transform .4s cubic-bezier(.36,.07,.19,.97)';
+          ['-9px','9px','-6px','6px','0'].forEach((x,i)=>
+            setTimeout(()=>{cover.style.transform=`translateX(${x})`;},i*65)
           );
         }
-      }, 800);
+      },800);
     }
-    function lplTogglePwd() {
-      const i = document.getElementById('lp-pwd');
-      i.type = i.type === 'password' ? 'text' : 'password';
+    function lplTogglePwd(){
+      const i=document.getElementById('lp-pwd');
+      i.type=i.type==='password'?'text':'password';
     }
   </script>
 
