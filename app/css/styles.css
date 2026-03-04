@@ -165,10 +165,47 @@ button {
 }
 
 .app-layout.sidebar-collapsed .sidebar {
-  width: 0;
-  opacity: 0;
-  pointer-events: none;
+  width: 56px;
 }
+
+/* Collapse button */
+.sidebar-collapse-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,.45);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .18s, color .18s;
+  flex-shrink: 0;
+}
+.sidebar-collapse-btn:hover { background: rgba(255,255,255,.08); color: #fff; }
+
+/* When collapsed: hide text labels, section labels, brand text, footer buttons text */
+.app-layout.sidebar-collapsed .brand-text,
+.app-layout.sidebar-collapsed .nav-section-label,
+.app-layout.sidebar-collapsed .nav-item span,
+.app-layout.sidebar-collapsed .sidebar-footer .btn-export span,
+.app-layout.sidebar-collapsed .sidebar-footer .btn-logout span { display: none; }
+
+.app-layout.sidebar-collapsed .sidebar-brand { padding: 16px 8px; justify-content: center; }
+.app-layout.sidebar-collapsed .brand-logo-wrap { margin: 0 auto; }
+.app-layout.sidebar-collapsed .sidebar-collapse-btn { margin: 0 auto; }
+.app-layout.sidebar-collapsed .nav-item { justify-content: center; padding: 10px 0; }
+.app-layout.sidebar-collapsed .nav-icon { margin: 0; }
+.app-layout.sidebar-collapsed .sidebar-footer { padding: 10px 4px; align-items: center; }
+.app-layout.sidebar-collapsed .btn-export,
+.app-layout.sidebar-collapsed .btn-logout { justify-content: center; min-width: 0; padding: 8px; }
+
+/* Flip collapse icon when collapsed */
+.app-layout.sidebar-collapsed #sidebar-toggle-icon {
+  transform: rotate(180deg);
+}
+#sidebar-toggle-icon { transition: transform .28s ease; }
 
 /* Brand */
 .sidebar-brand {

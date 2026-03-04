@@ -99,6 +99,7 @@ const App = (() => {
       tasaCaptacion: 0.05     // crecimiento anual de nuevos ingresos externos
     },
     horizonte: 7,
+    ingresosAdicionales: [],   // [{nombre, montoAnual, esRecurrente, cicloInicio}]
 
     // ── Matrícula inicial por grado (Año 0 = 2026) ──
     // Distribución: 15 Maternal + 31 K1 + 36 K2 + 36 K3 + 54×6 Primaria + 62×2+61 Sec + 45+44×2 Bach
@@ -702,7 +703,14 @@ const App = (() => {
       const apoyosEcon = sumColegiaturas * state.descuentos.apoyosEconomicosPct;
       const becas = sumColegiaturas * state.descuentos.becasSepPct;
       const prontoPago = sumColegiaturas * (state.descuentos.prontoPagoPct || 0);
-      const ingresoTotal = (sumInscripciones - descInscripcion) + sumColegiaturas - apoyosEcon - becas - prontoPago + sumCuotas;
+      // Ingresos adicionales / eventos
+      const ingExtra = (state.ingresosAdicionales || []).reduce((s, ia) => {
+        const starts = ia.cicloInicio || 1;
+        if (i + 1 < starts) return s;
+        if (!ia.esRecurrente && i + 1 > starts) return s;
+        return s + (ia.montoAnual || 0) * Math.pow(1 + state.variables.inflacion, i);
+      }, 0);
+      const ingresoTotal = (sumInscripciones - descInscripcion) + sumColegiaturas - apoyosEcon - becas - prontoPago + sumCuotas + ingExtra;
 
       const nomina = calcNomina(i, totalAlumnos);
       const gastosOpDet = calcGastos(i, totalAlumnos);
@@ -720,7 +728,7 @@ const App = (() => {
       results.push({
         ano, i, infFactor, colFactor,
         gradeEnrollment, levelEnrollment, totalAlumnos,
-        sumInscripciones, descInscripcion, sumColegiaturas, sumCuotas,
+        sumInscripciones, descInscripcion, sumColegiaturas, sumCuotas, ingExtra,
         apoyosEcon, becas, prontoPago, ingresoTotal,
         nomina, gastosOp, egresoTotal,
         subtotal, operadora, rentaInmueble, ebitda,
@@ -2308,6 +2316,180 @@ const App = (() => {
   // 18. NAVIGATION
   // ============================================================
 
+
+  // ============================================================
+  // ── NUEVAS VISTAS — BATCH 2 ──────────────────────────────────
+  // ============================================================
+
+  // ── COSTO POR ALUMNO ─────────────────────────────────────────
+  function renderCostoPorAlumno() {
+    const corrida = calcCorrida();
+    const y1 = corrida[0];
+    const rows = corrida.map(yr => {
+      const cpa = yr.totalAlumnos > 0 ? yr.egresoTotal / yr.totalAlumnos : 0;
+      const ipa = yr.totalAlumnos > 0 ? yr.ingresoTotal / yr.totalAlumnos : 0;
+      const margen = yr.ingresoTotal > 0 ? yr.ebitda / yr.ingresoTotal : 0;
+      const cpaColor = cpa < ipa ? 'var(--emerald)' : '#c0392b';
+      const cpaBase = y1.totalAlumnos > 0 ? y1.egresoTotal / y1.totalAlumnos : 1;
+      const delta = cpa - cpaBase;
+      return `<tr>
+        <td>${yr.ano}–${yr.ano+1}</td>
+        <td style="text-align:right">${N(yr.totalAlumnos)}</td>
+        <td style="text-align:right">${M(yr.egresoTotal)}</td>
+        <td style="text-align:right;color:${cpaColor}"><strong>${M(cpa)}</strong></td>
+        <td style="text-align:right">${M(ipa)}</td>
+        <td style="text-align:right;${margen<0?'color:#c0392b':''}">${(margen*100).toFixed(1)}%</td>
+        <td style="text-align:right;font-size:11px;color:${delta<=0?'var(--emerald)':'#e67e22'}">
+          ${delta===0?'—':(delta>0?'+':'')}${M(delta)}
+        </td>
+      </tr>`;
+    }).join('');
+    const best = corrida.reduce((b,y)=>{
+      const c=y.totalAlumnos>0?y.egresoTotal/y.totalAlumnos:Infinity;
+      return c < (b.totalAlumnos>0?b.egresoTotal/b.totalAlumnos:Infinity) ? y : b;
+    }, corrida[0]);
+    return `<div class="section-header"><div><div class="section-title">Costo por Alumno</div>
+      <div class="section-sub">Egreso total ÷ matrícula · eficiencia de escala por ciclo</div></div></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:18px">
+      <div class="card" style="border-top:3px solid var(--cobalt);text-align:center;padding:16px">
+        <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px">Costo/Alumno Año 1</div>
+        <div style="font-size:22px;font-weight:300;color:var(--cobalt)">${M(corrida[0].totalAlumnos>0?corrida[0].egresoTotal/corrida[0].totalAlumnos:0)}</div>
+      </div>
+      <div class="card" style="border-top:3px solid var(--emerald);text-align:center;padding:16px">
+        <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px">Mejor Ciclo</div>
+        <div style="font-size:22px;font-weight:300;color:var(--emerald)">${best.ano}–${best.ano+1}</div>
+      </div>
+      <div class="card" style="border-top:3px solid var(--gold);text-align:center;padding:16px">
+        <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px">Ingreso/Alumno Año 1</div>
+        <div style="font-size:22px;font-weight:300;color:var(--gold)">${M(corrida[0].totalAlumnos>0?corrida[0].ingresoTotal/corrida[0].totalAlumnos:0)}</div>
+      </div>
+    </div>
+    <div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Ciclo</th><th style="text-align:right">Matrícula</th><th style="text-align:right">Egreso Total</th><th style="text-align:right">Costo/Alumno</th><th style="text-align:right">Ingreso/Alumno</th><th style="text-align:right">Margen</th><th style="text-align:right">Δ vs Año 1</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    <div style="padding:10px 0 0;font-size:10px;color:var(--text-muted)">
+      Si Costo/Alumno baja año a año → <span style="color:var(--emerald)">economías de escala</span>. Si sube → revisar control de costos.
+    </div></div>`;
+  }
+
+  // ── INGRESOS ADICIONALES / EVENTOS ───────────────────────────
+  function renderIngresosAdicionales() {
+    const list = state.ingresosAdicionales || [];
+    const corrida = calcCorrida();
+    const rows = list.length === 0
+      ? '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px">No hay ingresos adicionales definidos.</td></tr>'
+      : list.map((ia, i) => `<tr>
+          <td><input class="cell-input" value="${ia.nombre||''}" style="width:160px" oninput="App.updateIngreso(${i},'nombre',this.value)"></td>
+          <td><input type="number" class="cell-input" value="${ia.montoAnual||0}" step="10000" style="width:110px;text-align:right" oninput="App.updateIngreso(${i},'montoAnual',+this.value)"></td>
+          <td style="text-align:center">
+            <input type="number" class="cell-input" value="${ia.cicloInicio||1}" min="1" max="${getYears()}" step="1" style="width:55px;text-align:center" oninput="App.updateIngreso(${i},'cicloInicio',+this.value)">
+          </td>
+          <td style="text-align:center">
+            <label style="cursor:pointer;display:flex;align-items:center;gap:6px;justify-content:center">
+              <input type="checkbox" ${ia.esRecurrente?'checked':''} style="accent-color:var(--emerald)" onchange="App.updateIngreso(${i},'esRecurrente',this.checked)">
+              <span style="font-size:11px">${ia.esRecurrente?'Anual':'Solo Año '+ia.cicloInicio}</span>
+            </label>
+          </td>
+          <td style="text-align:right">${M((ia.montoAnual||0)*(ia.esRecurrente?getYears():1))}</td>
+          <td><button onclick="App.removeIngreso(${i})" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:16px;padding:2px 6px">✕</button></td>
+        </tr>`).join('');
+    const totalAnual = list.reduce((s,ia)=>s+(ia.esRecurrente?ia.montoAnual||0:0),0);
+    const totalEventos = list.reduce((s,ia)=>s+(!ia.esRecurrente?ia.montoAnual||0:0),0);
+    return `<div class="section-header"><div><div class="section-title">Ingresos Adicionales</div>
+      <div class="section-sub">Eventos, renta de instalaciones, donaciones y otros no-recurrentes</div></div>
+      <button class="toggle-btn" onclick="App.addIngreso()">+ Agregar ingreso</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:18px">
+      <div class="card" style="border-top:3px solid var(--emerald);text-align:center;padding:16px">
+        <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px">Recurrentes / año</div>
+        <div style="font-size:22px;font-weight:300;color:var(--emerald)">${M(totalAnual)}</div>
+      </div>
+      <div class="card" style="border-top:3px solid var(--gold);text-align:center;padding:16px">
+        <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px">Eventos (único)</div>
+        <div style="font-size:22px;font-weight:300;color:var(--gold)">${M(totalEventos)}</div>
+      </div>
+      <div class="card" style="border-top:3px solid var(--cobalt);text-align:center;padding:16px">
+        <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px">Ingreso Extra Año 1</div>
+        <div style="font-size:22px;font-weight:300;color:var(--cobalt)">${M(corrida[0].ingExtra||0)}</div>
+      </div>
+    </div>
+    <div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Concepto</th><th style="text-align:right">Monto Anual</th><th style="text-align:center">Desde Ciclo</th><th style="text-align:center">Tipo</th><th style="text-align:right">Total acumulado</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div></div>`;
+  }
+
+  // ── HISTORIAL DE CAMBIOS ──────────────────────────────────────
+  const HIST_KEY = 'lil_change_log';
+  function getHistorial() {
+    try { return JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); } catch(e) { return []; }
+  }
+  function logChange(campo, valorAnterior, valorNuevo) {
+    const log = getHistorial();
+    log.unshift({ ts: Date.now(), campo, anterior: valorAnterior, nuevo: valorNuevo });
+    localStorage.setItem(HIST_KEY, JSON.stringify(log.slice(0, 200)));
+  }
+  function clearHistorial() {
+    localStorage.removeItem(HIST_KEY);
+    navigate('historial');
+  }
+  function renderHistorial() {
+    const log = getHistorial();
+    const rows = log.length === 0
+      ? '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:24px">No hay cambios registrados aún. Los cambios se registran automáticamente al editar variables.</td></tr>'
+      : log.map(e => {
+          const d = new Date(e.ts).toLocaleString('es-MX',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+          const antStr = JSON.stringify(e.anterior)?.substring(0,40) ?? '—';
+          const newStr = JSON.stringify(e.nuevo)?.substring(0,40) ?? '—';
+          return `<tr>
+            <td style="font-size:10px;color:var(--text-muted);white-space:nowrap">${d}</td>
+            <td><strong>${e.campo}</strong></td>
+            <td style="color:#c0392b;font-size:11px">${antStr}</td>
+            <td style="color:var(--emerald);font-size:11px">${newStr}</td>
+          </tr>`;
+        }).join('');
+    return `<div class="section-header"><div><div class="section-title">Historial de Cambios</div>
+      <div class="section-sub">${log.length} cambio${log.length!==1?'s':''} registrado${log.length!==1?'s':''} en este navegador</div></div>
+      ${log.length>0 ? `<button class="toggle-btn" onclick="App.clearHistorial()" style="color:#c0392b">🗑 Limpiar historial</button>` : ''}
+    </div>
+    <div class="card"><div class="table-wrap"><table>
+      <thead><tr><th>Fecha/Hora</th><th>Campo</th><th>Valor anterior</th><th>Valor nuevo</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div></div>`;
+  }
+
+  // ── RESUMEN EJECUTIVO PDF ─────────────────────────────────────
+  function renderResumenEjec() {
+    return `<div class="section-header"><div><div class="section-title">Resumen Ejecutivo PDF</div>
+      <div class="section-sub">Documento de 2 páginas tipo executive summary para inversionistas</div></div></div>
+    <div class="card" style="padding:32px;text-align:center">
+      <div style="font-size:44px;margin-bottom:14px">📄</div>
+      <div style="font-size:16px;font-weight:400;color:var(--navy);margin-bottom:8px">Resumen Ejecutivo para Inversionistas</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;max-width:440px;margin-left:auto;margin-right:auto">
+        Genera un PDF compacto con: logo institucional, KPIs clave, TIR/VPN, flujo acumulado, tabla de resultados y alertas del modelo.
+        Diseñado para presentar a socios e inversionistas.
+      </div>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:24px">
+        <button class="toggle-btn" style="padding:12px 28px;font-size:13px;background:var(--navy);color:#fff;border-color:var(--navy)" onclick="App.generarPDF('ejecutivo')">
+          📄 Reporte Ejecutivo (Dashboard)
+        </button>
+        <button class="toggle-btn" style="padding:12px 28px;font-size:13px;background:var(--gold);color:#fff;border-color:var(--gold)" onclick="App.generarPDF('proyeccion')">
+          📊 Proyección Financiera Completa
+        </button>
+        <button class="toggle-btn" style="padding:12px 28px;font-size:13px;background:var(--emerald);color:#fff;border-color:var(--emerald)" onclick="App.generarPDF('matricula')">
+          🏫 Matrícula por Nivel
+        </button>
+        <button class="toggle-btn" style="padding:12px 28px;font-size:13px;background:var(--cobalt);color:#fff;border-color:var(--cobalt)" onclick="App.generarPDF('nomina')">
+          👥 Reporte de Nómina
+        </button>
+      </div>
+      <div style="margin-top:20px;font-size:10px;color:var(--text-muted)">
+        Los reportes se abren en una ventana nueva lista para imprimir o guardar como PDF desde el navegador.
+      </div>
+    </div>`;
+  }
+
   // ============================================================
   // ── ANÁLISIS AVANZADO — 8 NUEVAS VISTAS ──────────────────────
   // ============================================================
@@ -2822,7 +3004,9 @@ const App = (() => {
     breakeven: 'Punto de Equilibrio', tirvanp: 'TIR & VPN',
     escenarios: 'Análisis de Escenarios', flujomensual: 'Flujo Mensual Año 1',
     scenariosaved: 'Escenarios Guardados', ratiomaestro: 'Ratio Formadores-Alumnos',
-    alertas: 'Alertas del Sistema', excelexport: 'Exportar Excel'
+    alertas: 'Alertas del Sistema', excelexport: 'Exportar Excel',
+    costoporal: 'Costo por Alumno', ingresosadicionales: 'Ingresos Adicionales',
+    historial: 'Historial de Cambios', resumenejec: 'Resumen Ejecutivo PDF'
   };
   const RENDERERS = {
     dashboard: renderDashboard, variables: renderVariables, matricula: renderMatricula,
@@ -2832,7 +3016,9 @@ const App = (() => {
     breakeven: renderBreakEven, tirvanp: renderTIRVPN,
     escenarios: renderEscenarios, flujomensual: renderFlujoMensual,
     scenariosaved: renderScenarioSaved, ratiomaestro: renderRatioMaestro,
-    alertas: renderAlertas, excelexport: renderExcelExport
+    alertas: renderAlertas, excelexport: renderExcelExport,
+    costoporal: renderCostoPorAlumno, ingresosadicionales: renderIngresosAdicionales,
+    historial: renderHistorial, resumenejec: renderResumenEjec
   };
 
   function navigate(view) {
@@ -3204,6 +3390,26 @@ const App = (() => {
     document.head.appendChild(s);
   }
 
+
+  function addIngreso() {
+    if (!state.ingresosAdicionales) state.ingresosAdicionales = [];
+    state.ingresosAdicionales.push({ nombre: 'Nuevo ingreso', montoAnual: 50000, esRecurrente: false, cicloInicio: 1 });
+    saveState();
+    navigate('ingresosadicionales');
+  }
+  function removeIngreso(idx) {
+    (state.ingresosAdicionales || []).splice(idx, 1);
+    saveState();
+    navigate('ingresosadicionales');
+  }
+  function updateIngreso(idx, campo, valor) {
+    if (!state.ingresosAdicionales || !state.ingresosAdicionales[idx]) return;
+    const prev = state.ingresosAdicionales[idx][campo];
+    state.ingresosAdicionales[idx][campo] = valor;
+    logChange(`ingresoAdicional[${idx}].${campo}`, prev, valor);
+    saveState();
+  }
+
   function setTasaDescuento(tasa) {
     tasa = Math.max(0.01, Math.min(0.50, parseFloat(tasa) || 0.12));
     if (!state.variables) state.variables = {};
@@ -3231,7 +3437,8 @@ const App = (() => {
     init, navigate, resetState, exportCSV, toggleSidebar, recalcular,
     addPuesto, removePuesto, toggleHonorarios,
     generarPDF: _generarPDF, logout, setHorizonte,
-    saveCurrentScenario, loadScenario, deleteScenario, exportExcel, setTasaDescuento
+    saveCurrentScenario, loadScenario, deleteScenario, exportExcel, setTasaDescuento,
+    addIngreso, removeIngreso, updateIngreso, clearHistorial
   };
 
 })();
