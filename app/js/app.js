@@ -1996,19 +1996,199 @@ const App = (() => {
   }
 
   // ============================================================
-  // 17. NAVIGATION
+  // 17. VIEW — REPORTES PDF
+  // ============================================================
+  function renderReportes() {
+    const reports = [
+      { id: 'ejecutivo', icon: '📊', title: 'Resumen Ejecutivo', color: 'var(--cobalt)', desc: 'KPIs clave, EBITDA, ingresos, matrícula y flujo acumulado de los 7 ciclos.' },
+      { id: 'corrida', icon: '📈', title: 'Corrida Anual · 7 Años', color: 'var(--oxford)', desc: 'Estado de resultados completo año a año: ingresos, egresos, EBITDA y flujo.' },
+      { id: 'nomina', icon: '👥', title: 'Reporte de Nómina', color: 'var(--oxford)', desc: 'Catálogo de puestos con IMSS, ISN, Infonavit y CRM. Dir. Ejecutiva incluida.' },
+      { id: 'gastos', icon: '📋', title: 'Gastos de Operación', color: 'var(--oxford)', desc: 'Desglose por categoría (controlados, fijos, financieros) a 7 años.' },
+      { id: 'proyeccion', icon: '🎯', title: 'Proyección 7 Años', color: 'var(--gold)', desc: 'Tabla ejecutiva completa con todos los conceptos financieros clave.' },
+      { id: 'matricula', icon: '🏫', title: 'Matrícula y Capacidad', color: 'var(--oxford)', desc: 'Proyección de alumnos por nivel y grado, ocupación y topes de capacidad.' }
+    ];
+    return `
+    <div class="section-header"><div>
+      <div class="section-title">Reportes PDF</div>
+      <div class="section-sub">Genera y descarga reportes financieros listos para imprimir</div>
+    </div></div>
+    <div class="info-note" style="margin-bottom:20px">
+      Haz clic en <strong>Descargar PDF</strong>. Se abrirá una ventana nueva con el reporte formateado.
+      En Mac: <kbd>⌘P</kbd> → <em>Guardar como PDF</em> · En Windows: <kbd>Ctrl+P</kbd> → <em>Microsoft Print to PDF</em>.
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px">
+      ${reports.map(r => `
+      <div class="card" style="display:flex;flex-direction:column;gap:12px;border-left:3px solid ${r.color}">
+        <div style="font-size:30px;line-height:1">${r.icon}</div>
+        <div class="card-title" style="margin:0;color:${r.color}">${r.title}</div>
+        <p style="font-size:12px;color:var(--text-muted);flex:1;line-height:1.7;margin:0">${r.desc}</p>
+        <button onclick="App.generarPDF('${r.id}')"
+          style="background:${r.color};color:#fff;border:none;border-radius:6px;padding:10px 18px;
+                 font-size:11px;letter-spacing:.8px;cursor:pointer;text-transform:uppercase;
+                 font-family:inherit;font-weight:400"
+          onmouseover="this.style.opacity='.75'" onmouseout="this.style.opacity='1'">
+          ↓ Descargar PDF
+        </button>
+      </div>`).join('')}
+    </div>`;
+  }
+
+  function _generarPDF(tipo) {
+    const corrida = calcCorrida();
+    const ciclos = corrida.map(y => `${String(y.ano).slice(-2)}-${String(y.ano + 1).slice(-2)}`);
+    const fecha = new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
+    const CSS = `*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',system-ui,sans-serif;font-size:9.5pt;color:#001f3f;padding:20px 28px;background:#fff}
+      h1{font-size:16pt;font-weight:300;letter-spacing:1px;color:#002147;margin-bottom:4px}
+      h2{font-size:10.5pt;font-weight:400;color:#002147;margin:16px 0 6px;letter-spacing:.4px;border-bottom:1px solid #dde;padding-bottom:3px}
+      .meta{font-size:7.5pt;color:#888;margin-bottom:16px}
+      table{width:100%;border-collapse:collapse;font-size:8pt;margin-bottom:12px}
+      th{background:#002147;color:#fff;padding:4px 7px;text-align:right;font-weight:400;font-size:7.5pt}
+      th:first-child{text-align:left}td{padding:3.5px 7px;text-align:right;border-bottom:1px solid #eef}
+      td:first-child{text-align:left}tr:nth-child(even) td{background:#f7f9fc}
+      .tr-total td{background:#002147!important;color:#fff;font-weight:500}
+      .tr-gold td{background:#c8a84b!important;color:#fff;font-weight:500}
+      .tr-sub td{background:#003580!important;color:#fff;font-size:7.5pt;letter-spacing:.3px}
+      .kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+      .kpi{background:#f7f9fc;border-left:3px solid #002147;padding:8px 12px;border-radius:3px}
+      .kpi-label{font-size:7pt;color:#888;text-transform:uppercase;letter-spacing:.5px}
+      .kpi-val{font-size:13pt;font-weight:300;color:#002147;margin-top:2px}
+      .kpi-sub{font-size:6.5pt;color:#aaa;margin-top:2px}
+      .kpi.gold{border-left-color:#c8a84b}.kpi.gold .kpi-val{color:#c8a84b}
+      .kpi.cobalt{border-left-color:#0047ab}.kpi.cobalt .kpi-val{color:#0047ab}
+      @media print{@page{margin:1.2cm;size:A4 landscape}body{padding:0}}`;
+
+    const fm = v => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(v || 0));
+    const fn2 = v => new Intl.NumberFormat('es-MX').format(Math.round(v || 0));
+    const fp = v => (v * 100).toFixed(1) + '%';
+    const TH = cols => `<tr>${cols.map((c, i) => `<th${i === 0 ? ' style="text-align:left"' : ''}>${c}</th>`).join('')}</tr>`;
+    const TD = (cells, cls = '') => `<tr class="${cls}">${cells.map((c, i) => `<td${i === 0 ? ' style="text-align:left"' : ''}>${c}</td>`).join('')}</tr>`;
+    const HDR = `<h1>Lógica &amp; Liquidez · Modelo Financiero Institucional</h1><p class="meta">Generado el ${fecha} · Ciclos ${ciclos[0]} – ${ciclos[ciclos.length - 1]}</p>`;
+
+    let body = '';
+    if (tipo === 'ejecutivo') {
+      const y1 = corrida[0], yN = corrida[corrida.length - 1], cap = calcTopeTotal();
+      body = HDR + `<div class="kpi-grid">
+        <div class="kpi"><div class="kpi-label">Matrícula Año 1</div><div class="kpi-val">${fn2(y1.totalAlumnos)}</div><div class="kpi-sub">${fp(y1.totalAlumnos / cap)} de capacidad (tope ${fn2(cap)})</div></div>
+        <div class="kpi cobalt"><div class="kpi-label">Ingresos Año 1</div><div class="kpi-val">${fm(y1.ingresoTotal)}</div><div class="kpi-sub">Netos tras becas y descuentos</div></div>
+        <div class="kpi cobalt"><div class="kpi-label">Ingresos Año ${YEARS}</div><div class="kpi-val">${fm(yN.ingresoTotal)}</div><div class="kpi-sub">+${fp(yN.ingresoTotal / y1.ingresoTotal - 1)} vs Año 1</div></div>
+        <div class="kpi"><div class="kpi-label">Nómina Mensual Año 1</div><div class="kpi-val">${fm(y1.nomina.totalMensual)}</div><div class="kpi-sub">Factor matrícula ${fp(y1.nomina.factorNomina)}</div></div>
+        <div class="kpi gold"><div class="kpi-label">EBITDA Año ${YEARS}</div><div class="kpi-val">${fm(yN.ebitda)}</div><div class="kpi-sub">Utilidad operativa neta</div></div>
+        <div class="kpi cobalt"><div class="kpi-label">Flujo Acumulado</div><div class="kpi-val">${fm(yN.cashAcumulado)}</div><div class="kpi-sub">Saldo bancario al cierre</div></div>
+      </div>
+      <h2>Proyección de Resultados · ${YEARS} Ciclos</h2>
+      <table><thead>${TH(['Concepto', ...ciclos])}</thead><tbody>
+        ${TD(['Matrícula (alumnos)', ...corrida.map(y => fn2(y.totalAlumnos))])}
+        ${TD(['Ingresos Totales', ...corrida.map(y => fm(y.ingresoTotal))], 'tr-sub')}
+        ${TD(['Nómina Anual', ...corrida.map(y => fm(y.nomina.totalAnual))])}
+        ${TD(['Gastos Operación', ...corrida.map(y => fm(y.gastosOp))])}
+        ${TD(['EBITDA', ...corrida.map(y => fm(y.ebitda))], 'tr-gold')}
+        ${TD(['Margen EBITDA %', ...corrida.map(y => fp(y.ingresoTotal > 0 ? y.ebitda / y.ingresoTotal : 0))])}
+        ${TD(['Flujo Acumulado', ...corrida.map(y => fm(y.cashAcumulado))], 'tr-total')}
+      </tbody></table>`;
+    } else if (tipo === 'corrida') {
+      body = HDR + `<h2>Corrida Anual · Estado de Resultados</h2>
+      <table><thead>${TH(['Concepto', ...ciclos])}</thead><tbody>` + [
+          ['Matrícula total', y => fn2(y.totalAlumnos), ''],
+          ['Inscripciones (neto)', y => fm(y.sumInscripciones - y.descInscripcion), ''],
+          ['Colegiaturas (neto)', y => fm(y.sumColegiaturas - y.apoyosEcon - y.becas - y.prontoPago), ''],
+          ['Cuotas Escolares', y => fm(y.sumCuotas), ''],
+          ['INGRESOS TOTALES', y => fm(y.ingresoTotal), 'tr-sub'],
+          ['Nómina Anual', y => fm(y.nomina.totalAnual), ''],
+          ['Gastos de Operación', y => fm(y.gastosOp), ''],
+          ['EGRESOS TOTALES', y => fm(y.egresoTotal), 'tr-total'],
+          ['Renta Inmueble', y => fm(y.rentaInmueble), ''],
+          ['Cuota Operadora', y => fm(y.operadora), ''],
+          ['EBITDA', y => fm(y.ebitda), 'tr-gold'],
+          ['Margen EBITDA %', y => fp(y.ingresoTotal > 0 ? y.ebitda / y.ingresoTotal : 0), ''],
+          ['Flujo Acumulado', y => fm(y.cashAcumulado), 'tr-total']
+        ].map(([l, f, c]) => TD([l, ...corrida.map(f)], c)).join('') + `</tbody></table>`;
+    } else if (tipo === 'nomina') {
+      const ps = state.nominas.puestos || [], pc = ps.map(calcCostoPuesto);
+      const de = state.dirEjecutiva || {}, tasa = de.tasaHonorarios ?? 0.065, ncampus = Math.max(1, de.totalCampus || 1);
+      const dps = de.puestos || [], totDS = dps.reduce((s, p) => s + (p.salario || 0), 0);
+      const n1 = corrida[0].nomina;
+      body = HDR +
+        `<h2>Nómina Campus · Catálogo de ${ps.length} Puestos</h2>
+        <table><thead>${TH(['Puesto', 'Sector', 'Cant.', 'Sueldo Unit.', 'IMSS Pat.', 'ISN', 'Infonavit', 'Prov.', 'Costo Total'])}</thead><tbody>` +
+        ps.map((p, i) => { const c = pc[i]; return TD([p.nombre, p.sector, fn2(c.count || 1), fm(p.sueldo), fm(c.imss), fm(c.isn), fm(c.infonavit), fm(c.provisiones), fm(c.costoTotal)]); }).join('') +
+        TD(['TOTAL CAMPUS', '', '', '', ...['imss', 'isn', 'infonavit', 'provisiones', 'costoTotal'].map(k => fm(pc.reduce((s, c) => s + (k === 'sueldo' ? c.sueldo * (c.count || 1) : c[k]), 0)))], 'tr-total') +
+        `</tbody></table>
+        <h2>Dirección Ejecutiva · Honorarios ÷ ${ncampus} campus</h2>
+        <table><thead>${TH(['Trabajador', 'Puesto', 'Salario Neto', `Hon. ${(tasa * 100).toFixed(1)}%`, 'Total Fiscal'])}</thead><tbody>` +
+        dps.map(p => { const h = (p.salario || 0) * tasa; return TD([p.nombre, p.puesto, fm(p.salario), fm(h), fm((p.salario || 0) + h)]); }).join('') +
+        TD(['', 'COSTO ESTE CAMPUS', fm(totDS / ncampus), fm(totDS * tasa / ncampus), fm(totDS * (1 + tasa) / ncampus)], 'tr-gold') +
+        `</tbody></table>
+        <h2>Resumen Nómina Mensual Año 1</h2>
+        <table><thead>${TH(['Concepto', 'Mensual', 'Anual'])}</thead><tbody>
+        ${TD(['Sueldos + Cargas Sociales Campus', fm(n1.base), fm(n1.base * 12)])}
+        ${TD(['Honorarios Dir. Ejecutiva (campus)', fm(n1.dirEjecutivaCampus || 0), fm((n1.dirEjecutivaCampus || 0) * 12)])}
+        ${TD(['TOTAL NÓMINA', fm(n1.totalMensual), fm(n1.totalAnual)], 'tr-total')}
+        </tbody></table>`;
+    } else if (tipo === 'gastos') {
+      const go = state.gastosOperacion, an = corrida.map(yr => calcGastos(yr.i, yr.totalAlumnos));
+      const sec = (lbl, arr, fn3) => `<h2>${lbl}</h2><table><thead>${TH(['Concepto', 'Base', ...ciclos])}</thead><tbody>` +
+        arr.map(c => TD([c.label, fm(c.monto), ...an.map(a => fm(c.monto * fn3(a)))])).join('') + `</tbody></table>`;
+      body = HDR +
+        sec('Gastos Controlados (escalan con matrícula)', go.controlados || [], a => a.factor * a.inf) +
+        sec('Gastos Fijos', go.fijos || [], a => a.inf) +
+        sec('Gastos Financieros', go.financieros || [], a => a.inf) +
+        `<h2>Totales de Gastos de Operación</h2><table><thead>${TH(['Concepto', ...ciclos])}</thead><tbody>
+        ${TD(['Controlados', ...an.map(a => fm(a.sumControlados))])}
+        ${TD(['Fijos', ...an.map(a => fm(a.sumFijos))])}
+        ${TD(['Financieros', ...an.map(a => fm(a.sumFinancieros))])}
+        ${TD(['TOTAL GASTOS', ...an.map(a => fm(a.total))], 'tr-total')}
+        </tbody></table>`;
+    } else if (tipo === 'proyeccion') {
+      body = HDR + `<h2>Proyección Financiera Ejecutiva · ${YEARS} Ciclos</h2>
+      <table><thead>${TH(['Concepto', ...ciclos])}</thead><tbody>` + [
+          ['Matrícula total', y => fn2(y.totalAlumnos), ''],
+          ['% Ocupación', y => fp(y.totalAlumnos / calcTopeTotal()), ''],
+          ['Ingresos Inscripciones', y => fm(y.sumInscripciones - y.descInscripcion), ''],
+          ['Ingresos Colegiaturas', y => fm(y.sumColegiaturas - y.apoyosEcon - y.becas), ''],
+          ['Cuotas Escolares', y => fm(y.sumCuotas), ''],
+          ['INGRESOS TOTALES', y => fm(y.ingresoTotal), 'tr-sub'],
+          ['Nómina Mensual', y => fm(y.nomina.totalMensual), ''],
+          ['Nómina Anual', y => fm(y.nomina.totalAnual), ''],
+          ['Gastos Operación', y => fm(y.gastosOp), ''],
+          ['EGRESOS TOTALES', y => fm(y.egresoTotal), 'tr-total'],
+          ['EBITDA', y => fm(y.ebitda), 'tr-gold'],
+          ['Margen EBITDA %', y => fp(y.ingresoTotal > 0 ? y.ebitda / y.ingresoTotal : 0), ''],
+          ['Flujo Acumulado', y => fm(y.cashAcumulado), 'tr-total']
+        ].map(([l, f, c]) => TD([l, ...corrida.map(f)], c)).join('') + `</tbody></table>`;
+    } else if (tipo === 'matricula') {
+      const mat = calcMatricula();
+      body = HDR + `<h2>Proyección de Matrícula por Nivel</h2>
+      <table><thead>${TH(['Nivel / Grado', ...ciclos])}</thead><tbody>` +
+        LEVELS.flatMap(lv => [
+          `<tr><td colspan="${YEARS + 1}" style="background:#002147;color:#fff;padding:3px 7px;font-size:7.5pt">${lv.key}</td></tr>`,
+          ...GRADES.filter(g => g.level === lv.key).map(g => TD([g.label, ...mat.map(yr => fn2(yr[g.key] || 0))]))
+        ]).join('') +
+        TD(['TOTAL ALUMNOS', ...mat.map(yr => fn2(GRADES.reduce((s, g) => s + (yr[g.key] || 0), 0)))], 'tr-total') +
+        `</tbody></table>`;
+    }
+
+    const win = window.open('', '_blank');
+    if (!win) { alert('Habilita ventanas emergentes para generar el PDF.'); return; }
+    win.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Reporte · L&L Financiero</title><style>${CSS}</style></head><body>${body}</body></html>`);
+    win.document.close();
+    setTimeout(() => win.print(), 400);
+  }
+
+  // ============================================================
+  // 18. NAVIGATION
   // ============================================================
   const VIEW_TITLES = {
     dashboard: 'Dashboard', variables: 'Variables Iniciales', matricula: 'Matriz de Alumnos',
     referencias: 'Valores de Referencia', cuotas: 'Cuotas Escolares',
     inscripciones: 'Inscripciones y Re-inscripciones',
     nominas: 'Nóminas', gastos: 'Gastos de Operación',
-    corrida: 'Corrida Anual', proyeccion: 'Proyección 7 Años'
+    corrida: 'Corrida Anual', proyeccion: 'Proyección 7 Años', reportes: 'Reportes PDF'
   };
   const RENDERERS = {
     dashboard: renderDashboard, variables: renderVariables, matricula: renderMatricula,
     referencias: renderReferencias, cuotas: renderCuotas, inscripciones: renderInscripciones,
-    nominas: renderNominas, gastos: renderGastos, corrida: renderCorrida, proyeccion: renderProyeccion
+    nominas: renderNominas, gastos: renderGastos, corrida: renderCorrida, proyeccion: renderProyeccion,
+    reportes: renderReportes
   };
 
   function navigate(view) {
@@ -2303,7 +2483,8 @@ const App = (() => {
 
   return {
     init, navigate, resetState, exportCSV, toggleSidebar, recalcular,
-    addPuesto, removePuesto, toggleHonorarios
+    addPuesto, removePuesto, toggleHonorarios,
+    generarPDF: _generarPDF
   };
 
 })();

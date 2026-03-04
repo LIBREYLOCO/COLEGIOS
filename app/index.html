@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,6 +11,7 @@
   <link rel="stylesheet" href="css/styles.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
+
 <body>
   <div class="app-layout" id="app-layout">
 
@@ -27,71 +29,128 @@
 
       <ul class="nav-list" id="nav-list">
         <li class="nav-item active" data-view="dashboard">
-          <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><rect x="2" y="2" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="2" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="2" y="11" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="11" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+            <rect x="2" y="2" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5" />
+            <rect x="11" y="2" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5" />
+            <rect x="2" y="11" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5" />
+            <rect x="11" y="11" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5" />
+          </svg>
           <span>Dashboard</span>
         </li>
 
         <li class="nav-section-label">Configuración</li>
 
         <li class="nav-item" data-view="variables">
-          <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.5"/><path d="M10 6v4l3 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+            <circle cx="10" cy="10" r="7.5" stroke="currentColor" stroke-width="1.5" />
+            <path d="M10 6v4l3 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
           <span>Variables Iniciales</span>
         </li>
 
         <li class="nav-section-label">Ingresos</li>
 
         <li class="nav-item" data-view="matricula">
-          <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M10 3a4 4 0 100 8 4 4 0 000-8z" stroke="currentColor" stroke-width="1.5"/><path d="M3 17c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+            <path d="M10 3a4 4 0 100 8 4 4 0 000-8z" stroke="currentColor" stroke-width="1.5" />
+            <path d="M3 17c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" stroke-width="1.5"
+              stroke-linecap="round" />
+          </svg>
           <span>Matriz de Alumnos</span>
         </li>
 
         <li class="nav-item" data-view="referencias">
-          <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M4 5h12M4 10h8M4 15h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+            <path d="M4 5h12M4 10h8M4 15h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
           <span>Valores de Referencia</span>
         </li>
 
         <li class="nav-item" data-view="cuotas">
-          <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="12" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M7 9h6M7 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+            <rect x="3" y="4" width="14" height="12" rx="1.5" stroke="currentColor" stroke-width="1.5" />
+            <path d="M7 9h6M7 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
           <span>Cuotas Escolares</span>
         </li>
 
         <li class="nav-item" data-view="inscripciones">
-          <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M5 3h10a1 1 0 011 1v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.5"/><path d="M7 8h6M7 11h4M13 13l1.5 1.5L17 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+            <path d="M5 3h10a1 1 0 011 1v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor"
+              stroke-width="1.5" />
+            <path d="M7 8h6M7 11h4M13 13l1.5 1.5L17 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+              stroke-linejoin="round" />
+          </svg>
           <span>Inscripciones</span>
         </li>
 
         <li class="nav-section-label">Egresos</li>
 
         <li class="nav-item" data-view="nominas">
-          <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M5 17v-1a5 5 0 0110 0v1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M13 10l1.5 1.5L17 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+            <circle cx="10" cy="7" r="3" stroke="currentColor" stroke-width="1.5" />
+            <path d="M5 17v-1a5 5 0 0110 0v1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            <path d="M13 10l1.5 1.5L17 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
           <span>Nóminas</span>
         </li>
 
         <li class="nav-item" data-view="gastos">
-          <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M3 7h14M3 13h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="3" y="4" width="14" height="12" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+            <path d="M3 7h14M3 13h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            <rect x="3" y="4" width="14" height="12" rx="1.5" stroke="currentColor" stroke-width="1.5" />
+          </svg>
           <span>Gastos de Operación</span>
         </li>
 
         <li class="nav-section-label">Proyecciones</li>
 
         <li class="nav-item" data-view="corrida">
-          <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M3 15l4-4 4 2 6-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+            <path d="M3 15l4-4 4 2 6-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+              stroke-linejoin="round" />
+          </svg>
           <span>Corrida Anual</span>
         </li>
 
         <li class="nav-item" data-view="proyeccion">
-          <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M3 17l3.5-4.5 3 2 3.5-5 4 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 6V3h-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+            <path d="M3 17l3.5-4.5 3 2 3.5-5 4 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+              stroke-linejoin="round" />
+            <path d="M17 6V3h-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+              stroke-linejoin="round" />
+          </svg>
           <span>Proyección 7 Años</span>
+        </li>
+
+        <li class="nav-section-label">Exportar</li>
+
+        <li class="nav-item" data-view="reportes">
+          <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+            <path d="M5 3h7l4 4v10a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor"
+              stroke-width="1.5" />
+            <path d="M12 3v4h4" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+            <path d="M7 10h6M7 13h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
+          <span>Reportes PDF</span>
         </li>
       </ul>
 
       <div class="sidebar-footer">
         <button class="btn-export" id="btn-export-csv" onclick="App.exportCSV()">
-          <svg viewBox="0 0 16 16" fill="none"><path d="M8 2v8M5 7l3 3 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M3 11v1.5A1.5 1.5 0 004.5 14h7a1.5 1.5 0 001.5-1.5V11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <svg viewBox="0 0 16 16" fill="none">
+            <path d="M8 2v8M5 7l3 3 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+            <path d="M3 11v1.5A1.5 1.5 0 004.5 14h7a1.5 1.5 0 001.5-1.5V11" stroke="currentColor" stroke-width="1.4"
+              stroke-linecap="round" />
+          </svg>
           Exportar CSV
         </button>
         <button class="btn-reset" id="btn-reset" onclick="App.resetState()">
-          <svg viewBox="0 0 16 16" fill="none"><path d="M3 8a5 5 0 119.9-1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M13 3v4H9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg viewBox="0 0 16 16" fill="none">
+            <path d="M3 8a5 5 0 119.9-1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+            <path d="M13 3v4H9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"
+              stroke-linejoin="round" />
+          </svg>
           Restablecer
         </button>
       </div>
@@ -102,7 +161,9 @@
       <header class="content-header">
         <div class="header-left">
           <button class="sidebar-toggle" id="sidebar-toggle" onclick="App.toggleSidebar()">
-            <svg viewBox="0 0 20 20" fill="none"><path d="M3 6h14M3 10h14M3 14h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <svg viewBox="0 0 20 20" fill="none">
+              <path d="M3 6h14M3 10h14M3 14h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
           </button>
           <h1 class="content-title" id="content-title">Dashboard</h1>
         </div>
@@ -124,4 +185,5 @@
 
   <script src="js/app.js"></script>
 </body>
+
 </html>
