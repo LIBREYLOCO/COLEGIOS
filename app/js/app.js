@@ -2057,7 +2057,7 @@ const App = (() => {
       { id: 'corrida', icon: '📈', title: 'Corrida Anual · 7 Años', color: 'var(--oxford)', desc: 'Estado de resultados completo año a año: ingresos, egresos, EBITDA y flujo.' },
       { id: 'nomina', icon: '👥', title: 'Reporte de Nómina', color: 'var(--oxford)', desc: 'Catálogo de puestos con IMSS, ISN, Infonavit y CRM. Dir. Ejecutiva incluida.' },
       { id: 'gastos', icon: '📋', title: 'Gastos de Operación', color: 'var(--oxford)', desc: 'Desglose por categoría (controlados, fijos, financieros) a 7 años.' },
-      { id: 'proyeccion', icon: '🎯', title: 'Proyección 7 Años', color: 'var(--gold)', desc: 'Tabla ejecutiva completa con todos los conceptos financieros clave.' },
+      { id: 'proyeccion', icon: '🎯', title: 'Proyección Financiera', color: 'var(--gold)', desc: 'Tabla ejecutiva completa con todos los conceptos financieros clave.' },
       { id: 'matricula', icon: '🏫', title: 'Matrícula y Capacidad', color: 'var(--oxford)', desc: 'Proyección de alumnos por nivel y grado, ocupación y topes de capacidad.' }
     ];
     return `
@@ -2235,7 +2235,7 @@ const App = (() => {
     referencias: 'Valores de Referencia', cuotas: 'Cuotas Escolares',
     inscripciones: 'Inscripciones y Re-inscripciones',
     nominas: 'Nóminas', gastos: 'Gastos de Operación',
-    corrida: 'Corrida Anual', proyeccion: 'Proyección 7 Años', reportes: 'Reportes PDF'
+    corrida: 'Corrida Anual', proyeccion: 'Proyección Financiera', reportes: 'Reportes PDF'
   };
   const RENDERERS = {
     dashboard: renderDashboard, variables: renderVariables, matricula: renderMatricula,
