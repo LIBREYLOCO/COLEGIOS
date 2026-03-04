@@ -54,7 +54,8 @@ const App = (() => {
   // Override K1 tuition to maternalK1 (same level price)
   G2T['k1'] = 'maternalK1';
 
-  const YEARS = 7;
+  // Dynamic projection horizon (read from state; defaults to 7)
+  function getYears() { return (state && state.horizonte) ? Math.max(1, Math.min(10, state.horizonte)) : 7; }
   const ANO_INICIO = 2026;
 
   // ── Parámetros Legales Nómina México 2025 ──────────────────────
@@ -97,6 +98,7 @@ const App = (() => {
       tasaDesercion: 0.03,    // % alumnos que no continúan al siguiente grado
       tasaCaptacion: 0.05     // crecimiento anual de nuevos ingresos externos
     },
+    horizonte: 7,
 
     // ── Matrícula inicial por grado (Año 0 = 2026) ──
     // Distribución: 15 Maternal + 31 K1 + 36 K2 + 36 K3 + 54×6 Primaria + 62×2+61 Sec + 45+44×2 Bach
@@ -457,7 +459,7 @@ const App = (() => {
     });
     result.push({ ...year0 });
 
-    for (let t = 1; t < YEARS; t++) {
+    for (let t = 1; t < getYears(); t++) {
       const prev = result[t - 1];
       const cur = {};
 
@@ -466,20 +468,44 @@ const App = (() => {
 
         let val;
         if (ENTRY_GRADES.has(g.key)) {
-          // Entrada: crece desde base año 0
           val = year0[g.key] * Math.pow(1 + crec, t);
         } else {
-          // Cascade: grado anterior × reinscripción × (1 + crecimiento)
           val = prev[GRADES[i - 1].key] * rein * (1 + crec);
         }
-
         val = Math.max(0, Math.round(val));
-
-        // Tope por grado (105%)
-        const cap = state.capacidadMaxima ? (state.capacidadMaxima[g.key] || Infinity) : Infinity;
-        if (val > cap * 1.05) val = Math.round(cap * 1.05);
-
         cur[g.key] = val;
+      });
+
+      // ── Cap exacto al 100% + distribución de excedente ──
+      // Si un grupo supera su capacidad máxima, lo topa en el máximo
+      // y el excedente se redistribuye proporcionalmente en los demás grupos
+      // activos del mismo nivel que aún tengan cupo disponible.
+      LEVELS.forEach(lv => {
+        const lvGrades = GRADES.filter(g => g.level === lv.key && activos[g.key] !== false);
+        let overflow = 0;
+        // Primera pasada: cap y acumular excedente
+        lvGrades.forEach(g => {
+          const cap = state.capacidadMaxima ? (state.capacidadMaxima[g.key] || Infinity) : Infinity;
+          if (cap < Infinity && cur[g.key] > cap) {
+            overflow += cur[g.key] - cap;
+            cur[g.key] = cap;
+          }
+        });
+        // Segunda pasada: distribuir excedente en grados con cupo libre
+        if (overflow > 0) {
+          const withRoom = lvGrades.filter(g => {
+            const cap = state.capacidadMaxima ? (state.capacidadMaxima[g.key] || Infinity) : Infinity;
+            return cap === Infinity || cur[g.key] < cap;
+          });
+          if (withRoom.length > 0) {
+            const share = Math.round(overflow / withRoom.length);
+            withRoom.forEach(g => {
+              const cap = state.capacidadMaxima ? (state.capacidadMaxima[g.key] || Infinity) : Infinity;
+              cur[g.key] = Math.min(cap, cur[g.key] + share);
+            });
+          }
+          // Si no hay cupo libre en ningún grupo, el excedente se pierde (matrícula real no puede crecer)
+        }
       });
 
       // Tope escolar global
@@ -652,7 +678,7 @@ const App = (() => {
     const results = [];
     let cashAcumulado = 0;
 
-    for (let i = 0; i < YEARS; i++) {
+    for (let i = 0; i < getYears(); i++) {
       const ano = (state.variables.anoInicio || ANO_INICIO) + i;
       const infFactor = Math.pow(1 + state.variables.inflacion, i);
       const colFactor = Math.pow(1 + state.variables.aumentoColegiatura, i);
@@ -893,7 +919,7 @@ const App = (() => {
     let hasOverpop = false;
     GRADES.forEach(g => {
       const cap = state.capacidadMaxima[g.key] || Infinity;
-      for (let t = 1; t < YEARS; t++) {
+      for (let t = 1; t < getYears(); t++) {
         if ((matricula[t][g.key] || 0) >= cap * 1.05) { hasOverpop = true; }
       }
     });
@@ -1712,18 +1738,45 @@ const App = (() => {
   // 15. VIEW — PROYECCIÓN 7 AÑOS
   // ============================================================
   function renderProyeccion() {
+    const yr = getYears();
     const corrida = calcCorrida();
     return `
     <div class="section-header">
-      <div><div class="section-title">Proyección 7 Años</div>
-      <div class="section-sub">Estado de Resultados Consolidado · Ciclos 1–${YEARS} (${corrida[0].ano}–${corrida[YEARS - 1].ano})</div></div>
+      <div>
+        <div class="section-title">Proyección Financiera</div>
+        <div class="section-sub">Estado de Resultados Consolidado · ${yr} ciclo${yr > 1 ? 's' : ''} (${corrida[0].ano}–${corrida[yr - 1].ano})</div>
+      </div>
       <button class="toggle-btn" onclick="App.exportCSV()">
         <svg viewBox="0 0 16 16" fill="none"><path d="M8 2v8M5 7l3 3 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M3 11v1.5A1.5 1.5 0 004.5 14h7a1.5 1.5 0 001.5-1.5V11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
         Exportar CSV
       </button>
     </div>
+
+    <!-- ── Selector de horizonte ── -->
+    <div class="card" style="padding:18px 26px;margin-bottom:18px">
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+        <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted);white-space:nowrap">Horizonte de proyección</div>
+        <div style="display:flex;align-items:center;gap:14px;flex:1;min-width:220px">
+          <input type="range" id="horizonte-slider" min="1" max="10" value="${yr}"
+            style="flex:1;accent-color:var(--emerald);cursor:pointer;height:4px"
+            oninput="App.setHorizonte(this.value)">
+          <div style="min-width:80px;font-size:22px;font-weight:300;color:var(--navy)"
+            id="horizonte-label">${yr} año${yr > 1 ? 's' : ''}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n =>
+      `<button onclick="App.setHorizonte(${n})"
+              style="padding:4px 10px;border-radius:4px;font-size:11px;font-weight:400;
+              border:1px solid ${n === yr ? 'var(--emerald)' : 'var(--border)'};
+              background:${n === yr ? 'var(--emerald)' : 'transparent'};
+              color:${n === yr ? '#fff' : 'var(--text-muted)'};
+              cursor:pointer;transition:all .15s">${n}</button>`).join('')}
+        </div>
+      </div>
+    </div>
+
     <div class="charts-grid">
-      <div class="chart-card"><div class="chart-title">Ingresos vs Egresos · 7 Años</div><div class="chart-wrap"><canvas id="chart-ingegr"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">Ingresos vs Egresos · ${yr} Años</div><div class="chart-wrap"><canvas id="chart-ingegr"></canvas></div></div>
       <div class="chart-card"><div class="chart-title">EBITDA y Flujo Acumulado</div><div class="chart-wrap"><canvas id="chart-ebitda"></canvas></div></div>
     </div>
     ${renderProyeccionTable(corrida)}`;
@@ -1765,7 +1818,7 @@ const App = (() => {
 
     return `
     <div class="card" style="overflow:hidden">
-      <div class="card-title">Estado de Resultados · Ciclos 1–${YEARS}</div>
+      <div class="card-title">Estado de Resultados · ${corrida.length} Ciclos (${corrida[0].ano}–${corrida[corrida.length - 1].ano})</div>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Concepto</th>${corrida.map(thCiclo).join('')}</tr></thead>
@@ -2490,10 +2543,22 @@ const App = (() => {
     }
   }
 
+  function setHorizonte(n) {
+    n = Math.max(1, Math.min(10, parseInt(n) || 7));
+    state.horizonte = n;
+    saveState();
+    // Re-render the current view (proyeccion) to update slider + table + charts
+    const body = document.getElementById('content-body');
+    if (body && currentView === 'proyeccion') {
+      body.innerHTML = renderProyeccion();
+      requestAnimationFrame(() => initCharts(calcCorrida()));
+    }
+  }
+
   return {
     init, navigate, resetState, exportCSV, toggleSidebar, recalcular,
     addPuesto, removePuesto, toggleHonorarios,
-    generarPDF: _generarPDF, logout
+    generarPDF: _generarPDF, logout, setHorizonte
   };
 
 })();
