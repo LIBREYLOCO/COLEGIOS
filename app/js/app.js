@@ -2108,14 +2108,25 @@ const App = (() => {
       .kpi-sub{font-size:6.5pt;color:#aaa;margin-top:2px}
       .kpi.gold{border-left-color:#c8a84b}.kpi.gold .kpi-val{color:#c8a84b}
       .kpi.cobalt{border-left-color:#0047ab}.kpi.cobalt .kpi-val{color:#0047ab}
-      @media print{@page{margin:1.2cm;size:A4 landscape}body{padding:0}}`;
+      @media print{@page{margin:1.2cm;size:A4 landscape}body{padding:0}}
+       .pdf-hdr{display:flex;align-items:center;gap:18px;margin-bottom:18px;padding-bottom:10px;border-bottom:2px solid #C5A059}
+       .pdf-hdr img{width:70px;height:70px;object-fit:contain;flex-shrink:0}
+       .pdf-hdr-text h1{font-size:13pt;font-weight:300;letter-spacing:.8px;color:#002147;margin-bottom:2px}
+       .pdf-hdr-text .meta{font-size:7pt;color:#888;margin:0}`;
 
     const fm = v => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.round(v || 0));
     const fn2 = v => new Intl.NumberFormat('es-MX').format(Math.round(v || 0));
     const fp = v => (v * 100).toFixed(1) + '%';
     const TH = cols => `<tr>${cols.map((c, i) => `<th${i === 0 ? ' style="text-align:left"' : ''}>${c}</th>`).join('')}</tr>`;
     const TD = (cells, cls = '') => `<tr class="${cls}">${cells.map((c, i) => `<td${i === 0 ? ' style="text-align:left"' : ''}>${c}</td>`).join('')}</tr>`;
-    const HDR = `<h1>Lógica &amp; Liquidez · Modelo Financiero Institucional</h1><p class="meta">Generado el ${fecha} · Ciclos ${ciclos[0]} – ${ciclos[ciclos.length - 1]}</p>`;
+    const logoSrc = window.location.href.replace(/\/[^\/]*$/, '/img/logo.png');
+    const HDR = `<div class="pdf-hdr">
+      <img src="${logoSrc}" alt="L&amp;L Logo">
+      <div class="pdf-hdr-text">
+        <h1>L&amp;L · Lógica Institucional &amp; Liquidez</h1>
+        <p class="meta">Modelo Financiero Institucional &nbsp;·&nbsp; Generado el ${fecha} &nbsp;·&nbsp; Ciclos ${ciclos[0]} – ${ciclos[ciclos.length - 1]}</p>
+      </div>
+    </div>`;
 
     let body = '';
     if (tipo === 'ejecutivo') {
