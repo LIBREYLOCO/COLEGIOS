@@ -431,52 +431,52 @@
   </style>
 
   <script>
-    (function () {
-      nStorage.getIt em('lil_auth ') === '1') {
-        document.getElem ent ById('login-portal').style.display = 'none';
+    (function(){
+      if(sessionStorage.getItem('lil_auth')==='1'){
+        document.getElementById('login-portal').style.display='none';
       }
     })();
-    fu n ction lplLogin(e){
+    function lplLogin(e){
       e.preventDefault();
-      const email = document.getElementById('lp-emai l ').value.trim().toLowerCase();
-      const pwd = document.getElementById('lp-pwd').value;
-      const err = document.getElementById('lp-erro r ');
-      const btn = document.getElementById('lp-btn');
-      const txt = document.getElementById('lp-btn- t ext');
-      const spin = document.getElementById('lp-btn- s pin');
+      const email=document.getElementById('lp-email').value.trim().toLowerCase();
+      const pwd=document.getElementById('lp-pwd').value;
+      const err=document.getElementById('lp-error');
+      const btn=document.getElementById('lp-btn');
+      const txt=document.getElementById('lp-btn-text');
+      const spin=document.getElementById('lp-btn-spin');
       err.classList.remove('visible');
-      btn.disabled = true; txt.style.display = 'none';  s pin.style.display = 'bloc k ';
-      setTimeout(() => {
-        if (email === 'stdmexico @m e.com' && pwd= == 'New lan d72'){
-          s es sio nSt orage.setIte m('lil_auth', '1');
-        const p = document.getElementById('login-p o rtal');
-        p.classList.add('lp-exit');
-        setTimeout(() => { p.style.display = 'none'; }, 700);
-      } else {
-        err.classList.add('visible');
-        btn.disabled = false; txt.style.display = 'block'; spin.style.display = 'non e ';
-        const cover =do c ument.querySelector('.lp-cove r ');
-        cover.style.transition = 'transform .4s cubic-bezier(.36, . 07,.19,.97)';
-        ['-9px', '9px', '-6px', '6px', '0'].forEach((x, i) =>
-          setTimeout(() => { co ver.style.transform = `transla te X (${x})`; }, i * 65)
-        );
-      }
-    }, 800);
+      btn.disabled=true; txt.style.display='none'; spin.style.display='block';
+      setTimeout(()=>{
+        if(email==='stdmexico@me.com'&&pwd==='Newland72'){
+          sessionStorage.setItem('lil_auth','1');
+          const p=document.getElementById('login-portal');
+          p.classList.add('lp-exit');
+          setTimeout(()=>{p.style.display='none';},700);
+        } else {
+          err.classList.add('visible');
+          btn.disabled=false; txt.style.display='block'; spin.style.display='none';
+          const cover=document.querySelector('.lp-cover');
+          cover.style.transition='transform .4s cubic-bezier(.36,.07,.19,.97)';
+          ['-9px','9px','-6px','6px','0'].forEach((x,i)=>
+            setTimeout(()=>{cover.style.transform=`translateX(${x})`;},i*65)
+          );
+        }
+      },800);
     }
-    function lplToggl ePwd(){
-      const i = document.getEleme ntById('lp-pwd');
-      i.type = i.type === 'password' ? 'text' : 'pass w ord';
+    function lplTogglePwd(){
+      const i=document.getElementById('lp-pwd');
+      i.type=i.type==='password'?'text':'password';
     }
     function toggleSidebar(){
-      const app = document.getElementById('app-layout');
-      if (!app) return;
-      const collapsed = app.classList.toggle('sidebar-collapsed');
-      localStorage.setItem('lil_sidebar_collapsed', collapsed ? '1' : '0');
+      const app=document.getElementById('app-layout');
+      if(!app) return;
+      const collapsed=app.classList.toggle('sidebar-collapsed');
+      localStorage.setItem('lil_sidebar_collapsed',collapsed?'1':'0');
     }
-    document.addEventListener('DOMContentLoaded', () => {
-      if (localStorage.getItem('lil_sidebar_collapsed') === '1') {
-        const app = document.getElementById('app-layout');
-        if (app) app.classList.add('sidebar-collapsed');
+    document.addEventListener('DOMContentLoaded',()=>{
+      if(localStorage.getItem('lil_sidebar_collapsed')==='1'){
+        const app=document.getElementById('app-layout');
+        if(app) app.classList.add('sidebar-collapsed');
       }
     });
   </script>
