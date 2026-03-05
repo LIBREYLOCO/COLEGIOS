@@ -431,45 +431,45 @@
   </style>
 
   <script>
-    (function(){
-      if(sessionStorage.getItem('lil_auth')==='1'){
-        document.getElementById('login-portal').style.display='none';
+    (function () {
+      if (sessionStorage.getItem('lil_auth') === '1') {
+        document.getElementById('login-portal').style.display = 'none';
       }
     })();
-    function lplLogin(e){
+    function lplLogin(e) {
       e.preventDefault();
-      const email=document.getElementById('lp-email').value.trim().toLowerCase();
-      const pwd=document.getElementById('lp-pwd').value;
-      const err=document.getElementById('lp-error');
-      const btn=document.getElementById('lp-btn');
-      const txt=document.getElementById('lp-btn-text');
-      const spin=document.getElementById('lp-btn-spin');
+      const email = document.getElementById('lp-email').value.trim().toLowerCase();
+      const pwd = document.getElementById('lp-pwd').value;
+      const err = document.getElementById('lp-error');
+      const btn = document.getElementById('lp-btn');
+      const txt = document.getElementById('lp-btn-text');
+      const spin = document.getElementById('lp-btn-spin');
       err.classList.remove('visible');
-      btn.disabled=true; txt.style.display='none'; spin.style.display='block';
-      setTimeout(()=>{
-        if(email==='stdmexico@me.com'&&pwd==='Newland72'){
-          sessionStorage.setItem('lil_auth','1');
-          const p=document.getElementById('login-portal');
+      btn.disabled = true; txt.style.display = 'none'; spin.style.display = 'block';
+      setTimeout(() => {
+        if (email === 'stdmexico@me.com' && pwd === 'Newland72') {
+          sessionStorage.setItem('lil_auth', '1');
+          const p = document.getElementById('login-portal');
           p.classList.add('lp-exit');
-          setTimeout(()=>{p.style.display='none';},700);
+          setTimeout(() => { p.style.display = 'none'; }, 700);
         } else {
           err.classList.add('visible');
-          btn.disabled=false; txt.style.display='block'; spin.style.display='none';
-          const cover=document.querySelector('.lp-cover');
-          cover.style.transition='transform .4s cubic-bezier(.36,.07,.19,.97)';
-          ['-9px','9px','-6px','6px','0'].forEach((x,i)=>
-            setTimeout(()=>{cover.style.transform=`translateX(${x})`;},i*65)
+          btn.disabled = false; txt.style.display = 'block'; spin.style.display = 'none';
+          const cover = document.querySelector('.lp-cover');
+          cover.style.transition = 'transform .4s cubic-bezier(.36,.07,.19,.97)';
+          ['-9px', '9px', '-6px', '6px', '0'].forEach((x, i) =>
+            setTimeout(() => { cover.style.transform = `translateX(${x})`; }, i * 65)
           );
         }
-      },800);
+      }, 800);
     }
-    function lplTogglePwd(){
-      const i=document.getElementById('lp-pwd');
-      i.type=i.type==='password'?'text':'password';
+    function lplTogglePwd() {
+      const i = document.getElementById('lp-pwd');
+      i.type = i.type === 'password' ? 'text' : 'password';
     }
     const NAV_GROUPS_KEY = 'lil_nav_groups';
     function getGroupState() {
-      try { return JSON.parse(localStorage.getItem(NAV_GROUPS_KEY) || '{}'); } catch(e) { return {}; }
+      try { return JSON.parse(localStorage.getItem(NAV_GROUPS_KEY) || '{}'); } catch (e) { return {}; }
     }
     function toggleNavGroup(groupId) {
       const list = document.getElementById('nav-group-' + groupId);
@@ -492,16 +492,16 @@
         }
       });
     }
-    function toggleSidebar(){
-      const app=document.getElementById('app-layout');
-      if(!app) return;
-      const collapsed=app.classList.toggle('sidebar-collapsed');
-      localStorage.setItem('lil_sidebar_collapsed',collapsed?'1':'0');
+    function toggleSidebar() {
+      const app = document.getElementById('app-layout');
+      if (!app) return;
+      const collapsed = app.classList.toggle('sidebar-collapsed');
+      localStorage.setItem('lil_sidebar_collapsed', collapsed ? '1' : '0');
     }
-    document.addEventListener('DOMContentLoaded',()=>{
-      if(localStorage.getItem('lil_sidebar_collapsed')==='1'){
-        const app=document.getElementById('app-layout');
-        if(app) app.classList.add('sidebar-collapsed');
+    document.addEventListener('DOMContentLoaded', () => {
+      if (localStorage.getItem('lil_sidebar_collapsed') === '1') {
+        const app = document.getElementById('app-layout');
+        if (app) app.classList.add('sidebar-collapsed');
       }
     });
   </script>
@@ -531,140 +531,247 @@
       <ul class="nav-list" id="nav-list">
         <li class="nav-item active" data-view="dashboard" onclick="toggleGroupOnNav(this)">
           <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
-            <rect x="3" y="3" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/>
-            <rect x="11" y="3" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/>
-            <rect x="3" y="11" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/>
-            <rect x="11" y="11" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5"/>
+            <rect x="3" y="3" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5" />
+            <rect x="11" y="3" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5" />
+            <rect x="3" y="11" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5" />
+            <rect x="11" y="11" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5" />
           </svg>
           <span>Dashboard</span>
         </li>
 
         <!-- ── Configuración ── -->
-        <li class="nav-section-label nav-group-toggle" data-group="configuracion" onclick="toggleNavGroup('configuracion')">
-          <span>Configuración</span><svg class="group-chevron" viewBox="0 0 14 14" fill="none" width="11" height="11"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        <li class="nav-section-label nav-group-toggle" data-group="configuracion"
+          onclick="toggleNavGroup('configuracion')">
+          <span>Configuración</span><svg class="group-chevron" viewBox="0 0 14 14" fill="none" width="11" height="11">
+            <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+          </svg>
         </li>
         <ul class="nav-sub-list" id="nav-group-configuracion">
           <li class="nav-item" data-view="variables">
-            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M10 7v6M7 10h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+              <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5" />
+              <path d="M10 7v6M7 10h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
             <span>Variables Iniciales</span>
           </li>
         </ul>
 
         <!-- ── Ingresos ── -->
         <li class="nav-section-label nav-group-toggle" data-group="ingresos" onclick="toggleNavGroup('ingresos')">
-          <span>Ingresos</span><svg class="group-chevron" viewBox="0 0 14 14" fill="none" width="11" height="11"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <span>Ingresos</span><svg class="group-chevron" viewBox="0 0 14 14" fill="none" width="11" height="11">
+            <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+          </svg>
         </li>
         <ul class="nav-sub-list" id="nav-group-ingresos">
           <li class="nav-item" data-view="matricula">
-            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><circle cx="8" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M3 17c0-3 2-5 5-5s5 2 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14 9l2 2 2-2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+              <circle cx="8" cy="7" r="3" stroke="currentColor" stroke-width="1.5" />
+              <path d="M3 17c0-3 2-5 5-5s5 2 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+              <path d="M14 9l2 2 2-2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+            </svg>
             <span>Matriz de Alumnos</span>
           </li>
           <li class="nav-item" data-view="referencias">
-            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M4 5h12M4 10h8M4 15h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+              <path d="M4 5h12M4 10h8M4 15h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
             <span>Valores de Referencia</span>
           </li>
           <li class="nav-item" data-view="cuotas">
-            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><rect x="3" y="5" width="14" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M3 9h14" stroke="currentColor" stroke-width="1.3"/><path d="M7 13h2M12 13h1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+              <rect x="3" y="5" width="14" height="10" rx="1.5" stroke="currentColor" stroke-width="1.5" />
+              <path d="M3 9h14" stroke="currentColor" stroke-width="1.3" />
+              <path d="M7 13h2M12 13h1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+            </svg>
             <span>Cuotas Escolares</span>
           </li>
           <li class="nav-item" data-view="inscripciones">
-            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M10 3v14M3 10h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="4" y="4" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.2" opacity=".4"/></svg>
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+              <path d="M10 3v14M3 10h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+              <rect x="4" y="4" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.2" opacity=".4" />
+            </svg>
             <span>Inscripciones</span>
           </li>
           <li class="nav-item" data-view="ingresosadicionales">
-            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M10 3v14M3 10h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.3" opacity=".4"/></svg>
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+              <path d="M10 3v14M3 10h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+              <rect x="3" y="3" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.3" opacity=".4" />
+            </svg>
             <span>Ingresos Adicionales</span>
           </li>
         </ul>
 
         <!-- ── Egresos ── -->
         <li class="nav-section-label nav-group-toggle" data-group="egresos" onclick="toggleNavGroup('egresos')">
-          <span>Egresos</span><svg class="group-chevron" viewBox="0 0 14 14" fill="none" width="11" height="11"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <span>Egresos</span><svg class="group-chevron" viewBox="0 0 14 14" fill="none" width="11" height="11">
+            <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+          </svg>
         </li>
         <ul class="nav-sub-list" id="nav-group-egresos">
           <li class="nav-item" data-view="nominas">
-            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><circle cx="8" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M3 17c0-3 2-5 5-5h1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M13 12v4M11 14h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+              <circle cx="8" cy="7" r="3" stroke="currentColor" stroke-width="1.5" />
+              <path d="M3 17c0-3 2-5 5-5h1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+              <path d="M13 12v4M11 14h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+            </svg>
             <span>Nóminas</span>
           </li>
           <li class="nav-item" data-view="gastos">
-            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M3 5h14M5 5V4a1 1 0 011-1h8a1 1 0 011 1v1" stroke="currentColor" stroke-width="1.4"/><rect x="3" y="5" width="14" height="12" rx="1" stroke="currentColor" stroke-width="1.4"/><path d="M7 10h6M7 13h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+              <path d="M3 5h14M5 5V4a1 1 0 011-1h8a1 1 0 011 1v1" stroke="currentColor" stroke-width="1.4" />
+              <rect x="3" y="5" width="14" height="12" rx="1" stroke="currentColor" stroke-width="1.4" />
+              <path d="M7 10h6M7 13h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+            </svg>
             <span>Gastos de Operación</span>
           </li>
         </ul>
 
         <!-- ── Proyecciones ── -->
-        <li class="nav-section-label nav-group-toggle" data-group="proyecciones" onclick="toggleNavGroup('proyecciones')">
-          <span>Proyecciones</span><svg class="group-chevron" viewBox="0 0 14 14" fill="none" width="11" height="11"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+        <li class="nav-section-label nav-group-toggle" data-group="proyecciones"
+          onclick="toggleNavGroup('proyecciones')">
+          <span>Proyecciones</span><svg class="group-chevron" viewBox="0 0 14 14" fill="none" width="11" height="11">
+            <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+          </svg>
         </li>
         <ul class="nav-sub-list" id="nav-group-proyecciones">
           <li class="nav-item" data-view="corrida">
-            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M3 15l4-5 3 2 3-4 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="2" y="3" width="16" height="13" rx="1.5" stroke="currentColor" stroke-width="1.3"/></svg>
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+              <path d="M3 15l4-5 3 2 3-4 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                stroke-linejoin="round" />
+              <rect x="2" y="3" width="16" height="13" rx="1.5" stroke="currentColor" stroke-width="1.3" />
+            </svg>
             <span>Corrida Anual</span>
           </li>
           <li class="nav-item" data-view="proyeccion">
-            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M3 15l3-5 3 2 3-5 3 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 17h14" stroke="currentColor" stroke-width="1.2" opacity=".4"/></svg>
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+              <path d="M3 15l3-5 3 2 3-5 3 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                stroke-linejoin="round" />
+              <path d="M3 17h14" stroke="currentColor" stroke-width="1.2" opacity=".4" />
+            </svg>
             <span>Proyección Financiera</span>
           </li>
         </ul>
 
         <!-- ── Análisis Avanzado ── -->
         <li class="nav-section-label nav-group-toggle" data-group="analisis" onclick="toggleNavGroup('analisis')">
-          <span>Análisis Avanzado</span><svg class="group-chevron" viewBox="0 0 14 14" fill="none" width="11" height="11"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <span>Análisis Avanzado</span><svg class="group-chevron" viewBox="0 0 14 14" fill="none" width="11"
+            height="11">
+            <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+          </svg>
         </li>
         <ul class="nav-sub-list" id="nav-group-analisis">
+          <li class="nav-item" data-view="ticket">
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+              <path d="M4 4l12 0 2 6 -2 6 -12 0z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+              <circle cx="10" cy="10" r="2" stroke="currentColor" stroke-width="1.5" />
+            </svg>
+            <span>Análisis de Ticket</span>
+          </li>
           <li class="nav-item" data-view="breakeven">
-            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M3 17L10 7l4 4 3-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="7" r="1.5" fill="currentColor"/></svg>
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+              <path d="M3 17L10 7l4 4 3-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                stroke-linejoin="round" />
+              <circle cx="10" cy="7" r="1.5" fill="currentColor" />
+            </svg>
             <span>Punto de Equilibrio</span>
           </li>
           <li class="nav-item" data-view="tirvanp">
-            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M10 7v3l2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+              <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5" />
+              <path d="M10 7v3l2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
             <span>TIR &amp; VPN</span>
           </li>
           <li class="nav-item" data-view="escenarios">
-            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><rect x="3" y="5" width="5" height="11" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="10" y="3" width="5" height="13" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+              <rect x="3" y="5" width="5" height="11" rx="1" stroke="currentColor" stroke-width="1.5" />
+              <rect x="10" y="3" width="5" height="13" rx="1" stroke="currentColor" stroke-width="1.5" />
+            </svg>
             <span>Escenarios</span>
           </li>
           <li class="nav-item" data-view="flujomensual">
-            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M3 15l3-5 3 2 3-4 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><rect x="2" y="3" width="16" height="13" rx="1.5" stroke="currentColor" stroke-width="1.3"/></svg>
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+              <path d="M3 15l3-5 3 2 3-4 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                stroke-linejoin="round" />
+              <rect x="2" y="3" width="16" height="13" rx="1.5" stroke="currentColor" stroke-width="1.3" />
+            </svg>
             <span>Flujo Mensual</span>
           </li>
           <li class="nav-item" data-view="scenariosaved">
-            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M5 3h7l4 4v10a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.5"/><path d="M7 13l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+              <path d="M5 3h7l4 4v10a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor"
+                stroke-width="1.5" />
+              <path d="M7 13l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                stroke-linejoin="round" />
+            </svg>
             <span>Escenarios Guardados</span>
           </li>
           <li class="nav-item" data-view="ratiomaestro">
-            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><circle cx="7" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><circle cx="14" cy="7" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M3 17c0-2.5 1.8-4 4-4s4 1.5 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M14 12c1.5 0 3 1 3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+              <circle cx="7" cy="7" r="3" stroke="currentColor" stroke-width="1.5" />
+              <circle cx="14" cy="7" r="2" stroke="currentColor" stroke-width="1.3" />
+              <path d="M3 17c0-2.5 1.8-4 4-4s4 1.5 4 4" stroke="currentColor" stroke-width="1.5"
+                stroke-linecap="round" />
+              <path d="M14 12c1.5 0 3 1 3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+            </svg>
             <span>Ratio Formadores-Alumnos</span>
           </li>
           <li class="nav-item" data-view="alertas">
-            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M10 3l7 13H3L10 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 9v3M10 14v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+              <path d="M10 3l7 13H3L10 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+              <path d="M10 9v3M10 14v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
             <span>Alertas</span>
           </li>
           <li class="nav-item" data-view="costoporal">
-            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M10 7v1.5m0 3V13m-2-3.5c0-.83.67-1.5 2-1.5s2 .67 2 1.5c0 .67-.5 1.2-2 1.5S8 12 8 13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+              <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5" />
+              <path d="M10 7v1.5m0 3V13m-2-3.5c0-.83.67-1.5 2-1.5s2 .67 2 1.5c0 .67-.5 1.2-2 1.5S8 12 8 13"
+                stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+            </svg>
             <span>Costo por Alumno</span>
           </li>
           <li class="nav-item" data-view="historial">
-            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M10 6v4.5l3 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+              <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5" />
+              <path d="M10 6v4.5l3 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"
+                stroke-linejoin="round" />
+            </svg>
             <span>Historial de Cambios</span>
           </li>
         </ul>
 
         <!-- ── Exportar ── -->
         <li class="nav-section-label nav-group-toggle" data-group="exportar" onclick="toggleNavGroup('exportar')">
-          <span>Exportar</span><svg class="group-chevron" viewBox="0 0 14 14" fill="none" width="11" height="11"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <span>Exportar</span><svg class="group-chevron" viewBox="0 0 14 14" fill="none" width="11" height="11">
+            <path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+          </svg>
         </li>
         <ul class="nav-sub-list" id="nav-group-exportar">
           <li class="nav-item" data-view="resumenejec">
-            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M4 3h12a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.4"/><path d="M6 7h8M6 10h5M6 13h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+              <path d="M4 3h12a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor"
+                stroke-width="1.4" />
+              <path d="M6 7h8M6 10h5M6 13h3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+            </svg>
             <span>Resumen Ejecutivo PDF</span>
           </li>
           <li class="nav-item" data-view="reportes">
-            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M5 3h7l4 4v10a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.5"/><path d="M12 3v4h4" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M7 10h6M7 13h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+              <path d="M5 3h7l4 4v10a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor"
+                stroke-width="1.5" />
+              <path d="M12 3v4h4" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+              <path d="M7 10h6M7 13h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
             <span>Reportes PDF</span>
           </li>
           <li class="nav-item" data-view="excelexport">
-            <svg class="nav-icon" viewBox="0 0 20 20" fill="none"><path d="M5 3h7l4 4v10a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor" stroke-width="1.5"/><path d="M7 8l2 4 2-4M7 14h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg class="nav-icon" viewBox="0 0 20 20" fill="none">
+              <path d="M5 3h7l4 4v10a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="currentColor"
+                stroke-width="1.5" />
+              <path d="M7 8l2 4 2-4M7 14h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"
+                stroke-linejoin="round" />
+            </svg>
             <span>Exportar Excel</span>
           </li>
         </ul>

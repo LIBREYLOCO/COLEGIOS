@@ -2998,6 +2998,98 @@ const App = (() => {
     </div>`;
   }
 
+  // ============================================================
+  // XX. VIEW — ANÁLISIS DE TICKET DE INVERSIÓN
+  // ============================================================
+  function renderTicket() {
+    const corrida = calcCorrida();
+    const v = state.variables;
+
+    // Parámetros base
+    const numTickets = Math.max(1, v.numTickets || 100);
+    const capReq = v.capitalRequerido || 100000000;
+    const valorTicket = capReq / numTickets;
+
+    // Utilidades totales proyectadas (7 años típicos)
+    const ebitdaTotal = corrida.reduce((sum, yr) => sum + Math.max(0, yr.ebitda), 0);
+    const utilAnualPromedio = ebitdaTotal / corrida.length;
+
+    // Rendimiento del ticket base
+    const utilTicketPromedio = utilAnualPromedio / numTickets;
+    const rendimientoAnualPct = valorTicket > 0 ? (utilTicketPromedio / valorTicket) : 0;
+
+    // Función helper para construir las cards de los Tiers
+    const buildTierCard = (titulo, cantTickets, color, icono) => {
+      const invBase = valorTicket * cantTickets;
+      const utilAnual = utilTicketPromedio * cantTickets;
+      const retorno7 = (ebitdaTotal / numTickets) * cantTickets;
+      const roi = invBase > 0 ? (retorno7 / invBase) - 1 : 0;
+
+      return `
+        <div class="kpi-card" style="border-top: 3px solid var(--${color}); flex: 1; min-width: 250px;">
+          <div style="font-size:24px; margin-bottom:8px">${icono}</div>
+          <div class="kpi-label" style="font-size:14px; color:var(--${color}); font-weight:600">${titulo}</div>
+          <div style="font-size:11px; opacity:.6; margin-bottom:12px">${cantTickets} ${cantTickets === 1 ? 'Ticket' : 'Tickets'}</div>
+          
+          <div style="margin-bottom:16px; padding-bottom:16px; border-bottom:1px dashed var(--border)">
+            <div style="font-size:10px; text-transform:uppercase; letter-spacing:1px; opacity:.5">Inversión Requerida</div>
+            <div class="kpi-val" style="font-size:22px">${M(invBase)}</div>
+          </div>
+          
+          <div style="margin-bottom:12px">
+            <div style="font-size:10px; text-transform:uppercase; letter-spacing:1px; opacity:.5">Utilidad Promedio Anual</div>
+            <div class="kpi-val" style="font-size:18px; color:var(--gold)">${M(utilAnual)}</div>
+            <div class="badge badge-gold" style="margin-top:4px">Rendimiento: ${P(rendimientoAnualPct)} anual</div>
+          </div>
+          
+          <div style="margin-bottom:12px">
+            <div style="font-size:10px; text-transform:uppercase; letter-spacing:1px; opacity:.5">Retorno Total Esperado (7 años)</div>
+            <div class="kpi-val" style="font-size:18px">${M(retorno7)}</div>
+            <div style="font-size:11px; opacity:.7; margin-top:2px">ROI: ${P(roi)}</div>
+          </div>
+        </div>
+      `;
+    };
+
+    return `
+    <div class="section-header">
+      <div>
+        <div class="section-title">Análisis de Ticket de Inversión</div>
+        <div class="section-sub">Atractivo para inversionistas · Tiers y flujos proyectados a ${corrida.length} años</div>
+      </div>
+      <div class="badge badge-oxford">Capital Requerido: ${M(capReq)}</div>
+    </div>
+
+    <!-- Ajuste rápido de emisión -->
+    <div class="card" style="display:flex; align-items:center; gap:20px; padding:16px 20px; background:linear-gradient(to right, rgba(14,30,74,0.03), transparent);">
+      <div style="flex:1">
+        <div style="font-weight:500; color:var(--navy); font-size:14px">Emisión de Tickets</div>
+        <div style="font-size:12px; color:var(--text-muted); margin-top:4px">Ajusta el número total de tickets para recalcular el valor unitario y su rendimiento.</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <label style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted)">Total a emitir:</label>
+        <input type="number" class="form-input" value="${numTickets}" min="1" step="1" style="width:100px; font-weight:600; font-size:16px; text-align:center"
+          data-key="numTickets" data-nested="variables">
+      </div>
+    </div>
+
+    <!-- Tiers de Inversión -->
+    <h3 style="font-size:14px; color:var(--navy); margin: 24px 0 16px; font-weight:500">Opciones de Inversión (Tiers)</h3>
+    <div style="display:flex; gap:20px; flex-wrap:wrap; align-items:stretch;">
+      ${buildTierCard('Nivel Clásico', 1, 'cobalt', '🎟️')}
+      ${buildTierCard('Nivel Premium', 3, 'gold', '🎖️')}
+      ${buildTierCard('Nivel Fundador', 5, 'oxford', '🏛️')}
+    </div>
+    
+    <!-- Contexto / Disclaimer -->
+    <div style="margin-top:24px; padding:16px; background:var(--bg); border:1px solid var(--border); border-radius:6px; font-size:11px; color:var(--text-muted); line-height:1.6">
+      <strong>Nota sobre el cálculo:</strong> La utilidad proyectada asume una distribución lineal del 100% del EBITDA generado a lo largo de ${corrida.length} años.
+      El rendimiento anual promedio mostrado (${P(rendimientoAnualPct)}) es una media aritmética del flujo de caja libre antes de impuestos. El ROI refleja el crecimiento del capital inicial aportado al finalizar el ciclo proyectado.
+    </div>
+    `;
+  }
+
+
   const VIEW_TITLES = {
     dashboard: 'Dashboard', variables: 'Variables Iniciales', matricula: 'Matriz de Alumnos',
     referencias: 'Valores de Referencia', cuotas: 'Cuotas Escolares',
@@ -3009,6 +3101,7 @@ const App = (() => {
     scenariosaved: 'Escenarios Guardados', ratiomaestro: 'Ratio Formadores-Alumnos',
     alertas: 'Alertas del Sistema', excelexport: 'Exportar Excel',
     costoporal: 'Costo por Alumno', ingresosadicionales: 'Ingresos Adicionales',
+    ticket: 'Análisis de Ticket de Inversión',
     historial: 'Historial de Cambios', resumenejec: 'Resumen Ejecutivo PDF'
   };
   const RENDERERS = {
@@ -3021,6 +3114,7 @@ const App = (() => {
     scenariosaved: renderScenarioSaved, ratiomaestro: renderRatioMaestro,
     alertas: renderAlertas, excelexport: renderExcelExport,
     costoporal: renderCostoPorAlumno, ingresosadicionales: renderIngresosAdicionales,
+    ticket: renderTicket,
     historial: renderHistorial, resumenejec: renderResumenEjec
   };
 
@@ -3236,7 +3330,7 @@ const App = (() => {
       ['Utilidad por Accion', y => Math.round(y.utilidadPorAccion)]
     ];
     let csv = BOM + 'Concepto,' + years.join(',') + '\n';
-    fields.forEach(([l, fn]) => { csv += `"${l}",${corrida.map(fn).join(',')}\n`; });
+    fields.forEach(([l, fn]) => { csv += `"${l}", ${corrida.map(fn).join(',')} \n`; });
     const a = document.createElement('a');
     a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
     a.download = `LyL_Corrida_${new Date().toISOString().slice(0, 10)}.csv`;
@@ -3259,7 +3353,7 @@ const App = (() => {
 
   function removePuesto(idx) {
     if (!state.nominas.puestos) return;
-    if (!confirm(`¿Eliminar "${state.nominas.puestos[idx]?.nombre}"?`)) return;
+    if (!confirm(`¿Eliminar "${state.nominas.puestos[idx]?.nombre}" ? `)) return;
     state.nominas.puestos.splice(idx, 1);
     scheduleUpdate();
     toast('Puesto eliminado');
@@ -3280,7 +3374,7 @@ const App = (() => {
   }
   function toast(msg, type = '') {
     const c = document.getElementById('toast-container'); if (!c) return;
-    const el = document.createElement('div'); el.className = `toast ${type}`; el.textContent = msg;
+    const el = document.createElement('div'); el.className = `toast ${type} `; el.textContent = msg;
     c.appendChild(el); setTimeout(() => el.remove(), 3000);
   }
   function debounce(fn, d) { let t; return function (...a) { clearTimeout(t); t = setTimeout(() => fn.apply(this, a), d); }; }
@@ -3333,7 +3427,7 @@ const App = (() => {
       const wb = XLSX.utils.book_new();
 
       // Sheet 1: Corrida Anual
-      const header = ['Concepto', ...corrida.map(y => `${y.ano}-${y.ano + 1}`)];
+      const header = ['Concepto', ...corrida.map(y => `${y.ano} -${y.ano + 1} `)];
       const rows = [
         header,
         ['Matrícula Total', ...corrida.map(y => y.totalAlumnos)],
@@ -3359,7 +3453,7 @@ const App = (() => {
       XLSX.utils.book_append_sheet(wb, ws1, 'Corrida Anual');
 
       // Sheet 2: Matrícula
-      const matHeader = ['Grado', ...corrida.map(y => `${y.ano}`)];
+      const matHeader = ['Grado', ...corrida.map(y => `${y.ano} `)];
       const matRows = [matHeader, ...GRADES.map(g => [g.label, ...mat.map(yr => yr[g.key] || 0)])];
       const ws2 = XLSX.utils.aoa_to_sheet(matRows);
       XLSX.utils.book_append_sheet(wb, ws2, 'Matrícula');
@@ -3374,8 +3468,8 @@ const App = (() => {
         ['Matrícula Año 1', y1.totalAlumnos],
         ['Ingresos Año 1', Math.round(y1.ingresoTotal)],
         ['EBITDA Año 1', Math.round(y1.ebitda)],
-        [`Matrícula Año ${corrida.length}`, yn.totalAlumnos],
-        [`EBITDA Año ${corrida.length}`, Math.round(yn.ebitda)],
+        [`Matrícula Año ${corrida.length} `, yn.totalAlumnos],
+        [`EBITDA Año ${corrida.length} `, Math.round(yn.ebitda)],
         ['Flujo Acumulado Final', Math.round(yn.cashAcumulado)],
       ];
       const ws3 = XLSX.utils.aoa_to_sheet(kpiRows);
@@ -3409,7 +3503,7 @@ const App = (() => {
     if (!state.ingresosAdicionales || !state.ingresosAdicionales[idx]) return;
     const prev = state.ingresosAdicionales[idx][campo];
     state.ingresosAdicionales[idx][campo] = valor;
-    logChange(`ingresoAdicional[${idx}].${campo}`, prev, valor);
+    logChange(`ingresoAdicional[${idx}].${campo} `, prev, valor);
     saveState();
   }
 
