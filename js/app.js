@@ -3082,7 +3082,7 @@ const App = (() => {
     <div class="card" style="display:flex; align-items:center; gap:20px; padding:16px 20px; background:linear-gradient(to right, rgba(14,30,74,0.03), transparent);">
       <div style="flex:1">
         <div style="font-weight:500; color:var(--navy); font-size:14px">Emisión de Tickets</div>
-        <div style="font-size:12px; color:var(--text-muted); margin-top:4px">Ajusta el número total de tickets para recalcular el valor unitario y su rendimiento.</div>
+        <div style="font-size:12px; color:var(--text-muted); margin-top:4px">Ajusta el número total de tickets a emitir. Este valor se sincroniza con el módulo de Variables Iniciales.</div>
       </div>
       <div style="display:flex; align-items:center; gap:12px;">
         <label style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted)">Total a emitir:</label>
