@@ -3025,6 +3025,22 @@ const App = (() => {
       const retorno7 = (ebitdaTotal / numTickets) * cantTickets;
       const roi = invBase > 0 ? (retorno7 / invBase) - 1 : 0;
 
+      let breakdownHtml = '<div style="margin-top:20px; font-size:11px; background:rgba(0,0,0,0.01); padding:12px; border-radius:4px">';
+      breakdownHtml += '<div style="font-weight:600; color:var(--text); margin-bottom:8px; text-transform:uppercase; letter-spacing:1px; font-size:10px; opacity:.7">Proyección Anual</div>';
+
+      corrida.forEach((yr, idx) => {
+        const utilAnio = (Math.max(0, yr.ebitda) / numTickets) * cantTickets;
+        const rendimientoAnio = invBase > 0 ? (utilAnio / invBase) : 0;
+
+        breakdownHtml += `
+          <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid rgba(0,0,0,0.05)">
+            <span style="opacity:.7">Año ${idx + 1}</span>
+            <span style="font-weight:500; color:var(--${color})">${M(utilAnio)} <span style="opacity:.5; font-size:10px; margin-left:4px">(${P(rendimientoAnio)})</span></span>
+          </div>
+        `;
+      });
+      breakdownHtml += '</div>';
+
       return `
         <div class="kpi-card" style="border-top: 3px solid var(--${color}); flex: 1; min-width: 250px;">
           <div style="font-size:24px; margin-bottom:8px">${icono}</div>
@@ -3047,6 +3063,8 @@ const App = (() => {
             <div class="kpi-val" style="font-size:18px">${M(retorno7)}</div>
             <div style="font-size:11px; opacity:.7; margin-top:2px">ROI: ${P(roi)}</div>
           </div>
+          
+          ${breakdownHtml}
         </div>
       `;
     };
