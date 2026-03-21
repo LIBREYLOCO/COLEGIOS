@@ -56,15 +56,16 @@ const App = (() => {
 
   // Dynamic projection horizon (read from state; defaults to 7)
   function getYears() { return (state && state.horizonte) ? Math.max(1, Math.min(10, state.horizonte)) : 7; }
-  const ANO_INICIO = 2026;
+  // ── Parámetros Legales Nómina México 2024/2025 ──────────────────────
+  const NOM_UMA = 117.31;   // UMA diaria 2025 aprox
+  const NOM_SMG = 248.93;   // Salario Mínimo General
+  const NOM_DIAS_MES = 30;
+  const NOM_AGUINALDO_DIAS = 15;
+  const NOM_VACACIONES_DIAS = 6;
+  const NOM_PRIMA_VAC = 0.25;
+  const NOM_FI = 1 + (NOM_AGUINALDO_DIAS + (NOM_VACACIONES_DIAS * NOM_PRIMA_VAC)) / 365;
 
-  // ── Parámetros Legales Nómina México 2025 ──────────────────────
-  const NOM_UMA = 113.14;   // UMA diaria
-  const NOM_SMG = 278.80;   // Salario mínimo general diario (actualizado 2025)
-  const NOM_DIAS_MES = 30.4;
-  const NOM_FI = 1.0493;   // Factor de integración (15d aguinaldo + 25% prima vac)
-
-  // Tabla ISR mensual (Art. 96 LISR — 11 tramos verificados en modelo PDF)
+  // Tabla ISR mensual 2025 (simplificada L&L)
   const ISR_TABLA = [
     { li: 0.01, ls: 746.04, cuota: 0, tasa: 0.0192 },
     { li: 746.05, ls: 6332.05, cuota: 14.32, tasa: 0.064 },
@@ -77,6 +78,21 @@ const App = (() => {
     { li: 93993.91, ls: 125325.20, cuota: 22665.17, tasa: 0.32 },
     { li: 125325.21, ls: 375975.61, cuota: 32691.18, tasa: 0.34 },
     { li: 375975.62, ls: Infinity, cuota: 117912.32, tasa: 0.35 }
+  ];
+
+  // Tabla Subsidio al Empleo mensual 2025 (simplificada L&L)
+  const SUB_TABLA = [
+    { li: 0.01, ls: 1768.96, sub: 407.02 },
+    { li: 1768.97, ls: 2653.38, sub: 406.83 },
+    { li: 2653.39, ls: 3472.84, sub: 406.62 },
+    { li: 3472.85, ls: 3537.87, sub: 392.77 },
+    { li: 3537.88, ls: 4446.15, sub: 382.46 },
+    { li: 4446.16, ls: 4717.18, sub: 354.23 },
+    { li: 4717.19, ls: 5335.42, sub: 324.87 },
+    { li: 5335.43, ls: 6224.67, sub: 294.63 },
+    { li: 6224.68, ls: 7113.90, sub: 253.54 },
+    { li: 7113.91, ls: 7382.33, sub: 217.61 },
+    { li: 7382.34, ls: Infinity, sub: 0 }
   ];
 
   // ============================================================
@@ -181,6 +197,20 @@ const App = (() => {
       secundaria: 12400,
       bachillerato: 13100
     },
+
+    // ── Colegiaturas de referencia Newland (base para el selector de tipos) ──
+    colegiaturasNewland: {
+      maternalK1: 5900,
+      kinder23: 8200,
+      primaria: 11200,
+      secundaria: 12400,
+      bachillerato: 13100
+    },
+    selectorColegiatura: {
+      tipo: 'newland',       // 'newland' | 'media' | 'baja'
+      descuentoMedias: 0.15, // 15% descuento sobre Newland
+      descuentoBajas: 0.30   // 30% descuento sobre Newland
+    },
     inscripciones: {
       maternalK1: { cuotaInsc: 0, admision: 1804, orfandad: 3238, seguro: 1208, otro: 0 },
       kinder23: { cuotaInsc: 1395, admision: 6470, orfandad: 3238, seguro: 1425, otro: 0 },
@@ -210,9 +240,6 @@ const App = (() => {
         // ── Dirección ──
         { nombre: 'DIRECCIÓN', sector: 'Dirección', sueldo: 53000, count: 1, esHonorarios: false },
         { nombre: 'Recepción', sector: 'Administración', sueldo: 10000, count: 1, esHonorarios: false },
-        { nombre: 'Marca', sector: 'Dir Ejecutiva', sueldo: 25000, count: 1, esHonorarios: false },
-        { nombre: 'DIRECCION EJEC.', sector: 'Dir Ejecutiva', sueldo: 72424, count: 1, esHonorarios: false },
-        { nombre: 'D.O.', sector: 'Dir Ejecutiva', sueldo: 35000, count: 1, esHonorarios: false },
         // ── Administración ──
         { nombre: 'Coordinador Administrativo', sector: 'Administración', sueldo: 25000, count: 1, esHonorarios: false },
         { nombre: 'Coordinación Preescolar', sector: 'Administración', sueldo: 25000, count: 1, esHonorarios: false },
@@ -303,6 +330,7 @@ const App = (() => {
     // ── Gastos de Operación ──
     gastosOperacion: {
       capacidadGastoRef: 400,
+      capacidadGastoSuperRef: 650,
       controlados: [
         { label: 'Capacitación', monto: 30000 },
         { label: 'Cortesías y Eventos Captación', monto: 38866 },
@@ -332,7 +360,7 @@ const App = (() => {
     // ── Nómina Dirección Ejecutiva (Honorarios corporativos compartidos entre campus) ──
     dirEjecutiva: {
       tasaHonorarios: 0.065,   // 6.5% costo fiscal sobre honorarios
-      totalCampus: 1,       // número de campus que comparten este costo
+      totalCampus: 5,       // número de campus que comparten este costo
       puestos: [
         { nombre: 'DIRECCION EJECUTIVA', puesto: 'DGC', salario: 165641.11 },
         { nombre: 'DIRECCIÓN DE FINANZAS Y PERFORMANCE', puesto: 'DFP', salario: 45000 },
@@ -434,23 +462,29 @@ const App = (() => {
   }
 
   /**
-   * Modelo matrícula — dos tipos de grado:
+   * Modelo matrícula — cascada por nivel usando entradaPorNivel + desercionAnual
    *
-   * GRADOS DE ENTRADA (mat, p1, s1, b1) — reciben alumnos nuevos del exterior:
-   *   grade[t] = base_año0 × (1 + crec)^t
-   *   → Siempre crecen. mat arranca en 15, p1 en 30.
+   * GRADOS DE ENTRADA (mat, p1, s1, b1):
+   *   grade[t] = entradaPorNivel[level][t-1]
    *
-   * GRADOS CASCADE (todos los demás) — alumnos que avanzan del grado anterior:
-   *   grade[t] = prev_grade[t-1] × reinscripcion × (1 + crec)
-   *   → reinscripcion retiene, crec agrega nuevo ingreso lateral.
+   * k1 (especial — recibe cascada de mat + nuevos de Kínder):
+   *   k1[t] = mat[t-1] × (1 - desercionAnual['Kínder'][t-1]) + entradaPorNivel['Kínder'][t-1]
    *
+   * GRADOS CASCADE (todos los demás):
+   *   grade[t] = prevGrade[t-1] × (1 - desercionAnual[level][t-1])
+   *
+   * Si arrIdx supera el largo del array → usa el último valor disponible (horizonte extendido).
    * Grados inactivos (gradosActivos[key] === false) → 0 en todos los años.
    */
   function calcMatricula() {
-    const rein = state.tasaReinscripcion ?? 0.85;
-    const crec = state.tasaCrecimientoNuevoIngreso ?? 0.05;
     const activos = state.gradosActivos || {};
     const result = [];
+
+    // Helper: lee valor de array con fallback al último elemento
+    function arrVal(arr, idx) {
+      if (!arr || arr.length === 0) return 0;
+      return arr[Math.min(idx, arr.length - 1)] ?? 0;
+    }
 
     // Año 0 — base editada por el usuario
     const year0 = {};
@@ -463,15 +497,27 @@ const App = (() => {
     for (let t = 1; t < getYears(); t++) {
       const prev = result[t - 1];
       const cur = {};
+      const arrIdx = t - 1; // entradaPorNivel y desercionAnual usan índice 0-based
 
       GRADES.forEach((g, i) => {
         if (activos[g.key] === false) { cur[g.key] = 0; return; }
 
+        const levelKey = g.level; // 'Maternal', 'Kínder', 'Primaria', 'Secundaria', 'Bachillerato'
+        const desArr  = state.desercionAnual?.[levelKey] || [];
+        const des = arrVal(desArr, arrIdx);
+
         let val;
         if (ENTRY_GRADES.has(g.key)) {
-          val = year0[g.key] * Math.pow(1 + crec, t);
+          // Grados de entrada: reciben nuevos alumnos externos según la matriz
+          const entArr = state.entradaPorNivel?.[levelKey] || [];
+          val = arrVal(entArr, arrIdx);
+        } else if (g.key === 'k1') {
+          // k1 especial: cascada de mat + nuevos externos de Kínder
+          const entKinder = arrVal(state.entradaPorNivel?.['Kínder'] || [], arrIdx);
+          val = prev['mat'] * (1 - des) + entKinder;
         } else {
-          val = prev[GRADES[i - 1].key] * rein * (1 + crec);
+          // Cascade puro: avanza del grado anterior con deserción
+          val = prev[GRADES[i - 1].key] * (1 - des);
         }
         val = Math.max(0, Math.round(val));
         cur[g.key] = val;
@@ -537,10 +583,14 @@ const App = (() => {
   // Motor de nómina por puesto — LSS / LISR México 2025
   // ============================================================
 
-  /** Retención ISR mensual del empleado (Art. 96 LISR) */
-  function calcISR(sueldoMensual) {
-    const row = ISR_TABLA.find(r => sueldoMensual >= r.li && sueldoMensual <= r.ls) || ISR_TABLA[ISR_TABLA.length - 1];
-    return row.cuota + Math.max(0, sueldoMensual - row.li) * row.tasa;
+  /** Retención ISR mensual del empleado (Art. 96 LISR) y Subsidio */
+  function calcISR(baseMensual) {
+    if (baseMensual <= 0) return { isr: 0, subsidio: 0 };
+    const rowISR = ISR_TABLA.find(r => baseMensual >= r.li && baseMensual <= r.ls) || ISR_TABLA[ISR_TABLA.length - 1];
+    const isr = rowISR.cuota + (baseMensual - rowISR.li) * rowISR.tasa;
+    const rowSub = SUB_TABLA.find(r => baseMensual >= r.li && baseMensual <= r.ls) || SUB_TABLA[SUB_TABLA.length - 1];
+    const subsidio = rowSub.sub || 0;
+    return { isr, subsidio };
   }
 
   /** Multiplica todos los costos calculados por el número de personas */
@@ -548,9 +598,12 @@ const App = (() => {
     if (n <= 1) return { ...c, count: 1 };
     return {
       ...c, count: n,
-      imss: c.imss * n, infonavit: c.infonavit * n, isn: c.isn * n,
+      imssObrero: c.imssObrero * n, imssPatronal: c.imssPatronal * n,
+      infonavit: c.infonavit * n, isn: c.isn * n,
       provisiones: c.provisiones * n, isrEmpleado: c.isrEmpleado * n,
-      costoTotal: c.costoTotal * n
+      costoTotal: c.costoTotal * n,
+      aguinaldo: c.aguinaldo * n, primaVacacional: c.primaVacacional * n,
+      primaAntiguedad: c.primaAntiguedad * n, costoAsimilado: (c.costoAsimilado || 0) * n
       // sueldo se mantiene unitario para mostrar en tabla
     };
   }
@@ -563,34 +616,63 @@ const App = (() => {
   function calcCostoPuesto(p) {
     const count = Math.max(1, Math.round(p.count || 1));
     const sueldo = p.sueldo || 0;
+
+    // Si la persona es honorarios, no tiene cargas sociales
     if (p.esHonorarios) {
+      const { isr, subsidio } = calcISR(sueldo);
+      const isrEmpleado = Math.max(0, isr - subsidio);
       const s = {
-        count, sueldo, sd: 0, sdi: 0, imss: 0, infonavit: 0, isn: 0,
-        provisiones: 0, isrEmpleado: calcISR(sueldo), costoTotal: sueldo
+        count, sueldo, sd: 0, sdi: 0, sbcMensual: 0,
+        imssObrero: 0, imssPatronal: 0, infonavit: 0, isn: 0,
+        aguinaldo: 0, primaVacacional: 0, primaAntiguedad: 0, provisiones: 0,
+        isrEmpleado, subsidio, netoEstimado: sueldo - isrEmpleado,
+        costoAsimilado: sueldo * 0.065, costoTotal: sueldo + (sueldo * 0.065)
       };
       return multiplyByCnt(s, count);
     }
-    const sd = sueldo / NOM_DIAS_MES;
-    const sdi = sd * NOM_FI;
-    const sdiMensual = sdi * NOM_DIAS_MES;
 
-    // IMSS Patronal — cuota fija por TRABAJADOR × count (no confundir con sueldo total)
-    const cuotaFijaEM = 0.2040 * NOM_SMG * NOM_DIAS_MES;          // Cuota fija EM por trabajador
-    const excedenteEM = 0.011 * Math.max(0, sdi - 3 * NOM_UMA) * NOM_DIAS_MES; // Excedente 3 UMA
-    const invalidezVida = 0.0175 * sdiMensual;                        // Invalidez y vida
-    const guarderias = 0.01 * sdiMensual;                        // Guarderías y PS
-    const retiro = 0.02 * sdiMensual;                        // Retiro
-    const cesantia = 0.0315 * sdiMensual;                        // Cesantía y vejez
-    const imss = cuotaFijaEM + excedenteEM + invalidezVida + guarderias + retiro + cesantia;
+    // De acuerdo a las fórmulas exactas solicitadas:
+    const sd = sueldo === 0 ? 0 : sueldo * 12 / 365;
+    const sdi = sueldo === 0 ? 0 : sd * NOM_FI;
+    const sbcMensual = sueldo === 0 ? 0 : sdi * NOM_DIAS_MES;
 
-    const infonavit = 0.05 * sdiMensual;                         // Infonavit 5%
-    const isn = sueldo * 0.03;                                // ISN 3%
-    const provisiones = (NOM_FI - 1) * sueldo;                       // Aguinaldo + prima vac via FI
+    // IMSS Obrero (P2)
+    const excDiario = Math.max(sdi - 3 * NOM_UMA, 0);
+    const imssObrero = sueldo === 0 ? 0 : (excDiario * 0.004 + sdi * (0.00375 + 0.0025 + 0.00625 + 0.01125)) * NOM_DIAS_MES;
+
+    // IMSS Patronal sin INFONAVIT (Q2 - simplificado)
+    const imssPatronal = sueldo === 0 ? 0 :
+      (sdi * 0.01 * NOM_DIAS_MES) +
+      (NOM_UMA * 0.204 * NOM_DIAS_MES) +
+      (excDiario * 0.011 * NOM_DIAS_MES) +
+      (sdi * (0.0105 + 0.007 + 0.0175 + 0.01 + 0.055) * NOM_DIAS_MES);
+
+    const infonavit = sueldo === 0 ? 0 : sbcMensual * 0.05;
+    const isn = sueldo * 0.03;
+
+    // Provisiones (T, U, V)
+    const aguinaldo = sueldo === 0 ? 0 : sd * NOM_AGUINALDO_DIAS / 12;
+    const vacacionesMensual = sueldo === 0 ? 0 : sd * NOM_VACACIONES_DIAS / 12;
+    const primaVacacional = sueldo === 0 ? 0 : sd * NOM_VACACIONES_DIAS * NOM_PRIMA_VAC / 12;
+    const provisiones = aguinaldo + primaVacacional + vacacionesMensual;
+
+    // ISR y Subsidio basado en Bruto final - IMSS Obrero
+    const baseGravable = Math.max(sueldo - imssObrero, 0);
+    const result = calcISR(baseGravable);
+    const isrEmpleado = result.isr; // No restamos aquí el subsidio de la variable principal ISR_Mensual (N)
+    const subsidio = result.subsidio; // O2
+
+    // Según su excel: Costo fiscal mensual (W) y Costo Total (X)
+    const costoFiscal = sueldo === 0 ? 0 : (imssPatronal + imssObrero + isrEmpleado - subsidio + infonavit + isn + aguinaldo + vacacionesMensual + primaVacacional);
+    const netoEstimado = sueldo - imssObrero - isrEmpleado + subsidio;
 
     const single = {
-      count, sueldo, sd, sdi, imss, infonavit, isn, provisiones,
-      isrEmpleado: calcISR(sueldo),
-      costoTotal: sueldo + imss + infonavit + isn + provisiones
+      count, sueldo, sd, sdi, sbcMensual,
+      imssObrero, imssPatronal, infonavit, isn,
+      aguinaldo, primaVacacional, primaAntiguedad: vacacionesMensual, // Reutilizaremos este campo prestado para vacaciones mensuales
+      provisiones, costoAsimilado: 0,
+      isrEmpleado, netoEstimado, subsidio,
+      costoTotal: sueldo === 0 ? 0 : (sueldo + costoFiscal)
     };
     return multiplyByCnt(single, count);
   }
@@ -614,8 +696,22 @@ const App = (() => {
   }
 
   /**
+   * Factor de escala de gasto por matrícula — 3 zonas:
+   *   alumnos < base            → factor = alumnos / base         (escala proporcional hacia abajo)
+   *   base ≤ alumnos ≤ superBase → factor = 1.0                   (100% de gasto base)
+   *   alumnos > superBase       → factor = alumnos / superBase    (escala proporcional hacia arriba)
+   */
+  function calcFactorGasto(alumnos, base, superBase) {
+    const b  = Math.max(1, base);
+    const sb = Math.max(b, superBase);
+    if (alumnos < b)  return alumnos / b;
+    if (alumnos <= sb) return 1.0;
+    return alumnos / sb;
+  }
+
+  /**
    * Costo mensual de nómina para el yearIdx dado.
-   * factorNomina = min(1, totalAlumnos / capacidadNominaRef)  — misma lógica que gastos op.
+   * Factor de 3 zonas (base / superBase) — misma lógica que gastos op.
    * Si totalAlumnos no se pasa (ej. vista de Resumen sin corrida), se asume factor = 1.
    */
   function calcNomina(yearIdx, totalAlumnos) {
@@ -623,9 +719,10 @@ const App = (() => {
     const puestos = state.nominas.puestos || [];
     const puestosBase = puestos.reduce((s, p) => s + calcCostoPuesto(p).costoTotal, 0);
 
-    // Factor por matrícula — misma referencia que gastos de operación
-    const capNomina = state.gastosOperacion.capacidadGastoRef || 400;
-    const factorNomina = totalAlumnos != null ? Math.min(1, totalAlumnos / capNomina) : 1;
+    // Factor por matrícula — 3 zonas: < base → escala abajo | base–superBase → 100% | > superBase → escala arriba
+    const capNomina      = state.gastosOperacion.capacidadGastoRef      || 400;
+    const capNominaSuper = state.gastosOperacion.capacidadGastoSuperRef || 650;
+    const factorNomina   = totalAlumnos == null ? 1 : calcFactorGasto(totalAlumnos, capNomina, capNominaSuper);
 
     // Si hay puestos definidos, su total ya incluye IMSS/ISN/etc — inflacionar directamente
     const base = (puestosBase > 0 ? puestosBase : state.nominas.nominaCampusBase) * inf * factorNomina;
@@ -633,24 +730,28 @@ const App = (() => {
     const fondo = state.nominas.fondoFiniquitos;
     const transicion = state.nominas.nominaTransicion[yearIdx] || 0;
 
-    // Cuando se usan puestos, IMSS/ISN ya están embebidos en "base"
+    // Cuando se usan puestos, IMSS/ISN ya están embebidos en "base", 
+    // pero sumaremos los desgloses para posibles gráficas detalladas si fuere necesario, 
+    // asumiendo que puestosBase sumó "costoTotal" de todos
     const usaPuestos = puestosBase > 0;
     const honor = usaPuestos ? 0 : (state.nominas.honorarios || 0);
     const sal = usaPuestos ? base : (base + honor);
-    const imss = usaPuestos ? 0 : sal * state.nominas.imssRate;
-    const infonavit = usaPuestos ? 0 : sal * state.nominas.infonavitRate;
-    const isrNomina = usaPuestos ? 0 : sal * state.nominas.isrNominaRate;
-    const impEst = usaPuestos ? 0 : sal * state.nominas.impEstatalRate;
-    const aguinaldo = usaPuestos ? 0 : sal * state.nominas.aguinaldoRate;
-    const primaVac = usaPuestos ? 0 : sal * state.nominas.primaVacacionalRate;
-    const primaAnt = usaPuestos ? 0 : sal * state.nominas.primaAntiguedadRate;
+
+    // Si no usamos puestos (legacy), calculamos tasas flat
+    const imss = usaPuestos ? (puestos.reduce((s, p) => s + calcCostoPuesto(p).imssPatronal, 0) * inf * factorNomina) : sal * state.nominas.imssRate;
+    const infonavit = usaPuestos ? (puestos.reduce((s, p) => s + calcCostoPuesto(p).infonavit, 0) * inf * factorNomina) : sal * state.nominas.infonavitRate;
+    const isrNomina = usaPuestos ? 0 : sal * state.nominas.isrNominaRate; // En el nuevo modelo, el ISR lo paga el empleado (Retención), el costo empresa no incluye ISR
+    const impEst = usaPuestos ? (puestos.reduce((s, p) => s + calcCostoPuesto(p).isn, 0) * inf * factorNomina) : sal * state.nominas.impEstatalRate;
+    const aguinaldo = usaPuestos ? (puestos.reduce((s, p) => s + calcCostoPuesto(p).aguinaldo, 0) * inf * factorNomina) : sal * state.nominas.aguinaldoRate;
+    const primaVac = usaPuestos ? (puestos.reduce((s, p) => s + calcCostoPuesto(p).primaVacacional, 0) * inf * factorNomina) : sal * state.nominas.primaVacacionalRate;
+    const primaAnt = usaPuestos ? (puestos.reduce((s, p) => s + calcCostoPuesto(p).primaAntiguedad, 0) * inf * factorNomina) : sal * state.nominas.primaAntiguedadRate;
 
     // Nómina dirección ejecutiva (honorarios corporativos ÷ campus)
     const de = calcDirEjecutiva(yearIdx);
 
-    const totalMensual = sal + asim + imss + infonavit + isrNomina +
-      impEst + aguinaldo + primaVac + primaAnt +
-      fondo + transicion + de.costoCampus;
+    const totalMensual = usaPuestos
+      ? (base + asim + fondo + transicion + de.costoCampus) // "base" ya incluye todas las provisiones y cargas
+      : (sal + asim + imss + infonavit + isrNomina + impEst + aguinaldo + primaVac + primaAnt + fondo + transicion + de.costoCampus);
 
     return {
       base, honor, asim, fondo, transicion, imss, infonavit, factorNomina,
@@ -663,8 +764,10 @@ const App = (() => {
   function calcGastos(yearIdx, totalAlumnos) {
     const go = state.gastosOperacion;
     const inf = Math.pow(1 + state.variables.inflacion, yearIdx);
-    const cap = go.capacidadGastoRef || 400;
-    const factor = Math.min(1, (totalAlumnos || 0) / cap);
+    // Factor 3 zonas: < base → escala abajo | base–superBase → 100% | > superBase → escala arriba
+    const cap      = go.capacidadGastoRef      || 400;
+    const capSuper = go.capacidadGastoSuperRef || 650;
+    const factor   = calcFactorGasto(totalAlumnos || 0, cap, capSuper);
 
     const sumC = (go.controlados || []).reduce((s, c) => s + (c.monto || 0), 0) * factor * inf;
     const sumF = (go.fijos || []).reduce((s, c) => s + (c.monto || 0), 0) * inf;
@@ -1104,6 +1207,39 @@ const App = (() => {
     const desc = state.descuentos;
     const ano0 = state.variables.anoInicio || ANO_INICIO;
     const ciclo1 = `${ano0 - 1}-${String(ano0).slice(-2)}`;
+    const sel = state.selectorColegiatura || { tipo: 'newland', descuentoMedias: 0.15, descuentoBajas: 0.30 };
+    const nwl = state.colegiaturasNewland || DEFAULTS.colegiaturasNewland;
+    const tipoActual = sel.tipo || 'newland';
+    const pctMedias = sel.descuentoMedias ?? 0.15;
+    const pctBajas  = sel.descuentoBajas  ?? 0.30;
+    const medias = Object.fromEntries(TUITION_KEYS.map(k => [k, Math.round(nwl[k] * (1 - pctMedias))]));
+    const bajas  = Object.fromEntries(TUITION_KEYS.map(k => [k, Math.round(nwl[k] * (1 - pctBajas))]));
+
+    const previewRows = TUITION_KEYS.map((lk, i) => {
+      const hlN = tipoActual === 'newland' ? 'color:var(--gold)' : 'color:var(--text-muted)';
+      const hlM = tipoActual === 'media'   ? 'color:var(--gold)' : 'color:var(--text-muted)';
+      const hlB = tipoActual === 'baja'    ? 'color:var(--gold)' : 'color:var(--text-muted)';
+      return `<tr>
+        <td>${TUITION_LABELS[i]}</td>
+        <td style="${hlN}"><input type="number" class="cell-input" value="${nwl[lk]}"
+          data-ref-type="colegiaturasNewland" data-ref-grade="${lk}"
+          style="color:inherit;width:100px"></td>
+        <td style="${hlM};font-variant-numeric:tabular-nums">${N(medias[lk])}</td>
+        <td style="${hlB};font-variant-numeric:tabular-nums">${N(bajas[lk])}</td>
+      </tr>`;
+    }).join('');
+
+    function radioBtn(value, label) {
+      const active = tipoActual === value;
+      return `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 18px;
+        border-radius:6px;border:1px solid ${active ? 'var(--cobalt)' : 'var(--beige)'};
+        background:${active ? 'rgba(0,71,171,0.06)' : 'transparent'};
+        font-size:13px;color:${active ? 'var(--cobalt)' : 'var(--text)'}">
+        <input type="radio" name="selector-tipo" value="${value}" ${active ? 'checked' : ''}
+          onchange="App.setSelectorTipo(this.value)" style="accent-color:var(--cobalt)">
+        ${label}
+      </label>`;
+    }
 
     const rows = TUITION_KEYS.map((lk, i) => `
       <tr>
@@ -1120,7 +1256,58 @@ const App = (() => {
     </div></div>
 
     <div class="card">
-      <div class="card-title">Aranceles por Nivel · Ciclo 1 (${ciclo1})</div>
+      <div class="card-title">Selector de Tipo de Colegiatura</div>
+
+      <div class="table-wrap" style="margin-bottom:20px">
+        <table>
+          <thead><tr>
+            <th>Nivel</th>
+            <th>Newland <span class="form-hint">(base editable)</span></th>
+            <th>Medias <span class="form-hint">(−${Math.round(pctMedias*100)}%)</span></th>
+            <th>Bajas <span class="form-hint">(−${Math.round(pctBajas*100)}%)</span></th>
+          </tr></thead>
+          <tbody>${previewRows}</tbody>
+        </table>
+      </div>
+
+      <div style="display:flex;gap:20px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px">
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Descuento Medias</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="number" class="form-input" value="${Math.round(pctMedias*100)}"
+              min="0" max="100" step="1" data-selector-descuento="descuentoMedias"
+              style="width:80px">
+            <span class="form-hint">%</span>
+          </div>
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Descuento Bajas</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="number" class="form-input" value="${Math.round(pctBajas*100)}"
+              min="0" max="100" step="1" data-selector-descuento="descuentoBajas"
+              style="width:80px">
+            <span class="form-hint">%</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:20px">
+        <span style="font-size:12px;color:var(--text-muted);margin-right:4px">Tipo a aplicar:</span>
+        ${radioBtn('newland', 'Newland')}
+        ${radioBtn('media', 'Medias')}
+        ${radioBtn('baja', 'Bajas')}
+      </div>
+
+      <button onclick="App.aplicarTipoColegiatura()"
+        style="background:var(--cobalt);color:#fff;border:none;border-radius:6px;
+          padding:11px 28px;font-size:13px;font-weight:400;cursor:pointer;
+          font-family:inherit;letter-spacing:0.02em">
+        Aplicar tipo de colegiatura
+      </button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Aranceles por Nivel · Ciclo 1 (${ciclo1}) <span class="form-hint">— valores activos en el modelo</span></div>
       <div class="table-wrap">
         <table>
           <thead><tr>
@@ -1304,24 +1491,23 @@ const App = (() => {
       const honCheck = p.esHonorarios
         ? `<input type="checkbox" checked onchange="App.toggleHonorarios(${idx})">`
         : `<input type="checkbox" onchange="App.toggleHonorarios(${idx})">`;
-      const tdC = (v, gold) =>
-        `<td style="text-align:right;${gold ? 'color:var(--gold);font-weight:500' : 'opacity:.85'}">${M(v)}</td>`;
+      const tdC = (v, color = '', bold = false) =>
+        `<td style="text-align:right;${color ? 'color:' + color + ';' : ''}${bold ? 'font-weight:600;' : ''}">${M(v || 0)}</td>`;
       return `<tr>
-        <td><input type="text" class="cell-input" value="${p.nombre}" style="width:150px;text-align:left"
+        <td><input type="text" class="cell-input" value="${p.nombre}" style="width:130px;text-align:left;font-size:11px"
           data-puesto-idx="${idx}" data-puesto-field="nombre"></td>
-        <td><input type="text" class="cell-input" value="${p.sector}" style="width:95px;text-align:left"
+        <td><input type="text" class="cell-input" value="${p.sector}" style="width:80px;text-align:left;font-size:10px"
           data-puesto-idx="${idx}" data-puesto-field="sector"></td>
-        <td><input type="number" class="cell-input" value="${cnt}" step="1" min="1" style="width:46px;text-align:center"
-          data-puesto-idx="${idx}" data-puesto-field="count" title="Número de personas"></td>
-        <td><input type="number" class="cell-input" value="${p.sueldo}" step="500" style="width:100px"
-          data-puesto-idx="${idx}" data-puesto-field="sueldo" title="Sueldo bruto unitario"></td>
+        <td><input type="number" class="cell-input" value="${cnt}" step="1" min="1" style="width:40px;text-align:center"
+          data-puesto-idx="${idx}" data-puesto-field="count" title="Personas"></td>
+        <td><input type="number" class="cell-input" value="${p.sueldo}" step="500" style="width:80px;text-align:right;font-weight:600"
+          data-puesto-idx="${idx}" data-puesto-field="sueldo" title="Sueldo bruto base (editable)"></td>
         <td style="text-align:center">${honCheck}</td>
         ${p.esHonorarios
-          ? `<td colspan="5" style="text-align:center;opacity:.4;font-size:11px">— exento IMSS/ISN —</td>`
-          : `${tdC(c.imss)}${tdC(c.isn)}${tdC(c.infonavit)}`}
-        ${tdC(c.provisiones)}
-        <td style="text-align:right;color:var(--cobalt);opacity:.85">${M(p.sueldo * cnt)}</td>
-        ${tdC(c.costoTotal, true)}
+          ? `<td colspan="9" style="text-align:center;opacity:.4;font-size:10px">— exento cálculos Seguridad Social —</td>
+             ${tdC(c.costoAsimilado, 'var(--gold)')}`
+          : `${tdC(c.sd)}${tdC(c.sdi)}${tdC(c.imssObrero, '#c0392b')}${tdC(c.isrEmpleado, '#c0392b')}${tdC(c.netoEstimado, 'var(--emerald)', true)}${tdC(c.imssPatronal)}${tdC(c.infonavit)}${tdC(c.isn)}${tdC(c.provisiones)}<td style="text-align:center;opacity:.3">-</td>`}
+        ${tdC(c.costoTotal, 'var(--gold)', true)}
         <td style="text-align:center">
           <button onclick="App.removePuesto(${idx})"
             style="background:none;border:none;color:var(--purple);cursor:pointer;font-size:13px;padding:2px 6px"
@@ -1331,10 +1517,14 @@ const App = (() => {
     }).join('');
 
     const totSueldoBruto = pCosts.reduce((s, c) => s + c.sueldo * (c.count || 1), 0);
-    const totIMSS = pCosts.reduce((s, c) => s + c.imss, 0);
+    const totIMSSObrero = pCosts.reduce((s, c) => s + c.imssObrero, 0);
+    const totISRRetenido = pCosts.reduce((s, c) => s + c.isrEmpleado, 0);
+    const totNetoEstimado = pCosts.reduce((s, c) => s + c.netoEstimado, 0);
+    const totIMSS = pCosts.reduce((s, c) => s + c.imssPatronal, 0); // Corrección: Antes era imss (NaN)
     const totISN = pCosts.reduce((s, c) => s + c.isn, 0);
     const totInfo = pCosts.reduce((s, c) => s + c.infonavit, 0);
     const totProv = pCosts.reduce((s, c) => s + c.provisiones, 0);
+    const totCostoAsimilado = pCosts.reduce((s, c) => s + (c.costoAsimilado || 0), 0);
     const totCosto = pCosts.reduce((s, c) => s + c.costoTotal, 0);
     const totPersonas = puestos.reduce((s, p) => s + Math.max(1, Math.round(p.count || 1)), 0);
 
@@ -1353,39 +1543,45 @@ const App = (() => {
         <thead><tr>
           <th style="text-align:left">Puesto</th>
           <th style="text-align:left">Sector</th>
-          <th style="text-align:center" title="Número de personas">Cant.</th>
-          <th style="text-align:right">Sueldo Unit.</th>
+          <th style="text-align:center" title="Número de personas">N°</th>
+          <th style="text-align:right;color:var(--cobalt)">Bruto Unit.</th>
           <th title="Honorarios" style="text-align:center">Hon.</th>
-          <th style="text-align:right">IMSS Pat.</th>
-          <th style="text-align:right">ISN</th>
+          <th style="text-align:right">S.D.</th>
+          <th style="text-align:right">S.D.I.</th>
+          <th style="text-align:right;color:#c0392b">IMSS Obr</th>
+          <th style="text-align:right;color:#c0392b">ISR Ret.</th>
+          <th style="text-align:right;color:var(--emerald)">Neto Est.</th>
+          <th style="text-align:right">IMSS Pat</th>
           <th style="text-align:right">Infonavit</th>
-          <th style="text-align:right">Provisiones</th>
-          <th style="text-align:right;color:var(--cobalt)">Sueldo Total</th>
+          <th style="text-align:right">ISN</th>
+          <th style="text-align:right">Provs.</th>
+          <th style="text-align:right;color:var(--gold)">Costo Asimil.</th>
           <th style="text-align:right;color:var(--gold)">Costo Total</th>
           <th></th>
         </tr></thead>
         <tbody>
           ${pRows}
           <tr class="tr-total">
-            <td>TOTAL MENSUAL</td>
+            <td colspan="2">TOTAL MENSUAL</td>
+            <td style="text-align:center;color:var(--cobalt);font-weight:600">${totPersonas}</td>
+            <td style="text-align:right;color:var(--cobalt);font-weight:600">${M(totSueldoBruto)}</td>
             <td></td>
-            <td style="text-align:center;color:var(--cobalt)">${totPersonas}</td>
-            <td></td><td></td>
-            <td style="text-align:right">${M(totIMSS)}</td>
-            <td style="text-align:right">${M(totISN)}</td>
-            <td style="text-align:right">${M(totInfo)}</td>
-            <td style="text-align:right">${M(totProv)}</td>
-            <td style="text-align:right;color:var(--cobalt);font-weight:500">${M(totSueldoBruto)}</td>
-            <td style="text-align:right;color:var(--gold);font-weight:500">${M(totCosto)}</td>
+            <td colspan="5" style="text-align:right;color:var(--emerald);font-size:10px">— Totales Patronales —</td>
+            <td style="text-align:right;font-weight:600">${M(totIMSS)}</td>
+            <td style="text-align:right;font-weight:600">${M(totInfo)}</td>
+            <td style="text-align:right;font-weight:600">${M(totISN)}</td>
+            <td style="text-align:right;font-weight:600">${M(totProv)}</td>
+            <td style="text-align:right;font-weight:600">${M(totCostoAsimilado)}</td>
+            <td style="text-align:right;color:var(--gold);font-weight:600">${M(totCosto)}</td>
             <td></td>
           </tr>
         </tbody>
       </table></div>
       <div style="margin-top:10px;padding:8px 4px;border-top:1px solid var(--beige);
            font-size:11px;color:var(--oxford);opacity:.6;letter-spacing:.3px">
-        Cant. = personas en el puesto · todos los costos se multiplican por Cant.
-        · SDI = Sal.Diario × ${NOM_FI} · IMSS: Cuota fija + Excedente + Inv.Vida + Guard. + Retiro + Cesantía
-        · Provisiones = ${((NOM_FI - 1) * 100).toFixed(2)}% (aguinaldo+prima vac) · ISN 3% · Infonavit 5% SDI
+        N° = personas en el puesto · Los totales consideran la carga total de colaboradores
+        · SDI = Sal.Diario × ${NOM_FI.toFixed(4)} · IMSS = Cuota Fija + Excedente + Gastos Medicos + Retiro + Cesantia + Guarderias
+        · Provs = Aguinaldo + Prima Vacacional + Prima Antigüedad · ISN 3% · Infonavit 5%
       </div>
     </div>`;
 
@@ -1426,10 +1622,14 @@ const App = (() => {
             ${annuals.map(a => `<td style="opacity:.5;font-size:11px;text-align:right">${(a.factorNomina * 100).toFixed(0)}%</td>`).join('')}
           </tr>
           ${sumRowDirect('Sueldos Brutos (campus)', (i, inf) => totSueldoBruto * inf * annuals[i].factorNomina)}
+          ${sumRowDirect('IMSS Obrero (Retenido)', (i, inf) => totIMSSObrero * inf * annuals[i].factorNomina, 'color:#c0392b')}
+          ${sumRowDirect('ISR Retenido a Trabajadores', (i, inf) => totISRRetenido * inf * annuals[i].factorNomina, 'color:#c0392b')}
+          ${sumRowDirect('Nómina Neta a Pagar', (i, inf) => totNetoEstimado * inf * annuals[i].factorNomina, 'color:var(--emerald);font-weight:500')}
           ${sumRowDirect('IMSS Patronal', (i, inf) => totIMSS * inf * annuals[i].factorNomina)}
           ${sumRowDirect('Infonavit (5% SDI)', (i, inf) => totInfo * inf * annuals[i].factorNomina)}
           ${sumRowDirect('ISN (3%)', (i, inf) => totISN * inf * annuals[i].factorNomina)}
           ${sumRowDirect('CRM / Provisiones (ley)', (i, inf) => totProv * inf * annuals[i].factorNomina)}
+          ${sumRowDirect('Costo Sindicato / Asimilado (6.5%)', (i, inf) => totCostoAsimilado * inf * annuals[i].factorNomina, 'color:var(--gold)')}
           ${annuals[0].asim ? sumRow('Asimilados', a => a.asim) : ''}
           ${annuals[0].fondo ? sumRow('Fondo Finiquitos', a => a.fondo) : ''}
           ${annuals[0].transicion ? sumRow('Nómina Transición (legado)', a => a.transicion) : ''}
@@ -1623,7 +1823,7 @@ const App = (() => {
     return `
     <div class="section-header"><div>
       <div class="section-title">Gastos de Operación</div>
-      <div class="section-sub">Controlados · Fijos · Financieros · escalan con matrícula / ${cap} alumnos ref.</div>
+      <div class="section-sub">Controlados · Fijos · Financieros · Base ${cap} → Super-base ${go.capacidadGastoSuperRef||650} alumnos · zona 100% entre ambos umbrales</div>
     </div></div>
 
     <div class="card">
@@ -1638,13 +1838,19 @@ const App = (() => {
     </div>
 
     <div class="card">
-      <div class="card-title">Capacidad de Referencia</div>
+      <div class="card-title">Capacidad de Referencia · Factor de Gasto</div>
       <div class="form-grid">
         <div class="form-group">
-          <label class="form-label">Alumnos al 100% de gasto <span>(ref.)</span></label>
+          <label class="form-label">Alumnos base <span class="form-hint">(inicio del 100%)</span></label>
           <input type="number" class="form-input" value="${cap}" step="10"
             data-key="capacidadGastoRef" data-nested="gastosOperacion">
-          <span class="form-hint">Con ${cap} alumnos o más, el gasto controlado es al 100%. Con menos, escala proporcionalmente.</span>
+          <span class="form-hint">Con menos de ${cap} alumnos, el gasto escala proporcionalmente hacia abajo.</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Alumnos super-base <span class="form-hint">(inicio de gasto extra)</span></label>
+          <input type="number" class="form-input" value="${go.capacidadGastoSuperRef || 650}" step="10"
+            data-key="capacidadGastoSuperRef" data-nested="gastosOperacion">
+          <span class="form-hint">Entre ${cap} y ${go.capacidadGastoSuperRef || 650} alumnos = 100%. Pasando de ${go.capacidadGastoSuperRef || 650}, el gasto sube (ej. ${Math.round((go.capacidadGastoSuperRef||650)*1.1)} alumnos = 110%).</span>
         </div>
       </div>
     </div>
@@ -3107,6 +3313,167 @@ const App = (() => {
     `;
   }
 
+  // ── NOMINA EXACTA (LEY / REPORTE) ───────────────────────────
+  function renderSalariosExactos() {
+    const puestos = state.nominas.puestos || [];
+    if (puestos.length === 0) {
+      return `<div class="section-header">
+                <div><div class="section-title">Nómina Exacta (Ley)</div><div class="section-sub">Requiere puestos configurados en el módulo Nóminas</div></div>
+              </div>
+              <div style="padding:40px;text-align:center;color:var(--text-muted)">Aún no hay puestos definidos. Por favor ingresa al menú "Nóminas" para cargarlos.</div>`;
+    }
+
+    const rows = puestos.map(p => {
+      const unit = calcCostoPuesto({ ...p, count: 1 });
+      const esHon = p.esHonorarios ? '<span style="color:var(--cobalt)">Sí</span>' : 'No';
+
+      return `<tr>
+         <td style="text-align:left;font-weight:500">${p.nombre}</td>
+         <td style="text-align:left">${p.sector}</td>
+         <td style="text-align:right">${M(unit.sueldo)}</td>
+         <td style="text-align:center">${esHon}</td>
+         <td style="text-align:right">${M(unit.sd)}</td>
+         <td style="text-align:right">${M(unit.sdi)}</td>
+         <td style="text-align:right">${M(unit.sbcMensual)}</td>
+         <td style="text-align:right;color:#c0392b">${M(unit.imssObrero)}</td>
+         <td style="text-align:right;color:#c0392b">${M(unit.isrEmpleado)}</td>
+         <td style="text-align:right;color:var(--emerald);font-weight:600">${M(unit.netoEstimado)}</td>
+         <td style="text-align:right">${M(unit.imssPatronal)}</td>
+         <td style="text-align:right">${M(unit.infonavit)}</td>
+         <td style="text-align:right">${M(unit.isn)}</td>
+         <td style="text-align:right">${M(unit.aguinaldo)}</td>
+         <td style="text-align:right">${M(unit.primaAntiguedad)}</td> <!-- Vacaciones Mensual guardada aqui -->
+         <td style="text-align:right">${M(unit.primaVacacional)}</td>
+         <td style="text-align:right">${M(unit.costoAsimilado)}</td>
+         <td style="text-align:right;color:var(--gold);font-weight:600">${M(unit.costoTotal)}</td>
+       </tr>`;
+    }).join('');
+
+    return `
+      <div class="section-header">
+        <div>
+          <div class="section-title">Nómina Exacta (Ley)</div>
+          <div class="section-sub">Desglose mensual unitario por puesto. Retenciones y Cargas LSS/LISR 2024-2025.</div>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button onclick="App.exportarSalariosExcel()" style="cursor:pointer;background:var(--emerald);color:#fff;border:none;padding:8px 16px;border-radius:4px;font-size:12px;font-weight:500">
+            Exportar Excel
+          </button>
+          <button onclick="App.exportarSalariosPDF()" style="cursor:pointer;background:#c0392b;color:#fff;border:none;padding:8px 16px;border-radius:4px;font-size:12px;font-weight:500">
+            Exportar PDF
+          </button>
+        </div>
+      </div>
+      <div class="card" style="overflow-x:auto;">
+        <table class="salarios-table" style="min-width: 1400px; font-size: 11px;">
+          <thead>
+            <tr>
+              <th style="text-align:left">Puesto</th>
+              <th style="text-align:left">Sector</th>
+              <th style="text-align:right">Sueldo (Bruto)</th>
+              <th style="text-align:center">Honorarios</th>
+              <th style="text-align:right">Sal. Diario</th>
+              <th style="text-align:right">SDI</th>
+              <th style="text-align:right">SBC Mens.</th>
+              <th style="text-align:right">IMSS Obr.</th>
+              <th style="text-align:right">ISR Retenido</th>
+              <th style="text-align:right;color:var(--emerald)">Neto Estimado</th>
+              <th style="text-align:right">IMSS Pat.</th>
+              <th style="text-align:right">INFONAVIT (5%)</th>
+              <th style="text-align:right">ISN (3%)</th>
+              <th style="text-align:right">Prov. Aguin.</th>
+              <th style="text-align:right">Prov. Vacs.</th>
+              <th style="text-align:right">Prov. Prima Vac.</th>
+              <th style="text-align:right">Costo Asimil.</th>
+              <th style="text-align:right;color:var(--gold)">Costo Empresa</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function exportarSalariosExcel() {
+    if (!window.XLSX) return alert("La librería para Excel no está cargada.");
+    const puestos = state.nominas.puestos || [];
+    const data = puestos.map(p => {
+      const unit = calcCostoPuesto({ ...p, count: 1 });
+      return {
+        "Puesto": p.nombre,
+        "Sector": p.sector,
+        "Sueldo_Bruto": Math.round(unit.sueldo * 100) / 100,
+        "Honorarios": p.esHonorarios ? "Sí" : "No",
+        "Salario_Diario": Math.round(unit.sd * 100) / 100,
+        "SDI": Math.round(unit.sdi * 100) / 100,
+        "SBC_Mensual": Math.round(unit.sbcMensual * 100) / 100,
+        "IMSS_Obrero": Math.round(unit.imssObrero * 100) / 100,
+        "Subsidio": Math.round(unit.subsidio * 100) / 100,
+        "ISR_Mensual": Math.round(unit.isrEmpleado * 100) / 100,
+        "Neto_Estimado": Math.round(unit.netoEstimado * 100) / 100,
+        "IMSS_Patronal": Math.round(unit.imssPatronal * 100) / 100,
+        "INFONAVIT": Math.round(unit.infonavit * 100) / 100,
+        "ISN": Math.round(unit.isn * 100) / 100,
+        "Prov_Aguinaldo": Math.round(unit.aguinaldo * 100) / 100,
+        "Prov_Vacs": Math.round(unit.primaAntiguedad * 100) / 100, // stored in primaAntiguedad logically
+        "Prov_PrimaVac": Math.round(unit.primaVacacional * 100) / 100,
+        "Costo_Fiscal": Math.round((unit.costoTotal - unit.sueldo) * 100) / 100, // W2
+        "Costo_Asimilado": Math.round((unit.costoAsimilado || 0) * 100) / 100,
+        "Costo_Total_Mensual": Math.round(unit.costoTotal * 100) / 100,
+        "Costo_Total_Anual": Math.round((unit.costoTotal * 12) * 100) / 100
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Nomina Exacta");
+    XLSX.writeFile(workbook, "LL_Reporte_Salarios.xlsx");
+  }
+
+  function exportarSalariosPDF() {
+    if (!window.jspdf || !window.jspdf.jsPDF) return alert("La librería para PDF no se pudo cargar.");
+    const doc = new jspdf.jsPDF('landscape');
+
+    doc.setFontSize(14);
+    doc.text("L&L · Reporte de Nómina Exacta (Ley)", 14, 15);
+    doc.setFontSize(10);
+    doc.text("Cálculo unitario mensual por perfil de puesto. Moneda: MXN.", 14, 22);
+
+    const puestos = state.nominas.puestos || [];
+    const head = [["Puesto", "Sector", "Bruto", "SDI", "IMSS Obr", "Sub", "ISR", "Neto", "IMSS Pat", "Info", "Prov", "Asimilado", "Costo Emp."]];
+
+    const body = puestos.map(p => {
+      const u = calcCostoPuesto({ ...p, count: 1 });
+      return [
+        p.nombre,
+        p.sector,
+        N(u.sueldo),
+        N(u.sdi),
+        N(u.imssObrero),
+        N(u.subsidio),
+        N(u.isrEmpleado),
+        N(u.netoEstimado),
+        N(u.imssPatronal),
+        N(u.infonavit),
+        N(u.provisiones),
+        N(u.costoAsimilado || 0),
+        N(u.costoTotal)
+      ];
+    });
+
+    doc.autoTable({
+      head: head,
+      body: body,
+      startY: 28,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [26, 48, 104] } // Oxford Blue L&L
+    });
+
+    doc.save("LL_Reporte_Salarios.pdf");
+  }
+
 
   const VIEW_TITLES = {
     dashboard: 'Dashboard', variables: 'Variables Iniciales', matricula: 'Matriz de Alumnos',
@@ -3120,7 +3487,8 @@ const App = (() => {
     alertas: 'Alertas del Sistema', excelexport: 'Exportar Excel',
     costoporal: 'Costo por Alumno', ingresosadicionales: 'Ingresos Adicionales',
     ticket: 'Análisis de Ticket de Inversión',
-    historial: 'Historial de Cambios', resumenejec: 'Resumen Ejecutivo PDF'
+    historial: 'Historial de Cambios', resumenejec: 'Resumen Ejecutivo PDF',
+    salariosexactos: 'Cálculo de Nómina Exacta'
   };
   const RENDERERS = {
     dashboard: renderDashboard, variables: renderVariables, matricula: renderMatricula,
@@ -3132,7 +3500,7 @@ const App = (() => {
     scenariosaved: renderScenarioSaved, ratiomaestro: renderRatioMaestro,
     alertas: renderAlertas, excelexport: renderExcelExport,
     costoporal: renderCostoPorAlumno, ingresosadicionales: renderIngresosAdicionales,
-    ticket: renderTicket,
+    ticket: renderTicket, salariosexactos: renderSalariosExactos,
     historial: renderHistorial, resumenejec: renderResumenEjec
   };
 
@@ -3287,6 +3655,13 @@ const App = (() => {
       return scheduleUpdate();
     }
 
+    // Selector colegiatura — porcentajes de descuento
+    if (el.dataset.selectorDescuento) {
+      if (!state.selectorColegiatura) state.selectorColegiatura = {};
+      state.selectorColegiatura[el.dataset.selectorDescuento] = raw / 100;
+      return scheduleUpdate();
+    }
+
     // Ref tables
     if (el.dataset.refType && el.dataset.refGrade) { state[el.dataset.refType][el.dataset.refGrade] = raw; return scheduleUpdate(); }
 
@@ -3371,7 +3746,6 @@ const App = (() => {
 
   function removePuesto(idx) {
     if (!state.nominas.puestos) return;
-    if (!confirm(`¿Eliminar "${state.nominas.puestos[idx]?.nombre}" ? `)) return;
     state.nominas.puestos.splice(idx, 1);
     scheduleUpdate();
     toast('Puesto eliminado');
@@ -3536,6 +3910,34 @@ const App = (() => {
     }
   }
 
+  function setSelectorTipo(tipo) {
+    if (!state.selectorColegiatura) state.selectorColegiatura = {};
+    state.selectorColegiatura.tipo = tipo;
+    saveState();
+    softRefresh();
+  }
+
+  function aplicarTipoColegiatura() {
+    const sel = state.selectorColegiatura || { tipo: 'newland', descuentoMedias: 0.15, descuentoBajas: 0.30 };
+    const nwl = state.colegiaturasNewland || DEFAULTS.colegiaturasNewland;
+    const tipo = sel.tipo || 'newland';
+    let computed;
+    if (tipo === 'media') {
+      const d = sel.descuentoMedias ?? 0.15;
+      computed = Object.fromEntries(TUITION_KEYS.map(k => [k, Math.round(nwl[k] * (1 - d))]));
+    } else if (tipo === 'baja') {
+      const d = sel.descuentoBajas ?? 0.30;
+      computed = Object.fromEntries(TUITION_KEYS.map(k => [k, Math.round(nwl[k] * (1 - d))]));
+    } else {
+      computed = { ...nwl };
+    }
+    state.colegiaturas = computed;
+    saveState();
+    softRefresh();
+    const labels = { newland: 'Newland', media: 'Medias', baja: 'Bajas' };
+    toast(`Colegiaturas tipo ${labels[tipo]} aplicadas`, 'success');
+  }
+
   function setHorizonte(n) {
     n = Math.max(1, Math.min(10, parseInt(n) || 7));
     state.horizonte = n;
@@ -3553,7 +3955,9 @@ const App = (() => {
     addPuesto, removePuesto, toggleHonorarios,
     generarPDF: _generarPDF, logout, setHorizonte,
     saveCurrentScenario, loadScenario, deleteScenario, exportExcel, setTasaDescuento,
-    addIngreso, removeIngreso, updateIngreso, clearHistorial
+    addIngreso, removeIngreso, updateIngreso, clearHistorial,
+    exportarSalariosExcel, exportarSalariosPDF,
+    setSelectorTipo, aplicarTipoColegiatura
   };
 
 })();
