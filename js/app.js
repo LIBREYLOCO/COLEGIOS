@@ -826,7 +826,12 @@ const App = (() => {
       const ebitda = subtotal - operadora - rentaInmueble;
 
       cashAcumulado += ebitda;
-      const utilidadPorAccion = ebitda / (state.variables.numAcciones || 1);
+      const numAcc = state.variables.numAcciones || 1;
+      const pctModelo = state.variables.porcentajeModelo || 0.30;
+      const accVenta = numAcc - Math.round(numAcc * pctModelo);
+      const valorAccion = accVenta > 0 ? (state.variables.capitalRequerido || 0) / accVenta : 0;
+      const utilidadPorAccion = ebitda / numAcc;
+      const porcentajePorAccion = valorAccion > 0 ? utilidadPorAccion / valorAccion : 0;
 
       results.push({
         ano, i, infFactor, colFactor,
@@ -835,7 +840,7 @@ const App = (() => {
         apoyosEcon, becas, prontoPago, ingresoTotal,
         nomina, gastosOp, egresoTotal,
         subtotal, operadora, rentaInmueble, ebitda,
-        cashAcumulado, utilidadPorAccion
+        cashAcumulado, utilidadPorAccion, porcentajePorAccion
       });
     }
     return results;
@@ -2092,7 +2097,9 @@ const App = (() => {
       { l: 'EBITDA', fn: y => M(y.ebitda), ebitda: true },
       { sep: true },
       { l: 'Flujo Acumulado (Bancos)', fn: y => M(y.cashAcumulado), cls: 'num-gold' },
-      { l: 'Utilidad por Acción', fn: y => M(y.utilidadPorAccion), cls: 'num-blue' }
+      { sep: true },
+      { l: 'Utilidad por Acción', fn: y => M(y.utilidadPorAccion), cls: 'num-blue' },
+      { l: 'Rendimiento por Acción', fn: y => P(y.porcentajePorAccion), cls: 'num-gold' }
     ];
 
     const makeRow = r => {
