@@ -1881,6 +1881,78 @@ const App = (() => {
   }
 
   // ============================================================
+  // 14b. VIEW — INGRESOS POR COLEGIATURAS
+  // ============================================================
+  function renderColegiaturas() {
+    const corrida = calcCorrida();
+    const desc = state.descuentos;
+
+    // Bruto por nivel
+    const brutoPorNivel = TUITION_KEYS.map((lk, i) => {
+      const cells = corrida.map(yr => {
+        const n = yr.levelEnrollment[lk] || 0;
+        return `<td>${M(n * (state.colegiaturas[lk] || 0) * yr.colFactor * 10)}</td>`;
+      }).join('');
+      return `<tr><td>${TUITION_LABELS[i]}</td>${cells}</tr>`;
+    }).join('');
+
+    const totalBruto = corrida.map(yr => yr.sumColegiaturas);
+    const apoyos     = corrida.map(yr => yr.apoyosEcon);
+    const becas      = corrida.map(yr => yr.becas);
+    const pronto     = corrida.map(yr => yr.sumColegiaturas * (desc.prontoPagoPct || 0));
+    const neto       = corrida.map((_, i) => totalBruto[i] - apoyos[i] - becas[i] - pronto[i]);
+
+    const sumRow = (label, vals, color = '', neg = false) =>
+      `<tr class="tr-total"><td>${label}</td>${vals.map(v =>
+        `<td style="${color ? `color:${color}` : ''}">${neg ? '−' : ''}${M(Math.abs(v))}</td>`).join('')}</tr>`;
+
+    return `
+    <div class="section-header"><div>
+      <div class="section-title">Ingresos por Colegiaturas</div>
+      <div class="section-sub">Bruto por nivel · descuentos · neto final · 10 mensualidades/año</div>
+    </div></div>
+
+    <div class="card">
+      <div class="card-title">Colegiaturas brutas por nivel (MXN)</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Nivel</th>${corrida.map(thCiclo).join('')}</tr></thead>
+        <tbody>
+          ${brutoPorNivel}
+          ${sumRow('TOTAL BRUTO', totalBruto)}
+        </tbody>
+      </table></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Descuentos aplicados</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Concepto</th>${corrida.map(thCiclo).join('')}</tr></thead>
+        <tbody>
+          <tr><td>Apoyos Económicos <span class="form-hint">(${P(desc.apoyosEconomicosPct)})</span></td>${apoyos.map(v => `<td style="color:var(--purple)">−${M(v)}</td>`).join('')}</tr>
+          <tr><td>Becas SEP + Maestros <span class="form-hint">(${P(desc.becasSepPct)})</span></td>${becas.map(v => `<td style="color:var(--purple)">−${M(v)}</td>`).join('')}</tr>
+          <tr><td>Pronto Pago <span class="form-hint">(${P(desc.prontoPagoPct || 0)})</span></td>${pronto.map(v => `<td style="color:var(--purple)">−${M(v)}</td>`).join('')}</tr>
+          <tr class="tr-total"><td>TOTAL DESCUENTOS</td>${corrida.map((_, i) =>
+            `<td style="color:var(--purple)">−${M(apoyos[i] + becas[i] + pronto[i])}</td>`).join('')}</tr>
+        </tbody>
+      </table></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Colegiatura neta (MXN)</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Concepto</th>${corrida.map(thCiclo).join('')}</tr></thead>
+        <tbody>
+          <tr><td>Colegiaturas brutas</td>${totalBruto.map(v => `<td>${M(v)}</td>`).join('')}</tr>
+          <tr><td style="color:var(--purple)">Menos descuentos</td>${corrida.map((_, i) =>
+            `<td style="color:var(--purple)">−${M(apoyos[i] + becas[i] + pronto[i])}</td>`).join('')}</tr>
+          <tr class="tr-total"><td>NETO COLEGIATURAS</td>${neto.map(v =>
+            `<td style="color:var(--gold)">${M(v)}</td>`).join('')}</tr>
+        </tbody>
+      </table></div>
+    </div>`;
+  }
+
+  // ============================================================
   // 14. VIEW — CORRIDA ANUAL
   // ============================================================
   function renderCorrida() {
@@ -2983,69 +3055,169 @@ const App = (() => {
     try { return JSON.parse(localStorage.getItem(SC_KEY) || '[]'); }
     catch (e) { return []; }
   }
+
   function saveCurrentScenario(name) {
+    const corrida = calcCorrida();
+    const y1 = corrida[0], yn = corrida[corrida.length - 1];
     const list = getSavedScenarios();
-    const snap = { name, ts: Date.now(), state: JSON.parse(JSON.stringify(state)) };
+    const snap = {
+      name, ts: Date.now(),
+      state: JSON.parse(JSON.stringify(state)),
+      metrics: {
+        capital: state.variables.capitalRequerido,
+        anoInicio: state.variables.anoInicio,
+        alumnos1: Math.round(y1.totalAlumnos),
+        ebitda1: Math.round(y1.ebitda),
+        flujoFinal: Math.round(yn.cashAcumulado),
+        horizonte: getYears()
+      }
+    };
     list.unshift(snap);
     localStorage.setItem(SC_KEY, JSON.stringify(list.slice(0, 20)));
     navigate('scenariosaved');
-    toast(`Escenario "${name}" guardado`, 'success');
+    toast(`Corrida "${name}" guardada`, 'success');
   }
+
+  function quickSave() {
+    const input = document.getElementById('qs-name');
+    const name = (input?.value || '').trim() ||
+      `Corrida ${new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+    const corrida = calcCorrida();
+    const y1 = corrida[0], yn = corrida[corrida.length - 1];
+    const list = getSavedScenarios();
+    const snap = {
+      name, ts: Date.now(),
+      state: JSON.parse(JSON.stringify(state)),
+      metrics: {
+        capital: state.variables.capitalRequerido,
+        anoInicio: state.variables.anoInicio,
+        alumnos1: Math.round(y1.totalAlumnos),
+        ebitda1: Math.round(y1.ebitda),
+        flujoFinal: Math.round(yn.cashAcumulado),
+        horizonte: getYears()
+      }
+    };
+    list.unshift(snap);
+    localStorage.setItem(SC_KEY, JSON.stringify(list.slice(0, 20)));
+    closeQuickSave();
+    toast(`Corrida "${name}" guardada`, 'success');
+  }
+
+  function openQuickSave() {
+    const overlay = document.getElementById('quick-save-overlay');
+    if (!overlay) return;
+    const now = new Date();
+    const name = `Corrida ${now.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })} ${now.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}`;
+    const input = document.getElementById('qs-name');
+    if (input) input.value = name;
+    // Preview del estado actual
+    const corrida = calcCorrida();
+    const y1 = corrida[0], yn = corrida[corrida.length - 1];
+    const prev = document.getElementById('qs-preview');
+    if (prev) prev.innerHTML =
+      `Capital ${M(state.variables.capitalRequerido)} &nbsp;·&nbsp; ${Math.round(y1.totalAlumnos)} alumnos Año 1 &nbsp;·&nbsp; EBITDA: ${M(y1.ebitda)} &nbsp;·&nbsp; Flujo ${getYears()} años: ${M(yn.cashAcumulado)}`;
+    // Lista de corridas guardadas
+    const list = getSavedScenarios();
+    const ql = document.getElementById('qs-saved-list');
+    if (ql) {
+      if (list.length === 0) { ql.innerHTML = ''; }
+      else {
+        ql.innerHTML = `<div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px">Corridas guardadas</div>` +
+          list.slice(0, 6).map((sc, i) => {
+            const d = new Date(sc.ts).toLocaleString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+            const m = sc.metrics;
+            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--beige)">
+              <div>
+                <div style="font-size:12px;font-weight:400;color:var(--navy)">${sc.name}</div>
+                <div style="font-size:9px;color:var(--text-muted)">${d}${m ? ` &nbsp;·&nbsp; ${Math.round(m.alumnos1)} alum &nbsp;·&nbsp; EBITDA ${M(m.ebitda1)}` : ''}</div>
+              </div>
+              <div style="display:flex;gap:6px;align-items:center">
+                <button onclick="App.loadScenario(${i});App.closeQuickSave()"
+                  style="background:none;border:1px solid var(--cobalt);color:var(--cobalt);border-radius:4px;
+                    padding:3px 10px;font-size:10px;cursor:pointer;font-family:inherit">Cargar</button>
+                <button onclick="App.deleteScenario(${i})"
+                  style="background:none;border:none;color:var(--purple);cursor:pointer;font-size:13px;padding:2px 4px">✕</button>
+              </div>
+            </div>`;
+          }).join('');
+      }
+    }
+    overlay.style.display = 'flex';
+    setTimeout(() => { input?.select(); }, 60);
+  }
+
+  function closeQuickSave() {
+    const overlay = document.getElementById('quick-save-overlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+
   function loadScenario(idx) {
     const list = getSavedScenarios();
     if (!list[idx]) return;
     Object.assign(state, JSON.parse(JSON.stringify(list[idx].state)));
     saveState();
-    navigate('dashboard');
-    toast(`Escenario "${list[idx].name}" cargado`, 'success');
+    navigate(currentView);
+    toast(`Corrida "${list[idx].name}" cargada`, 'success');
     requestAnimationFrame(() => initCharts(calcCorrida()));
   }
+
   function deleteScenario(idx) {
     const list = getSavedScenarios();
     list.splice(idx, 1);
     localStorage.setItem(SC_KEY, JSON.stringify(list));
-    navigate('scenariosaved');
+    // Refresh modal list if open, else refresh view
+    const overlay = document.getElementById('quick-save-overlay');
+    if (overlay && overlay.style.display !== 'none') { openQuickSave(); }
+    else { navigate('scenariosaved'); }
   }
+
   function renderScenarioSaved() {
     const list = getSavedScenarios();
     const corrida = calcCorrida();
     const y1 = corrida[0], yn = corrida[corrida.length - 1];
     const savedRows = list.length === 0
-      ? '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px">No hay escenarios guardados aún.</td></tr>'
+      ? '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px">No hay corridas guardadas aún. Usa el botón "Guardar corrida" en la barra superior.</td></tr>'
       : list.map((sc, i) => {
-        const d = new Date(sc.ts).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
-        const yr = sc.state.variables?.anoInicio || '?';
+        const d = new Date(sc.ts).toLocaleString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        const m = sc.metrics;
         return `<tr>
-            <td><strong>${sc.name}</strong><div style="font-size:9px;color:var(--text-muted)">${d}</div></td>
-            <td style="text-align:right">${sc.state.variables?.capitalRequerido ? M(sc.state.variables.capitalRequerido) : '—'}</td>
-            <td style="text-align:right">${yr}</td>
-            <td>
+            <td><strong style="font-weight:400">${sc.name}</strong><div style="font-size:9px;color:var(--text-muted)">${d}</div></td>
+            <td style="text-align:right">${m ? M(m.capital) : '—'}</td>
+            <td style="text-align:right">${m ? m.anoInicio : (sc.state.variables?.anoInicio || '—')}</td>
+            <td style="text-align:right">${m ? N(m.alumnos1) : '—'}</td>
+            <td style="text-align:right;color:var(--gold)">${m ? M(m.ebitda1) : '—'}</td>
+            <td style="text-align:right;color:var(--cobalt)">${m ? M(m.flujoFinal) : '—'}</td>
+            <td style="display:flex;gap:6px;align-items:center;justify-content:flex-end">
               <button class="toggle-btn" style="padding:4px 10px;font-size:10px" onclick="App.loadScenario(${i})">Cargar</button>
-            </td>
-            <td>
-              <button onclick="App.deleteScenario(${i})" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:14px">✕</button>
+              <button onclick="App.deleteScenario(${i})" style="background:none;border:none;color:var(--purple);cursor:pointer;font-size:14px;padding:2px 4px">✕</button>
             </td>
           </tr>`;
       }).join('');
-    const nameInputId = 'sc-name-input-' + Date.now();
-    return `<div class="section-header"><div><div class="section-title">Escenarios Guardados</div>
-      <div class="section-sub">Guarda el estado actual y compara entre versiones del modelo</div></div></div>
-    <div class="card" style="margin-bottom:18px">
-      <div class="card-title">Guardar estado actual</div>
-      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-        <input type="text" id="sc-name-input" class="form-input" placeholder="Nombre del escenario (ej. Escenario Base 2026)"
-          style="flex:1;min-width:200px" value="Escenario ${new Date().toLocaleDateString('es-MX')}">
-        <button class="toggle-btn" style="padding:8px 18px" onclick="App.saveCurrentScenario(document.getElementById('sc-name-input').value)">
-          💾 Guardar escenario actual
-        </button>
-      </div>
-      <div style="margin-top:12px;font-size:10px;color:var(--text-muted)">
-        Estado actual: Capital ${M(state.variables.capitalRequerido)} · ${getYears()} años · EBITDA Año 1: ${M(y1.ebitda)} · Flujo final: ${M(yn.cashAcumulado)}
+    return `<div class="section-header"><div><div class="section-title">Corridas Guardadas</div>
+      <div class="section-sub">Historial de escenarios · usa "Guardar corrida" en la barra superior para añadir</div></div>
+      <button onclick="App.openQuickSave()"
+        style="background:var(--cobalt);color:#fff;border:none;border-radius:6px;padding:9px 20px;
+          font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap">+ Guardar corrida actual</button>
+    </div>
+    <div class="card" style="margin-bottom:4px">
+      <div style="font-size:10px;color:var(--text-muted);line-height:1.8">
+        Estado actual &nbsp;·&nbsp; Capital ${M(state.variables.capitalRequerido)} &nbsp;·&nbsp;
+        ${Math.round(y1.totalAlumnos)} alumnos Año 1 &nbsp;·&nbsp;
+        EBITDA Año 1: <span style="color:var(--gold)">${M(y1.ebitda)}</span> &nbsp;·&nbsp;
+        Flujo ${getYears()} años: <span style="color:var(--cobalt)">${M(yn.cashAcumulado)}</span>
       </div>
     </div>
-    <div class="card"><div class="card-title">Escenarios guardados (${list.length})</div>
+    <div class="card"><div class="card-title">Historial de corridas (${list.length} / 20)</div>
       <div class="table-wrap"><table>
-        <thead><tr><th>Nombre</th><th style="text-align:right">Capital</th><th style="text-align:right">Año Inicio</th><th>Acción</th><th></th></tr></thead>
+        <thead><tr>
+          <th>Nombre</th>
+          <th style="text-align:right">Capital</th>
+          <th style="text-align:right">Año inicio</th>
+          <th style="text-align:right">Alumnos A1</th>
+          <th style="text-align:right">EBITDA A1</th>
+          <th style="text-align:right">Flujo final</th>
+          <th style="text-align:right">Acción</th>
+        </tr></thead>
         <tbody>${savedRows}</tbody>
       </table></div>
     </div>`;
@@ -3488,13 +3660,15 @@ const App = (() => {
     costoporal: 'Costo por Alumno', ingresosadicionales: 'Ingresos Adicionales',
     ticket: 'Análisis de Ticket de Inversión',
     historial: 'Historial de Cambios', resumenejec: 'Resumen Ejecutivo PDF',
-    salariosexactos: 'Cálculo de Nómina Exacta'
+    salariosexactos: 'Cálculo de Nómina Exacta',
+    colegiaturas: 'Ingresos por Colegiaturas'
   };
   const RENDERERS = {
     dashboard: renderDashboard, variables: renderVariables, matricula: renderMatricula,
     referencias: renderReferencias, cuotas: renderCuotas, inscripciones: renderInscripciones,
     nominas: renderNominas, gastos: renderGastos, corrida: renderCorrida, proyeccion: renderProyeccion,
     reportes: renderReportes,
+    colegiaturas: renderColegiaturas,
     breakeven: renderBreakEven, tirvanp: renderTIRVPN,
     escenarios: renderEscenarios, flujomensual: renderFlujoMensual,
     scenariosaved: renderScenarioSaved, ratiomaestro: renderRatioMaestro,
@@ -3957,7 +4131,8 @@ const App = (() => {
     saveCurrentScenario, loadScenario, deleteScenario, exportExcel, setTasaDescuento,
     addIngreso, removeIngreso, updateIngreso, clearHistorial,
     exportarSalariosExcel, exportarSalariosPDF,
-    setSelectorTipo, aplicarTipoColegiatura
+    setSelectorTipo, aplicarTipoColegiatura,
+    openQuickSave, closeQuickSave, quickSave
   };
 
 })();
