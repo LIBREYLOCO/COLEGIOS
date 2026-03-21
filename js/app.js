@@ -1015,6 +1015,24 @@ const App = (() => {
           ${statRow('Valor por Ticket', M(valorTicket), `${M(cap)} ÷ ${N(tickets)} tickets`)}
         </div>
       </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Factor de Gasto por Matrícula</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Alumnos base <span class="form-hint">(inicio del 100%)</span></label>
+          <input type="number" class="form-input" value="${state.gastosOperacion?.capacidadGastoRef || 400}" step="10"
+            data-key="capacidadGastoRef" data-nested="gastosOperacion">
+          <span class="form-hint">Con menos alumnos, la nómina y gastos controlados escalan hacia abajo.</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Alumnos super-base <span class="form-hint">(inicio de gasto extra)</span></label>
+          <input type="number" class="form-input" value="${state.gastosOperacion?.capacidadGastoSuperRef || 650}" step="10"
+            data-key="capacidadGastoSuperRef" data-nested="gastosOperacion">
+          <span class="form-hint">Entre base y super-base = 100%. Pasando de super-base, el gasto sube proporcionalmente.</span>
+        </div>
+      </div>
     </div>`;
   }
 
@@ -1823,7 +1841,7 @@ const App = (() => {
     return `
     <div class="section-header"><div>
       <div class="section-title">Gastos de Operación</div>
-      <div class="section-sub">Controlados · Fijos · Financieros · Base ${cap} → Super-base ${go.capacidadGastoSuperRef||650} alumnos · zona 100% entre ambos umbrales</div>
+      <div class="section-sub">Controlados · Fijos · Financieros · factor configurado en Variables Iniciales (base ${cap} / super-base ${go.capacidadGastoSuperRef||650} alumnos)</div>
     </div></div>
 
     <div class="card">
@@ -1835,24 +1853,6 @@ const App = (() => {
           <tr class="tr-result"><td>TOTAL GASTOS OPERACIÓN</td>${annuals.map(a => `<td>${M(a.total)}</td>`).join('')}</tr>
         </tbody>
       </table></div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Capacidad de Referencia · Factor de Gasto</div>
-      <div class="form-grid">
-        <div class="form-group">
-          <label class="form-label">Alumnos base <span class="form-hint">(inicio del 100%)</span></label>
-          <input type="number" class="form-input" value="${cap}" step="10"
-            data-key="capacidadGastoRef" data-nested="gastosOperacion">
-          <span class="form-hint">Con menos de ${cap} alumnos, el gasto escala proporcionalmente hacia abajo.</span>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Alumnos super-base <span class="form-hint">(inicio de gasto extra)</span></label>
-          <input type="number" class="form-input" value="${go.capacidadGastoSuperRef || 650}" step="10"
-            data-key="capacidadGastoSuperRef" data-nested="gastosOperacion">
-          <span class="form-hint">Entre ${cap} y ${go.capacidadGastoSuperRef || 650} alumnos = 100%. Pasando de ${go.capacidadGastoSuperRef || 650}, el gasto sube (ej. ${Math.round((go.capacidadGastoSuperRef||650)*1.1)} alumnos = 110%).</span>
-        </div>
-      </div>
     </div>
 
     <div class="card">
