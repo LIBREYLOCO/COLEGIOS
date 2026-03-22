@@ -2,6 +2,12 @@
   publish = "."
   functions = "netlify/functions"
 
+# Las funciones serverless tienen prioridad — excluir explícitamente
+[[redirects]]
+  from = "/.netlify/functions/*"
+  to   = "/.netlify/functions/:splat"
+  status = 200
+
 [[redirects]]
   from = "/*"
   to   = "/index.html"
