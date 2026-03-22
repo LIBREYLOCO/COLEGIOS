@@ -93,16 +93,102 @@
   box-shadow: 0 1px 12px rgba(0,0,0,.30);
 }
 
-[data-theme="dark"] ::-webkit-scrollbar-track {
-  background: var(--surface);
+[data-theme="dark"] ::-webkit-scrollbar-track { background: var(--surface); }
+[data-theme="dark"] ::-webkit-scrollbar-thumb { background: rgba(197,160,89,.22); }
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: rgba(197,160,89,.38); }
+
+/* ── Dark mode: textos que usan --navy (oscuro) → usar --text (claro) ── */
+[data-theme="dark"] .content-title,
+[data-theme="dark"] .card-title,
+[data-theme="dark"] .section-title,
+[data-theme="dark"] .kpi-value.neutral,
+[data-theme="dark"] .kpi-label,
+[data-theme="dark"] .stat-label,
+[data-theme="dark"] .payroll-item-label,
+[data-theme="dark"] .payroll-item-value,
+[data-theme="dark"] .sidebar-toggle:hover,
+[data-theme="dark"] .toggle-btn:hover,
+[data-theme="dark"] tbody td,
+[data-theme="dark"] tbody td:first-child,
+[data-theme="dark"] .form-section-title,
+[data-theme="dark"] .badge-oxford {
+  color: var(--text) !important;
 }
 
-[data-theme="dark"] ::-webkit-scrollbar-thumb {
-  background: rgba(197,160,89,.22);
+/* Inputs: fondo y texto en dark */
+[data-theme="dark"] .form-input,
+[data-theme="dark"] .cell-input {
+  color: var(--text);
+  background: rgba(197, 160, 89, .06);
+}
+[data-theme="dark"] .form-input:focus,
+[data-theme="dark"] .cell-input:focus {
+  color: var(--text);
+  background: rgba(197, 160, 89, .12);
+}
+[data-theme="dark"] .form-input:hover:not(:focus),
+[data-theme="dark"] .cell-input:hover {
+  color: var(--text);
+  background: rgba(197, 160, 89, .10);
 }
 
-[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
-  background: rgba(197,160,89,.38);
+/* Acento positivo y .num-blue: usar gold en dark (emerald oscuro es invisible) */
+[data-theme="dark"] .num-blue { color: var(--gold-bright) !important; }
+[data-theme="dark"] .tr-result td { background: rgba(197,160,89,.08) !important; color: var(--gold) !important; }
+[data-theme="dark"] .tr-level-sub td { color: var(--gold-bright) !important; }
+
+/* Filas totales dark */
+[data-theme="dark"] .tr-total td {
+  background: rgba(197,160,89,.15) !important;
+  color: var(--gold) !important;
+}
+
+/* Badges en dark */
+[data-theme="dark"] .badge-oxford {
+  background: rgba(197,160,89,.08) !important;
+  border-color: rgba(197,160,89,.25) !important;
+}
+
+/* Stat rows */
+[data-theme="dark"] .stat-row { border-bottom-color: var(--border); }
+[data-theme="dark"] .stat-value { color: var(--text); }
+
+/* Toast en dark */
+[data-theme="dark"] .toast {
+  background: var(--surface3);
+  color: var(--text);
+  border: 1px solid var(--border-md);
+  box-shadow: 0 4px 20px rgba(0,0,0,.5);
+}
+
+/* ── Captura global: inline styles con color:var(--navy) generados por JS ── */
+[data-theme="dark"] [style*="color:var(--navy)"],
+[data-theme="dark"] [style*="color: var(--navy)"] {
+  color: var(--text) !important;
+}
+
+/* Cards con borde navy → borde dorado en dark */
+[data-theme="dark"] [style*="border-top:3px solid var(--navy)"],
+[data-theme="dark"] [style*="border-top: 3px solid var(--navy)"] {
+  border-top-color: var(--gold) !important;
+}
+
+/* Select inputs heredan color en dark */
+[data-theme="dark"] select.form-input,
+[data-theme="dark"] select.cell-input,
+[data-theme="dark"] select {
+  color: var(--text);
+  background-color: var(--surface2);
+}
+
+/* Quick-save modal en dark */
+[data-theme="dark"] #quick-save-overlay > div {
+  background: var(--surface) !important;
+  border: 1px solid var(--border-md) !important;
+}
+[data-theme="dark"] #quick-save-overlay [style*="color:var(--navy)"],
+[data-theme="dark"] #quick-save-overlay [style*="color: var(--navy)"] {
+  color: var(--text) !important;
 }
 
 /* Dark-mode toggle button */
