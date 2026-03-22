@@ -870,18 +870,65 @@ const App = (() => {
   // ============================================================
   // 7. VIEW — DASHBOARD
   // ============================================================
+  // Genera un sparkline SVG inline (polyline) a partir de valores numéricos
+  function sparkline(values, color = '#C9A227', w = 80, h = 28) {
+    if (!values || values.length < 2) return '';
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min || 1;
+    const pts = values.map((v, i) => {
+      const x = (i / (values.length - 1)) * w;
+      const y = h - ((v - min) / range) * (h - 4) - 2;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    const trend = values[values.length - 1] >= values[0];
+    const lineColor = trend ? color : 'var(--purple)';
+    return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block;flex-shrink:0">
+      <polyline points="${pts}" fill="none" stroke="${lineColor}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+  }
+
   function renderDashboard() {
     const corrida = calcCorrida();
     const y1 = corrida[0], yN = corrida[corrida.length - 1];
 
     const kpis = [
-      { label: 'Matrícula Año 1', val: N(y1.totalAlumnos) + ' alumnos', sub: `Capacidad ${N(calcTopeTotal())} · ${P(y1.totalAlumnos / calcTopeTotal())}`, cls: '', accent: 'accent' },
-      { label: 'Ingresos Año 1', val: m2M(y1.ingresoTotal), sub: 'Netos descontando becas', cls: '', accent: 'positive' },
-      { label: `Ingresos Año ${getYears()}`, val: m2M(yN.ingresoTotal), sub: `+${P(yN.ingresoTotal / y1.ingresoTotal - 1)} vs Año 1`, cls: '', accent: 'positive' },
-      { label: 'Nómina Mensual Año 1', val: m2M(y1.nomina.totalMensual), sub: `Factor matrícula ${P(y1.nomina.factorNomina)}`, cls: '', accent: 'neutral' },
-      { label: `EBITDA Año ${getYears()}`, val: m2M(yN.ebitda), sub: 'Utilidad operativa neta', cls: 'gold', accent: 'positive' },
-      { label: 'Margen EBITDA Año 1', val: P(y1.ebitda / y1.ingresoTotal), sub: 'Utilidad / Ingresos netos', cls: 'cobalt', accent: 'positive' },
-      { label: 'Flujo Acumulado 7 Años', val: m2M(yN.cashAcumulado), sub: 'Dinero en bancos al cierre', cls: '', accent: 'positive' }
+      {
+        label: 'Matrícula Año 1', val: N(y1.totalAlumnos) + ' alumnos',
+        sub: `Capacidad ${N(calcTopeTotal())} · ${P(y1.totalAlumnos / calcTopeTotal())}`,
+        cls: '', accent: 'accent',
+        spark: corrida.map(y => y.totalAlumnos)
+      },
+      {
+        label: 'Ingresos Año 1', val: m2M(y1.ingresoTotal),
+        sub: 'Netos descontando becas', cls: '', accent: 'positive',
+        spark: corrida.map(y => y.ingresoTotal)
+      },
+      {
+        label: `Ingresos Año ${getYears()}`, val: m2M(yN.ingresoTotal),
+        sub: `+${P(yN.ingresoTotal / y1.ingresoTotal - 1)} vs Año 1`, cls: '', accent: 'positive',
+        spark: corrida.map(y => y.ingresoTotal)
+      },
+      {
+        label: 'Nómina Mensual Año 1', val: m2M(y1.nomina.totalMensual),
+        sub: `Factor matrícula ${P(y1.nomina.factorNomina)}`, cls: '', accent: 'neutral',
+        spark: corrida.map(y => y.nomina.totalMensual), sparkColor: 'var(--cobalt)'
+      },
+      {
+        label: `EBITDA Año ${getYears()}`, val: m2M(yN.ebitda),
+        sub: 'Utilidad operativa neta', cls: 'gold', accent: 'positive',
+        spark: corrida.map(y => y.ebitda)
+      },
+      {
+        label: 'Margen EBITDA Año 1', val: P(y1.ebitda / y1.ingresoTotal),
+        sub: 'Utilidad / Ingresos netos', cls: 'cobalt', accent: 'positive',
+        spark: corrida.map(y => y.ebitda / (y.ingresoTotal || 1)), sparkColor: '#0047AB'
+      },
+      {
+        label: 'Flujo Acumulado 7 Años', val: m2M(yN.cashAcumulado),
+        sub: 'Dinero en bancos al cierre', cls: '', accent: 'positive',
+        spark: corrida.map(y => y.cashAcumulado)
+      }
     ];
 
     return `
@@ -895,10 +942,15 @@ const App = (() => {
 
     <div class="kpi-grid">
       ${kpis.map(k => `
-        <div class="kpi-card ${k.cls}">
-          <div class="kpi-label">${k.label}</div>
-          <div class="kpi-value ${k.accent}">${k.val}</div>
-          <div class="kpi-sub">${k.sub}</div>
+        <div class="kpi-card ${k.cls}" style="display:flex;flex-direction:column;gap:2px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+            <div style="flex:1;min-width:0">
+              <div class="kpi-label">${k.label}</div>
+              <div class="kpi-value ${k.accent}">${k.val}</div>
+              <div class="kpi-sub">${k.sub}</div>
+            </div>
+            <div style="padding-top:4px">${sparkline(k.spark, k.sparkColor)}</div>
+          </div>
         </div>`).join('')}
     </div>
 
@@ -2194,19 +2246,44 @@ const App = (() => {
     }
   };
 
+  // Carga Chart.js + datalabels de forma lazy (solo cuando se necesitan)
+  let _chartJsLoading = false;
+  let _chartJsCallbacks = [];
+  function ensureChartJs(cb) {
+    if (window.Chart && window.ChartDataLabels) { cb(); return; }
+    _chartJsCallbacks.push(cb);
+    if (_chartJsLoading) return;
+    _chartJsLoading = true;
+    function loadScript(src, next) {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = next;
+      s.onerror = () => console.warn('Chart.js load error:', src);
+      document.head.appendChild(s);
+    }
+    loadScript('https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js', () => {
+      loadScript('https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js', () => {
+        _chartJsLoading = false;
+        const pending = _chartJsCallbacks.splice(0);
+        pending.forEach(fn => fn());
+      });
+    });
+  }
+
   function initCharts(corrida) {
     destroyCharts();
-    // Register datalabels plugin (shows totals above bars)
-    if (window.ChartDataLabels) Chart.register(ChartDataLabels);
-    requestAnimationFrame(() => {
-      _chartIngEgr(corrida);
-      _chartEbitda(corrida);
-      _chartMatricula(corrida);
-      _chartPie(corrida);
-      _chartNomina(corrida);
-      _chartGastos(corrida);
-      _chartCostos(corrida);
-      _chartMargen(corrida);
+    ensureChartJs(() => {
+      if (window.ChartDataLabels) Chart.register(ChartDataLabels);
+      requestAnimationFrame(() => {
+        _chartIngEgr(corrida);
+        _chartEbitda(corrida);
+        _chartMatricula(corrida);
+        _chartPie(corrida);
+        _chartNomina(corrida);
+        _chartGastos(corrida);
+        _chartCostos(corrida);
+        _chartMargen(corrida);
+      });
     });
   }
 
@@ -2954,6 +3031,120 @@ const App = (() => {
     </table></div></div>`;
   }
 
+  // ── VISTA: ANÁLISIS DE SENSIBILIDAD ────────────────────────────
+  function renderSensibilidad() {
+    const base = calcCorrida();
+    const y1b = base[0];
+
+    // Calcula corrida con override temporal de state.variables
+    function calcWithOverride(overrides) {
+      const saved = {};
+      Object.keys(overrides).forEach(k => { saved[k] = state.variables[k]; state.variables[k] = overrides[k]; });
+      const c = calcCorrida();
+      Object.keys(saved).forEach(k => { state.variables[k] = saved[k]; });
+      return c;
+    }
+
+    // Parámetros de sensibilidad
+    const params = [
+      { key: 'matricula',     label: 'Matrícula Año 1',     unit: '%', min: -30, max: 30, step: 5,  hint: 'Varía el total de alumnos de entrada' },
+      { key: 'rentaInmuebleBase', label: 'Renta del Inmueble', unit: '%', min: -30, max: 30, step: 5, hint: 'Sobre la renta base anual' },
+      { key: 'inflacion',     label: 'Inflación Anual',      unit: 'pp', min: -3,  max: 3,  step: 0.5, hint: 'Puntos porcentuales ± sobre la actual' },
+      { key: 'porcentajeOperadora', label: 'Fee Operadora',  unit: 'pp', min: -5,  max: 5,  step: 1,  hint: 'Puntos porcentuales ± sobre el porcentaje actual' },
+      { key: 'aumentoColegiatura', label: 'Aumento Colegiaturas', unit: 'pp', min: -3, max: 3, step: 0.5, hint: 'Puntos porcentuales ± sobre el incremento anual' },
+    ];
+
+    function calcImpact(param, pctDelta) {
+      let ov = {};
+      const v = state.variables;
+      if (param.key === 'matricula') {
+        // Se aplica como multiplicador a entradaPorNivel en calcMatricula
+        // Usamos un hack temporal de variables
+        ov.matriculaInicial = Math.round((v.matriculaInicial || 759) * (1 + pctDelta / 100));
+      } else if (param.unit === 'pp') {
+        const base = v[param.key] || 0;
+        ov[param.key] = base + pctDelta / 100;
+      } else {
+        ov[param.key] = (v[param.key] || 0) * (1 + pctDelta / 100);
+      }
+      const c = calcWithOverride(ov);
+      return { y1: c[0].ebitda, yn: c[c.length - 1].ebitda, cash: c[c.length - 1].cashAcumulado };
+    }
+
+    const rows = params.map(p => {
+      const steps = [-20, -10, 0, 10, 20];
+      const cols = steps.map(delta => {
+        if (delta === 0) return `<td style="text-align:right;font-weight:500;color:var(--gold)">${M(y1b.ebitda)}</td>`;
+        const imp = calcImpact(p, delta);
+        const diff = imp.y1 - y1b.ebitda;
+        const pct = y1b.ebitda !== 0 ? diff / Math.abs(y1b.ebitda) : 0;
+        const color = diff >= 0 ? 'var(--gold)' : 'var(--purple)';
+        return `<td style="text-align:right;color:${color}">${M(imp.y1)}<br><span style="font-size:9px;opacity:.7">${diff >= 0 ? '+' : ''}${P(pct)}</span></td>`;
+      }).join('');
+      return `<tr><td style="font-size:11px;color:var(--text)">${p.label}<br><span style="font-size:9px;color:var(--text-muted)">${p.hint}</span></td>${cols}</tr>`;
+    }).join('');
+
+    // Tornado chart: impacto del ±20% en EBITDA Año 1
+    const tornado = params.map(p => {
+      const lo = calcImpact(p, -20).y1;
+      const hi = calcImpact(p, +20).y1;
+      const spread = hi - lo;
+      return { label: p.label, lo, hi, spread: Math.abs(spread) };
+    }).sort((a, b) => b.spread - a.spread);
+    const maxSpread = tornado[0]?.spread || 1;
+
+    const tornadoBars = tornado.map(t => {
+      const loW = Math.round((Math.abs(t.lo - y1b.ebitda) / (maxSpread / 2)) * 45);
+      const hiW = Math.round((Math.abs(t.hi - y1b.ebitda) / (maxSpread / 2)) * 45);
+      const loColor = t.lo < y1b.ebitda ? 'var(--purple)' : 'var(--gold)';
+      const hiColor = t.hi > y1b.ebitda ? 'var(--gold)' : 'var(--purple)';
+      return `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <div style="width:160px;font-size:10px;text-align:right;color:var(--text-secondary);flex-shrink:0">${t.label}</div>
+        <div style="flex:1;display:flex;align-items:center;gap:0;position:relative">
+          <div style="flex:1;display:flex;justify-content:flex-end">
+            <div style="width:${loW}%;height:18px;background:${loColor};border-radius:3px 0 0 3px;min-width:2px"></div>
+          </div>
+          <div style="width:2px;height:24px;background:var(--border-md);flex-shrink:0"></div>
+          <div style="flex:1;display:flex;justify-content:flex-start">
+            <div style="width:${hiW}%;height:18px;background:${hiColor};border-radius:0 3px 3px 0;min-width:2px"></div>
+          </div>
+        </div>
+        <div style="width:80px;font-size:9px;color:var(--text-muted);flex-shrink:0">±${M(t.spread / 2)}</div>
+      </div>`;
+    }).join('');
+
+    return `
+    <div class="section-header"><div>
+      <div class="section-title">Análisis de Sensibilidad</div>
+      <div class="section-sub">Impacto en EBITDA Año 1 al variar cada parámetro — Base: ${M(y1b.ebitda)}</div>
+    </div></div>
+
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-title" style="margin-bottom:16px">Tornado — Parámetros por Impacto (±20%)</div>
+      <div style="font-size:9px;color:var(--text-muted);margin-bottom:14px;display:flex;gap:16px">
+        <span style="color:var(--purple)">◀ Impacto negativo (−20%)</span>
+        <span style="color:var(--gold)">▶ Impacto positivo (+20%)</span>
+      </div>
+      ${tornadoBars}
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px">Tabla de Sensibilidad — EBITDA Año 1</div>
+      <div class="table-wrap"><table>
+        <thead><tr>
+          <th style="text-align:left">Parámetro</th>
+          <th style="text-align:right">−20%</th>
+          <th style="text-align:right">−10%</th>
+          <th style="text-align:right;color:var(--gold)">Base</th>
+          <th style="text-align:right">+10%</th>
+          <th style="text-align:right">+20%</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </div>`;
+  }
+
   // ── VISTA 3: ANÁLISIS DE ESCENARIOS ────────────────────────────
   function renderEscenarios() {
     const corrida = calcCorrida();
@@ -3656,6 +3847,7 @@ const App = (() => {
     nominas: 'Nóminas', gastos: 'Gastos de Operación',
     corrida: 'Corrida Anual', proyeccion: 'Proyección Financiera', reportes: 'Reportes PDF',
     breakeven: 'Punto de Equilibrio', tirvanp: 'TIR & VPN',
+    sensibilidad: 'Análisis de Sensibilidad',
     escenarios: 'Análisis de Escenarios', flujomensual: 'Flujo Mensual Año 1',
     scenariosaved: 'Escenarios Guardados', ratiomaestro: 'Ratio Formadores-Alumnos',
     alertas: 'Alertas del Sistema', excelexport: 'Exportar Excel',
@@ -3672,6 +3864,7 @@ const App = (() => {
     reportes: renderReportes,
     colegiaturas: renderColegiaturas,
     breakeven: renderBreakEven, tirvanp: renderTIRVPN,
+    sensibilidad: renderSensibilidad,
     escenarios: renderEscenarios, flujomensual: renderFlujoMensual,
     scenariosaved: renderScenarioSaved, ratiomaestro: renderRatioMaestro,
     alertas: renderAlertas, excelexport: renderExcelExport,
@@ -3987,6 +4180,26 @@ const App = (() => {
   }
 
   const THEME_KEY = 'lyl_theme';
+  let _presentationMode = false;
+  function togglePresentation() {
+    _presentationMode = !_presentationMode;
+    document.body.classList.toggle('presentation-mode', _presentationMode);
+    // Botón flotante para salir
+    let btn = document.getElementById('exit-present-btn');
+    if (_presentationMode) {
+      if (!btn) {
+        btn = document.createElement('button');
+        btn.id = 'exit-present-btn';
+        btn.className = 'exit-present-btn';
+        btn.textContent = '✕  Salir presentación';
+        btn.onclick = togglePresentation;
+        document.body.appendChild(btn);
+      }
+    } else {
+      if (btn) btn.remove();
+    }
+  }
+
   function toggleTheme() {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     const next = isDark ? 'light' : 'dark';
@@ -4148,7 +4361,7 @@ const App = (() => {
     exportarSalariosExcel, exportarSalariosPDF,
     setSelectorTipo, aplicarTipoColegiatura,
     openQuickSave, closeQuickSave, quickSave,
-    toggleTheme
+    toggleTheme, togglePresentation
   };
 
 })();
