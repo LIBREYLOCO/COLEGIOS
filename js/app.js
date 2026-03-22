@@ -3576,81 +3576,76 @@ const App = (() => {
   }
 
   function exportarSalariosExcel() {
-    if (!window.XLSX) return alert("La librería para Excel no está cargada.");
-    const puestos = state.nominas.puestos || [];
-    const data = puestos.map(p => {
-      const unit = calcCostoPuesto({ ...p, count: 1 });
-      return {
-        "Puesto": p.nombre,
-        "Sector": p.sector,
-        "Sueldo_Bruto": Math.round(unit.sueldo * 100) / 100,
-        "Honorarios": p.esHonorarios ? "Sí" : "No",
-        "Salario_Diario": Math.round(unit.sd * 100) / 100,
-        "SDI": Math.round(unit.sdi * 100) / 100,
-        "SBC_Mensual": Math.round(unit.sbcMensual * 100) / 100,
-        "IMSS_Obrero": Math.round(unit.imssObrero * 100) / 100,
-        "Subsidio": Math.round(unit.subsidio * 100) / 100,
-        "ISR_Mensual": Math.round(unit.isrEmpleado * 100) / 100,
-        "Neto_Estimado": Math.round(unit.netoEstimado * 100) / 100,
-        "IMSS_Patronal": Math.round(unit.imssPatronal * 100) / 100,
-        "INFONAVIT": Math.round(unit.infonavit * 100) / 100,
-        "ISN": Math.round(unit.isn * 100) / 100,
-        "Prov_Aguinaldo": Math.round(unit.aguinaldo * 100) / 100,
-        "Prov_Vacs": Math.round(unit.primaAntiguedad * 100) / 100, // stored in primaAntiguedad logically
-        "Prov_PrimaVac": Math.round(unit.primaVacacional * 100) / 100,
-        "Costo_Fiscal": Math.round((unit.costoTotal - unit.sueldo) * 100) / 100, // W2
-        "Costo_Asimilado": Math.round((unit.costoAsimilado || 0) * 100) / 100,
-        "Costo_Total_Mensual": Math.round(unit.costoTotal * 100) / 100,
-        "Costo_Total_Anual": Math.round((unit.costoTotal * 12) * 100) / 100
-      };
-    });
-
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Nomina Exacta");
-    XLSX.writeFile(workbook, "LL_Reporte_Salarios.xlsx");
+    function doExport() {
+      const puestos = state.nominas.puestos || [];
+      const data = puestos.map(p => {
+        const unit = calcCostoPuesto({ ...p, count: 1 });
+        return {
+          "Puesto": p.nombre,
+          "Sector": p.sector,
+          "Sueldo_Bruto": Math.round(unit.sueldo * 100) / 100,
+          "Honorarios": p.esHonorarios ? "Sí" : "No",
+          "Salario_Diario": Math.round(unit.sd * 100) / 100,
+          "SDI": Math.round(unit.sdi * 100) / 100,
+          "SBC_Mensual": Math.round(unit.sbcMensual * 100) / 100,
+          "IMSS_Obrero": Math.round(unit.imssObrero * 100) / 100,
+          "Subsidio": Math.round(unit.subsidio * 100) / 100,
+          "ISR_Mensual": Math.round(unit.isrEmpleado * 100) / 100,
+          "Neto_Estimado": Math.round(unit.netoEstimado * 100) / 100,
+          "IMSS_Patronal": Math.round(unit.imssPatronal * 100) / 100,
+          "INFONAVIT": Math.round(unit.infonavit * 100) / 100,
+          "ISN": Math.round(unit.isn * 100) / 100,
+          "Prov_Aguinaldo": Math.round(unit.aguinaldo * 100) / 100,
+          "Prov_Vacs": Math.round(unit.primaAntiguedad * 100) / 100,
+          "Prov_PrimaVac": Math.round(unit.primaVacacional * 100) / 100,
+          "Costo_Fiscal": Math.round((unit.costoTotal - unit.sueldo) * 100) / 100,
+          "Costo_Asimilado": Math.round((unit.costoAsimilado || 0) * 100) / 100,
+          "Costo_Total_Mensual": Math.round(unit.costoTotal * 100) / 100,
+          "Costo_Total_Anual": Math.round((unit.costoTotal * 12) * 100) / 100
+        };
+      });
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Nomina Exacta");
+      XLSX.writeFile(workbook, "LL_Reporte_Salarios.xlsx");
+    }
+    if (window.XLSX) { doExport(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = doExport;
+    s.onerror = () => toast('No se pudo cargar la librería — verifica conexión', 'error');
+    document.head.appendChild(s);
   }
 
   function exportarSalariosPDF() {
-    if (!window.jspdf || !window.jspdf.jsPDF) return alert("La librería para PDF no se pudo cargar.");
-    const doc = new jspdf.jsPDF('landscape');
-
-    doc.setFontSize(14);
-    doc.text("L&L · Reporte de Nómina Exacta (Ley)", 14, 15);
-    doc.setFontSize(10);
-    doc.text("Cálculo unitario mensual por perfil de puesto. Moneda: MXN.", 14, 22);
-
-    const puestos = state.nominas.puestos || [];
-    const head = [["Puesto", "Sector", "Bruto", "SDI", "IMSS Obr", "Sub", "ISR", "Neto", "IMSS Pat", "Info", "Prov", "Asimilado", "Costo Emp."]];
-
-    const body = puestos.map(p => {
-      const u = calcCostoPuesto({ ...p, count: 1 });
-      return [
-        p.nombre,
-        p.sector,
-        N(u.sueldo),
-        N(u.sdi),
-        N(u.imssObrero),
-        N(u.subsidio),
-        N(u.isrEmpleado),
-        N(u.netoEstimado),
-        N(u.imssPatronal),
-        N(u.infonavit),
-        N(u.provisiones),
-        N(u.costoAsimilado || 0),
-        N(u.costoTotal)
-      ];
-    });
-
-    doc.autoTable({
-      head: head,
-      body: body,
-      startY: 28,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [26, 48, 104] } // Oxford Blue L&L
-    });
-
-    doc.save("LL_Reporte_Salarios.pdf");
+    function doExport() {
+      const doc = new jspdf.jsPDF('landscape');
+      doc.setFontSize(14);
+      doc.text("L&L · Reporte de Nómina Exacta (Ley)", 14, 15);
+      doc.setFontSize(10);
+      doc.text("Cálculo unitario mensual por perfil de puesto. Moneda: MXN.", 14, 22);
+      const puestos = state.nominas.puestos || [];
+      const head = [["Puesto", "Sector", "Bruto", "SDI", "IMSS Obr", "Sub", "ISR", "Neto", "IMSS Pat", "Info", "Prov", "Asimilado", "Costo Emp."]];
+      const body = puestos.map(p => {
+        const u = calcCostoPuesto({ ...p, count: 1 });
+        return [p.nombre, p.sector, N(u.sueldo), N(u.sdi), N(u.imssObrero), N(u.subsidio),
+          N(u.isrEmpleado), N(u.netoEstimado), N(u.imssPatronal), N(u.infonavit),
+          N(u.provisiones), N(u.costoAsimilado || 0), N(u.costoTotal)];
+      });
+      doc.autoTable({ head, body, startY: 28, styles: { fontSize: 8 }, headStyles: { fillColor: [26, 48, 104] } });
+      doc.save("LL_Reporte_Salarios.pdf");
+    }
+    if (window.jspdf) { doExport(); return; }
+    function loadScript(src, cb) {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onerror = () => toast('No se pudo cargar la librería — verifica conexión', 'error');
+      s.onload = cb;
+      document.head.appendChild(s);
+    }
+    loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', () =>
+      loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js', doExport)
+    );
   }
 
 
