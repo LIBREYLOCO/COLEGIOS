@@ -70,6 +70,65 @@
   --oxford: var(--navy);
 }
 
+/* ── Dark Mode ── */
+[data-theme="dark"] {
+  --bg:           #0E1621;
+  --surface:      #162030;
+  --surface2:     #1C2C42;
+  --surface3:     #223250;
+  --border:       rgba(255,255,255,.07);
+  --border-md:    rgba(255,255,255,.11);
+  --text:         rgba(218,232,248,.92);
+  --text-secondary: rgba(148,180,218,.80);
+  --text-muted:   rgba(98,138,185,.72);
+  --text-faint:   rgba(68,108,158,.60);
+  --navy-dim:     rgba(197,160,89,.07);
+  --shadow:       0 2px 16px rgba(0,0,0,.45);
+  --shadow-md:    0 4px 28px rgba(0,0,0,.55);
+  --negative:     #C0392B;
+  --warning:      #D97706;
+}
+
+[data-theme="dark"] .content-header {
+  box-shadow: 0 1px 12px rgba(0,0,0,.30);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(197,160,89,.22);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(197,160,89,.38);
+}
+
+/* Dark-mode toggle button */
+.theme-toggle {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--text-muted);
+  transition: background .15s, color .15s;
+  flex-shrink: 0;
+}
+
+.theme-toggle:hover {
+  background: var(--navy-dim);
+  color: var(--text);
+}
+
+.theme-toggle .icon-moon { display: block; }
+.theme-toggle .icon-sun  { display: none; }
+
+[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+[data-theme="dark"] .theme-toggle .icon-sun  { display: block; }
+
 /* ── Reset ── */
 *,
 *::before,

@@ -3953,6 +3953,7 @@ const App = (() => {
   function debounce(fn, d) { let t; return function (...a) { clearTimeout(t); t = setTimeout(() => fn.apply(this, a), d); }; }
 
   function init() {
+    initTheme();
     state = patchState(loadState());
     document.querySelectorAll('.nav-item[data-view]').forEach(el =>
       el.addEventListener('click', () => navigate(el.dataset.view)));
@@ -3988,6 +3989,18 @@ const App = (() => {
       portal.style.display = '';
       portal.classList.remove('lp-exit');
     }
+  }
+
+  const THEME_KEY = 'lyl_theme';
+  function toggleTheme() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const next = isDark ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem(THEME_KEY, next);
+  }
+  function initTheme() {
+    const saved = localStorage.getItem(THEME_KEY) || 'light';
+    if (saved === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
   }
 
   function exportExcel() {
@@ -4139,7 +4152,8 @@ const App = (() => {
     addIngreso, removeIngreso, updateIngreso, clearHistorial,
     exportarSalariosExcel, exportarSalariosPDF,
     setSelectorTipo, aplicarTipoColegiatura,
-    openQuickSave, closeQuickSave, quickSave
+    openQuickSave, closeQuickSave, quickSave,
+    toggleTheme
   };
 
 })();
