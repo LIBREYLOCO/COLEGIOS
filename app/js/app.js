@@ -149,7 +149,18 @@ const App = (() => {
       'Bachillerato': [0.05, 0.05, 0.04, 0.04, 0.04, 0.03]
     },
 
-    // ── Capacidad máxima por grado ──
+    // ── Estructura de salones — base del configurador ──
+    salones: {
+      mat: 2, k1: 2, k2: 2, k3: 2,
+      p1: 2, p2: 2, p3: 2, p4: 2, p5: 2, p6: 2,
+      s1: 2, s2: 2, s3: 2,
+      b1: 1, b2: 1, b3: 1
+    },
+    alumnosPorSalon: {
+      Maternal: 15, 'Kínder': 25, Primaria: 25, Secundaria: 25, Bachillerato: 25
+    },
+
+    // ── Capacidad máxima por grado — derivada de salones × alumnosPorSalon ──
     capacidadMaxima: {
       mat: 30,
       k1: 50, k2: 50, k3: 50,
@@ -204,8 +215,8 @@ const App = (() => {
 
     // ── Nóminas ──
     nominas: {
-      // Catálogo de nómina base — importado de CSV "NOMINA MODELO BASE COLEGIO TIPO"
-      // 70 personas individuales, count:1 cada una — el motor calcula IMSS/ISN/Infonavit por persona
+      // Catálogo de nómina base — puestos docentes consolidados por grado con esPorSalon
+      // count de formadores = salones[gradoKey]; el motor calcula IMSS/ISN/Infonavit por persona
       puestos: [
         // ── Dirección ──
         { nombre: 'DIRECCIÓN', sector: 'Dirección', sueldo: 53000, count: 1, esHonorarios: false },
@@ -238,49 +249,32 @@ const App = (() => {
         { nombre: 'Enfermera', sector: 'Administración', sueldo: 18000, count: 1, esHonorarios: false },
         { nombre: 'Mantenimiento 1', sector: 'Administración', sueldo: 12000, count: 1, esHonorarios: false },
         { nombre: 'Mantenimiento 2', sector: 'Administración', sueldo: 12000, count: 1, esHonorarios: false },
-        // ── Preescolar / Maternal ──
-        { nombre: 'Formador Preescolar', sector: 'MATERNAL', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Formador Preescolar', sector: 'MATERNAL', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Formador Preescolar', sector: 'KINDER 1', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Formador Preescolar', sector: 'KINDER 1', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Formador Preescolar', sector: 'KINDER 2', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Formador Preescolar', sector: 'KINDER 2', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Formador Preescolar', sector: 'KINDER 3', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Formador Preescolar', sector: 'KINDER 3', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Asistente educativo', sector: 'ASIST. MATERNAL', sueldo: 11000, count: 1, esHonorarios: false },
-        { nombre: 'Asistente educativo', sector: 'ASIST. MATERNAL', sueldo: 11000, count: 1, esHonorarios: false },
-        { nombre: 'Asistente educativo', sector: 'ASIST. KINDER', sueldo: 11000, count: 1, esHonorarios: false },
-        { nombre: 'Asistente educativo', sector: 'ASIST. KINDER', sueldo: 11000, count: 1, esHonorarios: false },
-        { nombre: 'Asistente educativo', sector: 'ASIST. KINDER', sueldo: 11000, count: 1, esHonorarios: false },
-        // ── Primaria ──
-        { nombre: 'Formador Primaria', sector: 'PRIMARIA 1', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Formador Primaria', sector: 'PRIMARIA 1', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Formador Primaria', sector: 'PRIMARIA 2', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Formador Primaria', sector: 'PRIMARIA 2', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Formador Primaria', sector: 'PRIMARIA 3', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Formador Primaria', sector: 'PRIMARIA 3', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Formador Primaria', sector: 'PRIMARIA 4', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Formador Primaria', sector: 'PRIMARIA 4', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Formador Primaria', sector: 'PRIMARIA 5', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Formador Primaria', sector: 'PRIMARIA 5', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Formador Primaria', sector: 'PRIMARIA 6', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Formador Primaria', sector: 'PRIMARIA 6', sueldo: 15000, count: 1, esHonorarios: false },
-        // ── Secundaria ──
-        { nombre: 'Formador Secundaria', sector: 'SECUNDARIA 1', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Formador Secundaria', sector: 'SECUNDARIA 1', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Formador Secundaria', sector: 'SECUNDARIA 2', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Formador Secundaria', sector: 'SECUNDARIA 2', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Formador Secundaria', sector: 'SECUNDARIA 3', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Formador Secundaria', sector: 'SECUNDARIA 3', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Formador Secundaria', sector: 'SECUNDARIA GRAL', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Formador Secundaria', sector: 'SECUNDARIA GRAL', sueldo: 15000, count: 1, esHonorarios: false },
-        // ── Preparatoria ──
-        { nombre: 'Formador preparatoria', sector: 'MENTOR PREPA 1', sueldo: 26000, count: 1, esHonorarios: false },
-        { nombre: 'Formador preparatoria', sector: 'PREPA 1', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Formador preparatoria', sector: 'MENTOR PREPA 2', sueldo: 26000, count: 1, esHonorarios: false },
-        { nombre: 'Formador preparatoria', sector: 'PREPA 2', sueldo: 15000, count: 1, esHonorarios: false },
-        { nombre: 'Formador preparatoria', sector: 'MENTOR PREPA 3', sueldo: 26000, count: 1, esHonorarios: false },
-        { nombre: 'Formador preparatoria', sector: 'PREPA 3', sueldo: 15000, count: 1, esHonorarios: false },
+        // ── Preescolar / Maternal — count = salones por grado ──
+        { nombre: 'Formador Preescolar', sector: 'MATERNAL',  sueldo: 15000, count: 2, esHonorarios: false, esPorSalon: true, gradoKey: 'mat' },
+        { nombre: 'Formador Preescolar', sector: 'KINDER 1',  sueldo: 15000, count: 2, esHonorarios: false, esPorSalon: true, gradoKey: 'k1'  },
+        { nombre: 'Formador Preescolar', sector: 'KINDER 2',  sueldo: 15000, count: 2, esHonorarios: false, esPorSalon: true, gradoKey: 'k2'  },
+        { nombre: 'Formador Preescolar', sector: 'KINDER 3',  sueldo: 15000, count: 2, esHonorarios: false, esPorSalon: true, gradoKey: 'k3'  },
+        { nombre: 'Asistente educativo', sector: 'ASIST. MATERNAL', sueldo: 11000, count: 2, esHonorarios: false },
+        { nombre: 'Asistente educativo', sector: 'ASIST. KINDER',   sueldo: 11000, count: 3, esHonorarios: false },
+        // ── Primaria — count = salones por grado ──
+        { nombre: 'Formador Primaria', sector: 'PRIMARIA 1', sueldo: 15000, count: 2, esHonorarios: false, esPorSalon: true, gradoKey: 'p1' },
+        { nombre: 'Formador Primaria', sector: 'PRIMARIA 2', sueldo: 15000, count: 2, esHonorarios: false, esPorSalon: true, gradoKey: 'p2' },
+        { nombre: 'Formador Primaria', sector: 'PRIMARIA 3', sueldo: 15000, count: 2, esHonorarios: false, esPorSalon: true, gradoKey: 'p3' },
+        { nombre: 'Formador Primaria', sector: 'PRIMARIA 4', sueldo: 15000, count: 2, esHonorarios: false, esPorSalon: true, gradoKey: 'p4' },
+        { nombre: 'Formador Primaria', sector: 'PRIMARIA 5', sueldo: 15000, count: 2, esHonorarios: false, esPorSalon: true, gradoKey: 'p5' },
+        { nombre: 'Formador Primaria', sector: 'PRIMARIA 6', sueldo: 15000, count: 2, esHonorarios: false, esPorSalon: true, gradoKey: 'p6' },
+        // ── Secundaria — count = salones por grado ──
+        { nombre: 'Formador Secundaria', sector: 'SECUNDARIA 1',   sueldo: 15000, count: 2, esHonorarios: false, esPorSalon: true, gradoKey: 's1' },
+        { nombre: 'Formador Secundaria', sector: 'SECUNDARIA 2',   sueldo: 15000, count: 2, esHonorarios: false, esPorSalon: true, gradoKey: 's2' },
+        { nombre: 'Formador Secundaria', sector: 'SECUNDARIA 3',   sueldo: 15000, count: 2, esHonorarios: false, esPorSalon: true, gradoKey: 's3' },
+        { nombre: 'Formador Secundaria', sector: 'SECUNDARIA GRAL', sueldo: 15000, count: 2, esHonorarios: false },
+        // ── Preparatoria — count = salones[b1/b2/b3] ──
+        { nombre: 'Mentor Prepa',         sector: 'MENTOR PREPA 1', sueldo: 26000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'b1' },
+        { nombre: 'Formador preparatoria', sector: 'PREPA 1',        sueldo: 15000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'b1' },
+        { nombre: 'Mentor Prepa',         sector: 'MENTOR PREPA 2', sueldo: 26000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'b2' },
+        { nombre: 'Formador preparatoria', sector: 'PREPA 2',        sueldo: 15000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'b2' },
+        { nombre: 'Mentor Prepa',         sector: 'MENTOR PREPA 3', sueldo: 26000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'b3' },
+        { nombre: 'Formador preparatoria', sector: 'PREPA 3',        sueldo: 15000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'b3' },
         // ── Liderazgo ──
         { nombre: 'Life Project Lider', sector: 'Administración', sueldo: 25000, count: 1, esHonorarios: false }
       ],
@@ -357,15 +351,37 @@ const App = (() => {
   let sidebarOpen = true;
 
   function loadState() {
+    // Intentar cargar v8
     try {
-      const s = localStorage.getItem('lyl_state_v7');
-      if (s) return JSON.parse(s);
+      const s8 = localStorage.getItem('lyl_state_v8');
+      if (s8) return JSON.parse(s8);
     } catch (e) { }
+
+    // Migrar desde v7 — copiar datos financieros, usar puestos nuevos
+    try {
+      const s7 = localStorage.getItem('lyl_state_v7');
+      if (s7) {
+        const old = JSON.parse(s7);
+        const migrated = deepCopy(DEFAULTS);
+        const migrateKeys = [
+          'variables', 'horizonte', 'matriculaInicial', 'nuevosIngresos',
+          'desercionPorNivel', 'entradaPorNivel', 'desercionAnual',
+          'tasaReinscripcion', 'tasaCrecimientoNuevoIngreso', 'gradosActivos',
+          'colegiaturas', 'inscripciones', 'cuotas', 'descuentos',
+          'ingresosAdicionales', 'gastosOperacion', 'dirEjecutiva'
+        ];
+        migrateKeys.forEach(k => { if (old[k] !== undefined) migrated[k] = old[k]; });
+        // puestos se remplaza con los nuevos defaults (consolidados con esPorSalon)
+        // salones y alumnosPorSalon ya vienen de DEFAULTS
+        return migrated;
+      }
+    } catch (e) { }
+
     return deepCopy(DEFAULTS);
   }
 
   function saveState() {
-    try { localStorage.setItem('lyl_state_v7', JSON.stringify(state)); } catch (e) { }
+    try { localStorage.setItem('lyl_state_v8', JSON.stringify(state)); } catch (e) { }
     const b = document.getElementById('save-badge');
     if (b) b.textContent = '● Guardado ' + new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
   }
@@ -534,6 +550,26 @@ const App = (() => {
   // ============================================================
   // 5. FINANCIAL CALCULATIONS
   // ============================================================
+  // 4b. SYNC DE CAPACIDADES — deriva capacidadMaxima y tope de salones
+  // ============================================================
+
+  /**
+   * Recalcula state.capacidadMaxima y state.topeTotalAlumnos
+   * en función de state.salones y state.alumnosPorSalon.
+   * Llamar cada vez que cambie un salón o alumnosPorSalon.
+   */
+  function syncCapacidades() {
+    const aps = state.alumnosPorSalon || {};
+    if (!state.capacidadMaxima) state.capacidadMaxima = {};
+    GRADES.forEach(g => {
+      const sal = (state.salones || {})[g.key] ?? 2;
+      const porSalon = aps[g.level] ?? 25;
+      state.capacidadMaxima[g.key] = Math.max(1, sal) * Math.max(1, porSalon);
+    });
+    state.topeTotalAlumnos = Object.values(state.capacidadMaxima).reduce((s, v) => s + v, 0);
+  }
+
+  // ============================================================
   // Motor de nómina por puesto — LSS / LISR México 2025
   // ============================================================
 
@@ -561,7 +597,9 @@ const App = (() => {
    * Si esHonorarios=true omite IMSS/ISN/Infonavit — costo = sueldo.
    */
   function calcCostoPuesto(p) {
-    const count = Math.max(1, Math.round(p.count || 1));
+    const count = p.esPorSalon
+      ? Math.max(1, (state.salones || {})[p.gradoKey] ?? Math.round(p.count || 1))
+      : Math.max(1, Math.round(p.count || 1));
     const sueldo = p.sueldo || 0;
     if (p.esHonorarios) {
       const s = {
@@ -3107,11 +3145,165 @@ const App = (() => {
     `;
   }
 
+  // ============================================================
+  // RENDER — ESTRUCTURA DE SALONES
+  // ============================================================
+  function renderEstructura() {
+    const sal  = state.salones       || {};
+    const aps  = state.alumnosPorSalon || {};
+    const puestos = state.nominas.puestos || [];
+
+    // Calcular costo mensual de puestos esPorSalon por gradoKey
+    const costoMensualPorGrado = {};
+    puestos.forEach(p => {
+      if (!p.esPorSalon || !p.gradoKey) return;
+      const c = calcCostoPuesto(p);
+      costoMensualPorGrado[p.gradoKey] = (costoMensualPorGrado[p.gradoKey] || 0) + c.costoTotal;
+    });
+
+    // KPIs globales
+    let totalSalones = 0, totalCap = 0, totalFormadores = 0, totalCostoDoc = 0;
+    GRADES.forEach(g => {
+      const s = sal[g.key] ?? 2;
+      const porSalon = aps[g.level] ?? 25;
+      totalSalones   += s;
+      totalCap       += s * porSalon;
+      totalFormadores += s;   // 1 formador por salón
+      totalCostoDoc  += costoMensualPorGrado[g.key] || 0;
+    });
+
+    // Tabla por nivel → grados
+    const filasPorNivel = LEVELS.map(lv => {
+      const gradosLv = GRADES.filter(g => g.level === lv.key);
+      let lvSal = 0, lvCap = 0, lvForm = 0, lvCosto = 0;
+
+      const filas = gradosLv.map(g => {
+        const s   = sal[g.key] ?? 2;
+        const por = aps[lv.key] ?? 25;
+        const cap = s * por;
+        const costo = costoMensualPorGrado[g.key] || 0;
+        lvSal  += s; lvCap  += cap; lvForm += s; lvCosto += costo;
+        return `
+          <tr>
+            <td>${g.label}</td>
+            <td><input type="number" class="cell-input" style="width:60px" min="1" max="10"
+                  data-salon-grade="${g.key}" value="${s}"></td>
+            <td class="num-muted">${por}</td>
+            <td class="num-muted">${cap}</td>
+            <td class="num-muted">${s}</td>
+            <td class="num-gold">${M(costo)}</td>
+            <td class="num-muted">${M(costo * 12)}</td>
+          </tr>`;
+      }).join('');
+
+      return `
+        <tr class="tr-level-header">
+          <td colspan="7">${lv.key}</td>
+        </tr>
+        ${filas}
+        <tr class="tr-gold-total">
+          <td>Subtotal ${lv.key}</td>
+          <td class="num-gold">${lvSal}</td>
+          <td>
+            <input type="number" class="cell-input" style="width:60px" min="1" max="200"
+              data-aps-level="${lv.key}" value="${aps[lv.key] ?? 25}">
+          </td>
+          <td class="num-gold">${lvCap}</td>
+          <td class="num-gold">${lvForm}</td>
+          <td class="num-gold">${M(lvCosto)}</td>
+          <td class="num-gold">${M(lvCosto * 12)}</td>
+        </tr>`;
+    }).join('');
+
+    return `
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">Estructura de Salones</h2>
+        <p class="section-sub">Configura salones por grado. La capacidad máxima y la nómina docente se actualizan automáticamente.</p>
+      </div>
+      <button class="btn-recalcular" onclick="App.recalcular()">
+        <svg viewBox="0 0 16 16" fill="none" width="13" height="13">
+          <path d="M2 8a6 6 0 1 0 2.5-4.8M2 3v5h5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Recalcular
+      </button>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card gold">
+        <div class="kpi-label">Total Salones</div>
+        <div class="kpi-value">${totalSalones}</div>
+        <div class="kpi-sub">en todos los grados</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Capacidad Total</div>
+        <div class="kpi-value">${totalCap.toLocaleString('es-MX')}</div>
+        <div class="kpi-sub">alumnos máximo</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Formadores requeridos</div>
+        <div class="kpi-value">${totalFormadores}</div>
+        <div class="kpi-sub">frente a grupo</div>
+      </div>
+      <div class="kpi-card gold">
+        <div class="kpi-label">Costo Docente Mensual</div>
+        <div class="kpi-value positive">${M(totalCostoDoc)}</div>
+        <div class="kpi-sub">${M(totalCostoDoc * 12)} anual</div>
+      </div>
+    </div>
+
+    <div class="info-note" style="margin-bottom:18px">
+      <svg viewBox="0 0 20 20" fill="none" width="15" height="15" style="flex-shrink:0;color:var(--cobalt,#0047AB)">
+        <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.4"/>
+        <path d="M10 7v4m0 2.5v.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+      <span>Edita los <strong>salones por grado</strong> (primera columna de inputs) o los <strong>alumnos por salón</strong> por nivel (fila de subtotal). Los cambios actualizan la capacidad máxima, la nómina docente y el EBITDA en toda la corrida.</span>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:160px">Grado</th>
+              <th style="width:80px">Salones</th>
+              <th style="width:90px">Alumnos/Salón</th>
+              <th style="width:90px">Cap. Total</th>
+              <th style="width:80px">Formadores</th>
+              <th>Costo Docente Mensual</th>
+              <th>Costo Docente Anual</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filasPorNivel}
+            <tr class="tr-total">
+              <td><strong>TOTAL PLANTEL</strong></td>
+              <td class="num-positive"><strong>${totalSalones}</strong></td>
+              <td>—</td>
+              <td class="num-positive"><strong>${totalCap.toLocaleString('es-MX')}</strong></td>
+              <td class="num-positive"><strong>${totalFormadores}</strong></td>
+              <td class="num-positive"><strong>${M(totalCostoDoc)}</strong></td>
+              <td class="num-positive"><strong>${M(totalCostoDoc * 12)}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="info-note" style="margin-top:16px;border-left-color:var(--gold);background:var(--gold-dim)">
+      <svg viewBox="0 0 20 20" fill="none" width="15" height="15" style="flex-shrink:0;color:var(--gold)">
+        <path d="M10 2l2.4 5h5.3l-4.3 3.1 1.6 5.2L10 12.3l-5 3 1.6-5.2L2.3 7h5.3z" stroke="currentColor" stroke-width="1.3"/>
+      </svg>
+      <span>El personal fijo (dirección, administración, intendencia) <strong>no</strong> cambia con los salones. Los asistentes de Maternal y Kínder se ajustan manualmente en la sección de Nóminas.</span>
+    </div>`;
+  }
+
   const VIEW_TITLES = {
     dashboard: 'Dashboard', variables: 'Variables Iniciales', matricula: 'Matriz de Alumnos',
     referencias: 'Valores de Referencia', cuotas: 'Cuotas Escolares',
     inscripciones: 'Inscripciones y Re-inscripciones',
     nominas: 'Nóminas', gastos: 'Gastos de Operación',
+    estructura: 'Estructura de Salones',
     corrida: 'Corrida Anual', proyeccion: 'Proyección Financiera', reportes: 'Reportes PDF',
     breakeven: 'Punto de Equilibrio', tirvanp: 'TIR & VPN',
     escenarios: 'Análisis de Escenarios', flujomensual: 'Flujo Mensual Año 1',
@@ -3132,7 +3324,8 @@ const App = (() => {
     alertas: renderAlertas, excelexport: renderExcelExport,
     costoporal: renderCostoPorAlumno, ingresosadicionales: renderIngresosAdicionales,
     ticket: renderTicket,
-    historial: renderHistorial, resumenejec: renderResumenEjec
+    historial: renderHistorial, resumenejec: renderResumenEjec,
+    estructura: renderEstructura
   };
 
   function navigate(view) {
@@ -3171,6 +3364,23 @@ const App = (() => {
 
   function handleInput(e) {
     const el = e.target;
+
+    // ── Estructura de salones ──
+    if (el.dataset.salonGrade !== undefined) {
+      const grade = el.dataset.salonGrade;
+      if (!state.salones) state.salones = {};
+      state.salones[grade] = Math.max(1, parseInt(el.value) || 1);
+      syncCapacidades();
+      return scheduleUpdate();
+    }
+
+    if (el.dataset.apsLevel !== undefined) {
+      const level = el.dataset.apsLevel;
+      if (!state.alumnosPorSalon) state.alumnosPorSalon = {};
+      state.alumnosPorSalon[level] = Math.max(1, parseInt(el.value) || 1);
+      syncCapacidades();
+      return scheduleUpdate();
+    }
 
     // Puestos — nombre / sector (texto) antes del chequeo numérico
     if (el.dataset.puestoIdx !== undefined && el.dataset.puestoField &&
@@ -3398,6 +3608,7 @@ const App = (() => {
 
   function init() {
     state = patchState(loadState());
+    syncCapacidades(); // Asegura capacidadMaxima y topeTotalAlumnos derivados de salones
     document.querySelectorAll('.nav-item[data-view]').forEach(el =>
       el.addEventListener('click', () => navigate(el.dataset.view)));
 
