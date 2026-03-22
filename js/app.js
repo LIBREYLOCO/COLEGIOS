@@ -3114,6 +3114,23 @@ const App = (() => {
       </div>`;
     }).join('');
 
+    // Datos serializados para el panel IA
+    const corrida = calcCorrida();
+    const yN = corrida[corrida.length - 1];
+    const sensitivityPayload = JSON.stringify({
+      ebitdaBase: M(y1b.ebitda),
+      ebitdaBaseYr7: M(yN.ebitda),
+      cashAcumulado: M(yN.cashAcumulado),
+      matricula: Math.round(y1b.totalAlumnos),
+      margen: P(y1b.ebitda / (y1b.ingresoTotal || 1)),
+      tornado: tornado.map(t => ({
+        label: t.label,
+        loFmt: M(t.lo),
+        hiFmt: M(t.hi),
+        spreadFmt: M(t.spread)
+      }))
+    });
+
     return `
     <div class="section-header"><div>
       <div class="section-title">Análisis de Sensibilidad</div>
@@ -3129,7 +3146,7 @@ const App = (() => {
       ${tornadoBars}
     </div>
 
-    <div class="card">
+    <div class="card" style="margin-bottom:20px">
       <div class="card-title" style="margin-bottom:12px">Tabla de Sensibilidad — EBITDA Año 1</div>
       <div class="table-wrap"><table>
         <thead><tr>
@@ -3142,6 +3159,33 @@ const App = (() => {
         </tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
+    </div>
+
+    <!-- Panel de Análisis IA -->
+    <div class="card" id="ai-analysis-panel" data-payload='${sensitivityPayload.replace(/'/g, "&#39;")}'>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:16px">
+        <div>
+          <div class="card-title" style="margin:0">Diagnóstico IA</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:3px">
+            Interpretación ejecutiva generada por Claude — basada en los datos de esta corrida
+          </div>
+        </div>
+        <button id="ai-btn" onclick="App.callAIAnalysis()"
+          style="background:var(--cobalt);color:#fff;border:none;border-radius:6px;
+                 padding:9px 20px;font-size:11px;letter-spacing:.06em;cursor:pointer;
+                 font-family:inherit;white-space:nowrap;display:flex;align-items:center;gap:7px;flex-shrink:0">
+          <svg viewBox="0 0 20 20" fill="none" width="13" height="13">
+            <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M7 10l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Analizar con IA
+        </button>
+      </div>
+      <div id="ai-result" style="min-height:60px;display:flex;align-items:center;justify-content:center">
+        <div style="font-size:12px;color:var(--text-muted);font-style:italic">
+          Haz clic en "Analizar con IA" para obtener el diagnóstico ejecutivo de este modelo.
+        </div>
+      </div>
     </div>`;
   }
 
@@ -4180,6 +4224,72 @@ const App = (() => {
   }
 
   const THEME_KEY = 'lyl_theme';
+  async function callAIAnalysis() {
+    const panel = document.getElementById('ai-analysis-panel');
+    const result = document.getElementById('ai-result');
+    const btn = document.getElementById('ai-btn');
+    if (!panel || !result || !btn) return;
+
+    // Estado cargando
+    btn.disabled = true;
+    btn.innerHTML = `<svg viewBox="0 0 20 20" fill="none" width="13" height="13" style="animation:spin 1s linear infinite">
+      <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5" stroke-dasharray="22" stroke-dashoffset="8"/>
+    </svg> Analizando…`;
+    result.innerHTML = `<div style="display:flex;align-items:center;gap:10px;color:var(--text-muted);font-size:12px">
+      <svg viewBox="0 0 20 20" fill="none" width="16" height="16" style="animation:spin 1s linear infinite;flex-shrink:0">
+        <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5" stroke-dasharray="22" stroke-dashoffset="8"/>
+      </svg>
+      Claude está analizando el modelo financiero…
+    </div>`;
+
+    // Agregar keyframe si no existe
+    if (!document.getElementById('spin-style')) {
+      const s = document.createElement('style');
+      s.id = 'spin-style';
+      s.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
+      document.head.appendChild(s);
+    }
+
+    try {
+      const rawPayload = panel.dataset.payload;
+      const data = JSON.parse(rawPayload);
+
+      const res = await fetch('/.netlify/functions/ai-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data })
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+
+      // Mostrar resultado
+      result.innerHTML = `
+        <div style="font-size:13px;line-height:1.75;color:var(--text);padding:4px 0">
+          ${json.analysis.replace(/\n/g, '<br>')}
+        </div>
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);
+                    font-size:9px;color:var(--text-muted);letter-spacing:.04em">
+          Generado por Claude · ${new Date().toLocaleString('es-MX', { hour:'2-digit', minute:'2-digit', day:'2-digit', month:'short' })}
+        </div>`;
+
+    } catch (err) {
+      result.innerHTML = `<div style="color:var(--purple);font-size:12px">
+        ⚠ Error: ${err.message}.<br>
+        <span style="font-size:10px;color:var(--text-muted)">
+          Verifica que la variable <code>ANTHROPIC_API_KEY</code> esté configurada en Netlify → Site settings → Environment variables.
+        </span>
+      </div>`;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<svg viewBox="0 0 20 20" fill="none" width="13" height="13">
+        <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M7 10l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg> Analizar de nuevo`;
+    }
+  }
+
   let _presentationMode = false;
   function togglePresentation() {
     _presentationMode = !_presentationMode;
@@ -4361,7 +4471,7 @@ const App = (() => {
     exportarSalariosExcel, exportarSalariosPDF,
     setSelectorTipo, aplicarTipoColegiatura,
     openQuickSave, closeQuickSave, quickSave,
-    toggleTheme, togglePresentation
+    toggleTheme, togglePresentation, callAIAnalysis
   };
 
 })();
