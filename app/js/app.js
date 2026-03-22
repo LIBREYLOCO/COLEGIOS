@@ -192,6 +192,15 @@ const App = (() => {
       secundaria: 12400,
       bachillerato: 13100
     },
+    // ── Referencia base para tipos de colegiatura ──
+    colegiaturaBaseRef: {
+      maternalK1: 5900,
+      kinder23: 8200,
+      primaria: 11200,
+      secundaria: 12400,
+      bachillerato: 13100
+    },
+    tipoColegiaturas: 'newland',
     inscripciones: {
       maternalK1: { cuotaInsc: 0, admision: 1804, orfandad: 3238, seguro: 1208, otro: 0 },
       kinder23: { cuotaInsc: 1395, admision: 6470, orfandad: 3238, seguro: 1425, otro: 0 },
@@ -297,6 +306,8 @@ const App = (() => {
     // ── Gastos de Operación ──
     gastosOperacion: {
       capacidadGastoRef: 400,
+      alumnosBase: 450,        // Zone 1→2: con este # de alumnos los gastos son al 100%
+      alumnosSuperBase: 670,   // Zone 2→3: sobre este # los gastos escalan por encima del 100%
       controlados: [
         { label: 'Capacitación', monto: 30000 },
         { label: 'Cortesías y Eventos Captación', monto: 38866 },
@@ -661,8 +672,9 @@ const App = (() => {
     const puestos = state.nominas.puestos || [];
     const puestosBase = puestos.reduce((s, p) => s + calcCostoPuesto(p).costoTotal, 0);
 
-    // Factor por matrícula — misma referencia que gastos de operación
-    const capNomina = state.gastosOperacion.capacidadGastoRef || 400;
+    // Factor por matrícula — escala hacia abajo si hay menos alumnos que alumnosBase (sin Zone 3)
+    const go = state.gastosOperacion;
+    const capNomina = go.alumnosBase || go.capacidadGastoRef || 450;
     const factorNomina = totalAlumnos != null ? Math.min(1, totalAlumnos / capNomina) : 1;
 
     // Si hay puestos definidos, su total ya incluye IMSS/ISN/etc — inflacionar directamente
@@ -698,11 +710,20 @@ const App = (() => {
     };
   }
 
+  function calcFactorMatricula(totalAlumnos) {
+    const go = state.gastosOperacion;
+    const base = go.alumnosBase || go.capacidadGastoRef || 450;
+    const superBase = go.alumnosSuperBase || 670;
+    const n = totalAlumnos || 0;
+    if (n <= base) return n / base;       // Zona 1: escala hacia abajo
+    if (n <= superBase) return 1.0;        // Zona 2: 100%
+    return n / superBase;                  // Zona 3: escala hacia arriba
+  }
+
   function calcGastos(yearIdx, totalAlumnos) {
     const go = state.gastosOperacion;
     const inf = Math.pow(1 + state.variables.inflacion, yearIdx);
-    const cap = go.capacidadGastoRef || 400;
-    const factor = Math.min(1, (totalAlumnos || 0) / cap);
+    const factor = calcFactorMatricula(totalAlumnos);
 
     const sumC = (go.controlados || []).reduce((s, c) => s + (c.monto || 0), 0) * factor * inf;
     const sumF = (go.fijos || []).reduce((s, c) => s + (c.monto || 0), 0) * inf;
@@ -762,6 +783,10 @@ const App = (() => {
 
       cashAcumulado += ebitda;
       const utilidadPorAccion = ebitda / (state.variables.numAcciones || 1);
+      const numTickets = Math.max(1, state.variables.numTickets || 1);
+      const capitalReq = state.variables.capitalRequerido || 1;
+      const utilidadPorTicket = ebitda / numTickets;
+      const rendimientoTicket = capitalReq > 0 ? (utilidadPorTicket / (capitalReq / numTickets)) : 0;
 
       results.push({
         ano, i, infFactor, colFactor,
@@ -770,7 +795,7 @@ const App = (() => {
         apoyosEcon, becas, prontoPago, ingresoTotal,
         nomina, gastosOp, egresoTotal,
         subtotal, operadora, rentaInmueble, ebitda,
-        cashAcumulado, utilidadPorAccion
+        cashAcumulado, utilidadPorAccion, utilidadPorTicket, rendimientoTicket
       });
     }
     return results;
@@ -948,6 +973,24 @@ const App = (() => {
             <span class="form-hint">Unidades mínimas de inversión</span>
           </div>
           ${statRow('Valor por Ticket', M(valorTicket), `${M(cap)} ÷ ${N(tickets)} tickets`)}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Factor de Gasto por Matrícula</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Alumnos base <span>(inicio del 100%)</span></label>
+          <input type="number" class="form-input" value="${state.gastosOperacion.alumnosBase || 450}" step="10" min="1"
+            data-key="alumnosBase" data-nested="gastosOperacion">
+          <span class="form-hint">Con menos alumnos, la nómina y gastos controlados escalan hacia abajo</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Alumnos super-base <span>(inicio de gasto extra)</span></label>
+          <input type="number" class="form-input" value="${state.gastosOperacion.alumnosSuperBase || 670}" step="10" min="1"
+            data-key="alumnosSuperBase" data-nested="gastosOperacion">
+          <span class="form-hint">Entre base y super-base = 100%. Pasando el super-base el gasto sube proporcionalmente</span>
         </div>
       </div>
     </div>`;
@@ -1142,6 +1185,7 @@ const App = (() => {
     const desc = state.descuentos;
     const ano0 = state.variables.anoInicio || ANO_INICIO;
     const ciclo1 = `${ano0 - 1}-${String(ano0).slice(-2)}`;
+    const tipo = state.tipoColegiaturas || 'newland';
 
     const rows = TUITION_KEYS.map((lk, i) => `
       <tr>
@@ -1151,11 +1195,35 @@ const App = (() => {
         <td style="color:var(--gold);font-variant-numeric:tabular-nums">${N(cuotaTotal(lk))}</td>
       </tr>`).join('');
 
+    const radioStyle = 'cursor:pointer;display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:6px;border:1px solid var(--beige)';
+
     return `
     <div class="section-header"><div>
       <div class="section-title">Valores de Referencia</div>
       <div class="section-sub">Aranceles y descuentos · Ciclo 1 · ${ciclo1}</div>
     </div></div>
+
+    <div class="card">
+      <div class="card-title">Tipo de Colegiaturas</div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <label style="${radioStyle}${tipo==='newland' ? ';background:var(--cobalt);color:#fff;border-color:var(--cobalt)' : ''}">
+          <input type="radio" name="tipoColeg" value="newland" ${tipo==='newland' ? 'checked' : ''} style="accent-color:#fff">
+          Newland base
+        </label>
+        <label style="${radioStyle}${tipo==='medias' ? ';background:var(--cobalt);color:#fff;border-color:var(--cobalt)' : ''}">
+          <input type="radio" name="tipoColeg" value="medias" ${tipo==='medias' ? 'checked' : ''} style="accent-color:#fff">
+          Medias −15%
+        </label>
+        <label style="${radioStyle}${tipo==='bajas' ? ';background:var(--cobalt);color:#fff;border-color:var(--cobalt)' : ''}">
+          <input type="radio" name="tipoColeg" value="bajas" ${tipo==='bajas' ? 'checked' : ''} style="accent-color:#fff">
+          Bajas −30%
+        </label>
+        <button onclick="App.aplicarTipoColegiaturas()"
+          style="margin-left:auto;padding:8px 18px;background:var(--gold);color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:400;font-size:13px">
+          Aplicar tipo de colegiatura
+        </button>
+      </div>
+    </div>
 
     <div class="card">
       <div class="card-title">Aranceles por Nivel · Ciclo 1 (${ciclo1})</div>
@@ -1180,6 +1248,65 @@ const App = (() => {
         <div class="form-group"><label class="form-label">Becas SEP + Maestros + Socios</label>${pctInput(desc.becasSepPct, 'becasSepPct', 'descuentos')}<span class="form-hint">% sobre total de colegiaturas anuales</span></div>
         <div class="form-group"><label class="form-label">Pronto Pago</label>${pctInput(desc.prontoPagoPct, 'prontoPagoPct', 'descuentos')}<span class="form-hint">% de descuento sobre colegiaturas mes a mes por pago anticipado</span></div>
       </div>
+    </div>`;
+  }
+
+  // ============================================================
+  // 10b. VIEW — INGRESOS POR COLEGIATURAS
+  // ============================================================
+  function renderColegiaturas() {
+    const corrida = calcCorrida();
+    const desc = state.descuentos;
+
+    const brutasRows = TUITION_KEYS.map((lk, i) => {
+      const cells = corrida.map(yr => {
+        const n = yr.levelEnrollment[lk] || 0;
+        const col = state.colegiaturas[lk] || 0;
+        return `<td>${M(n * col * yr.colFactor * 10)}</td>`;
+      }).join('');
+      return `<tr><td>${TUITION_LABELS[i]}</td>${cells}</tr>`;
+    }).join('');
+
+    const totBrutas = `<tr class="tr-total"><td>Colegiaturas Brutas</td>${corrida.map(yr => `<td>${M(yr.sumColegiaturas)}</td>`).join('')}</tr>`;
+
+    const pctA = desc.apoyosEconomicosPct || 0;
+    const pctB = desc.becasSepPct || 0;
+    const pctP = desc.prontoPagoPct || 0;
+    const pctTotal = pctA + pctB + pctP;
+
+    const desRows = [
+      [`(-) Apoyos Económicos (${P(pctA)})`, yr => yr.sumColegiaturas * pctA],
+      [`(-) Becas SEP + Maestros (${P(pctB)})`, yr => yr.sumColegiaturas * pctB],
+      [`(-) Pronto Pago (${P(pctP)})`, yr => yr.sumColegiaturas * pctP],
+    ].map(([label, fn]) => `<tr>
+      <td>${label}</td>${corrida.map(yr => `<td style="color:var(--purple)">${M(fn(yr))}</td>`).join('')}
+    </tr>`).join('');
+
+    const netasRow = `<tr class="tr-gold-total">
+      <td>COLEGIATURAS NETAS</td>
+      ${corrida.map(yr => `<td>${M(yr.sumColegiaturas * (1 - pctTotal))}</td>`).join('')}
+    </tr>`;
+
+    return `
+    <div class="section-header"><div>
+      <div class="section-title">Ingresos por Colegiaturas</div>
+      <div class="section-sub">Proyección anual por nivel · descuentos aplicados</div>
+    </div></div>
+
+    <div class="card">
+      <div class="card-title">Colegiaturas Brutas por Nivel (MXN)</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Nivel</th>${corrida.map(thCiclo).join('')}</tr></thead>
+        <tbody>${brutasRows}${totBrutas}</tbody>
+      </table></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Descuentos y Colegiaturas Netas (MXN)</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Concepto</th>${corrida.map(thCiclo).join('')}</tr></thead>
+        <tbody>${desRows}${netasRow}</tbody>
+      </table></div>
     </div>`;
   }
 
@@ -1330,8 +1457,8 @@ const App = (() => {
     const corrida = calcCorrida();
     const annuals = corrida.map(yr => calcNomina(yr.i, yr.totalAlumnos));
 
-    // factor matrícula del año 1 — misma referencia que gastos de operación
-    const capNomina = state.gastosOperacion.capacidadGastoRef || 400;
+    // factor matrícula del año 1 — usa alumnosBase como referencia
+    const capNomina = state.gastosOperacion.alumnosBase || state.gastosOperacion.capacidadGastoRef || 450;
 
     // ── Tabla de puestos ──────────────────────────────────────────
     const puestos = nom.puestos || [];
@@ -1852,7 +1979,10 @@ const App = (() => {
       { l: 'EBITDA', fn: y => M(y.ebitda), ebitda: true },
       { sep: true },
       { l: 'Flujo Acumulado (Bancos)', fn: y => M(y.cashAcumulado), cls: 'num-gold' },
-      { l: 'Utilidad por Acción', fn: y => M(y.utilidadPorAccion), cls: 'num-blue' }
+      { sep: true },
+      { l: 'Utilidad por Acción', fn: y => M(y.utilidadPorAccion), cls: 'num-blue' },
+      { l: 'Utilidad por Ticket', fn: y => M(y.utilidadPorTicket), cls: 'num-blue' },
+      { l: 'Rendimiento por Ticket (%)', fn: y => P(y.rendimientoTicket), cls: 'num-blue' }
     ];
 
     const makeRow = r => {
@@ -3300,7 +3430,7 @@ const App = (() => {
 
   const VIEW_TITLES = {
     dashboard: 'Dashboard', variables: 'Variables Iniciales', matricula: 'Matriz de Alumnos',
-    referencias: 'Valores de Referencia', cuotas: 'Cuotas Escolares',
+    referencias: 'Valores de Referencia', colegiaturas: 'Ingresos por Colegiaturas', cuotas: 'Cuotas Escolares',
     inscripciones: 'Inscripciones y Re-inscripciones',
     nominas: 'Nóminas', gastos: 'Gastos de Operación',
     estructura: 'Estructura de Salones',
@@ -3315,7 +3445,7 @@ const App = (() => {
   };
   const RENDERERS = {
     dashboard: renderDashboard, variables: renderVariables, matricula: renderMatricula,
-    referencias: renderReferencias, cuotas: renderCuotas, inscripciones: renderInscripciones,
+    referencias: renderReferencias, colegiaturas: renderColegiaturas, cuotas: renderCuotas, inscripciones: renderInscripciones,
     nominas: renderNominas, gastos: renderGastos, corrida: renderCorrida, proyeccion: renderProyeccion,
     reportes: renderReportes,
     breakeven: renderBreakEven, tirvanp: renderTIRVPN,
@@ -3554,7 +3684,9 @@ const App = (() => {
       ['Renta Activo Inmobiliario', y => -Math.round(y.rentaInmueble)],
       ['EBITDA', y => Math.round(y.ebitda)],
       ['Flujo Acumulado', y => Math.round(y.cashAcumulado)],
-      ['Utilidad por Accion', y => Math.round(y.utilidadPorAccion)]
+      ['Utilidad por Accion', y => Math.round(y.utilidadPorAccion)],
+      ['Utilidad por Ticket', y => Math.round(y.utilidadPorTicket)],
+      ['Rendimiento por Ticket %', y => (y.rendimientoTicket * 100).toFixed(2) + '%']
     ];
     let csv = BOM + 'Concepto,' + years.join(',') + '\n';
     fields.forEach(([l, fn]) => { csv += `"${l}",${corrida.map(fn).join(',')}\n`; });
@@ -3765,12 +3897,25 @@ const App = (() => {
     }
   }
 
+  function aplicarTipoColegiaturas() {
+    const tipo = document.querySelector('input[name="tipoColeg"]:checked')?.value || 'newland';
+    state.tipoColegiaturas = tipo;
+    const FACTORES = { newland: 1.0, medias: 0.85, bajas: 0.70 };
+    const f = FACTORES[tipo] ?? 1.0;
+    const base = state.colegiaturaBaseRef || DEFAULTS.colegiaturas;
+    TUITION_KEYS.forEach(lk => {
+      state.colegiaturas[lk] = Math.round((base[lk] || 0) * f);
+    });
+    scheduleUpdate();
+  }
+
   return {
     init, navigate, resetState, exportCSV, toggleSidebar, recalcular,
     addPuesto, removePuesto, toggleHonorarios,
     generarPDF: _generarPDF, logout, setHorizonte,
     saveCurrentScenario, loadScenario, deleteScenario, exportExcel, setTasaDescuento,
-    addIngreso, removeIngreso, updateIngreso, clearHistorial
+    addIngreso, removeIngreso, updateIngreso, clearHistorial,
+    aplicarTipoColegiaturas
   };
 
 })();
