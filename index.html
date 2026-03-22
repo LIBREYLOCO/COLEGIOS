@@ -11,6 +11,8 @@
   <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
+  <!-- Preload LCP image (logo del portal de acceso) -->
+  <link rel="preload" as="image" href="img/logo.webp" type="image/webp">
   <!-- Chart.js — diferido para no bloquear el render -->
   <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
@@ -52,7 +54,10 @@
 
       <!-- LOGO — grande, protagonista -->
       <div class="lp-logo-wrap">
-        <img src="img/logo.png" alt="L&amp;L" class="lp-logo">
+        <picture>
+          <source srcset="img/logo.webp" type="image/webp">
+          <img src="img/logo.png" alt="L&L" class="lp-logo" width="640" height="640" fetchpriority="high">
+        </picture>
       </div>
 
       <!-- Gold rule -->
@@ -519,7 +524,10 @@
     <nav class="sidebar" id="sidebar">
       <div class="sidebar-brand">
         <div class="brand-logo-wrap">
-          <img src="img/logo.png" alt="L&amp;L logo">
+          <picture>
+            <source srcset="img/lyl.webp" type="image/webp">
+            <img src="img/logo.png" alt="L&L logo" width="84" height="84" loading="lazy">
+          </picture>
         </div>
         <div class="brand-text">
           <span class="brand-name">L&amp;L</span>
