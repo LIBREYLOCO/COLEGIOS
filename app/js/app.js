@@ -3643,6 +3643,13 @@ const App = (() => {
       portal.style.display = '';
       portal.classList.remove('lp-exit');
     }
+    // Resetear estado del botón (queda disabled + spinner del login anterior)
+    const btn  = document.getElementById('lp-btn');
+    const txt  = document.getElementById('lp-btn-text');
+    const spin = document.getElementById('lp-btn-spin');
+    if (btn)  btn.disabled = false;
+    if (txt)  txt.style.display = 'block';
+    if (spin) spin.style.display = 'none';
   }
 
   function exportExcel() {
