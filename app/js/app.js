@@ -157,16 +157,18 @@ const App = (() => {
       b1: 1, b2: 1, b3: 1
     },
     alumnosPorSalon: {
-      Maternal: 15, 'Kínder': 25, Primaria: 25, Secundaria: 25, Bachillerato: 25
+      // Maternal: 2 sal × 15 = 30 · Resto: 30 por salón
+      Maternal: 15, 'Kínder': 30, Primaria: 30, Secundaria: 30, Bachillerato: 30
     },
 
     // ── Capacidad máxima por grado — derivada de salones × alumnosPorSalon ──
+    // mat: 2×15=30 · k1-k3: 2×30=60 · p1-p6: 2×30=60 · s1-s3: 2×30=60 · b1-b3: 1×30=30
     capacidadMaxima: {
       mat: 30,
-      k1: 50, k2: 50, k3: 50,
-      p1: 50, p2: 50, p3: 50, p4: 50, p5: 50, p6: 50,
-      s1: 50, s2: 50, s3: 50,
-      b1: 25, b2: 25, b3: 25
+      k1: 60, k2: 60, k3: 60,
+      p1: 60, p2: 60, p3: 60, p4: 60, p5: 60, p6: 60,
+      s1: 60, s2: 60, s3: 60,
+      b1: 30, b2: 30, b3: 30
     },
 
     topeTotalAlumnos: 1155,
@@ -628,9 +630,10 @@ const App = (() => {
     const salMap = salonesMap || state.salones || {};
     let count;
     if (p.esPorSalon) {
-      // Si el mapa tiene el grado, usar ese valor (puede ser 0 para grados inactivos)
+      // p.count = maestros por salón; salVal = salones activos derivados de matrícula
       const salVal = salMap[p.gradoKey];
-      count = salVal != null ? Math.max(0, salVal) : Math.max(1, Math.round(p.count || 1));
+      const mps = Math.max(1, Math.round(p.count || 1)); // maestros por salón
+      count = salVal != null ? salVal * mps : mps;       // 0 salones → 0 maestros
     } else {
       count = Math.max(1, Math.round(p.count || 1));
     }
@@ -1712,6 +1715,64 @@ const App = (() => {
       </div>
     </div>`;
 
+    // ── Matriz de formadores por año (sólo puestos esPorSalon) ─────────────────────────────────────
+    const puestosDocentes = puestos.filter(p => p.esPorSalon);
+    const matriculaPorAno = corrida.map(yr => yr.gradeEnrollment);
+    const salonesPorAno = matriculaPorAno.map(ge => deriveSalones(ge));
+
+    const mpsLabel = p => {
+      const mps = Math.max(1, Math.round(p.count || 1));
+      return mps > 1 ? ` (×${mps}/sal)` : '';
+    };
+
+    const docenteRows = puestosDocentes.map(p => {
+      const mps = Math.max(1, Math.round(p.count || 1));
+      const celdas = salonesPorAno.map(sm => {
+        const sal = sm[p.gradoKey] || 0;
+        const total = sal * mps;
+        return `<td style="text-align:center;${total === 0 ? 'opacity:.3' : ''}">${total || '—'}</td>`;
+      }).join('');
+      return `<tr>
+        <td style="max-width:220px">${p.nombre}${mpsLabel(p)}</td>
+        <td style="opacity:.55;font-size:11px">${p.gradoKey || '—'}</td>
+        ${celdas}
+      </tr>`;
+    }).join('');
+
+    // Fila de totales de formadores por año
+    const totFormadoresRow = salonesPorAno.map(sm => {
+      const tot = puestosDocentes.reduce((s, p) => {
+        const mps = Math.max(1, Math.round(p.count || 1));
+        return s + (sm[p.gradoKey] || 0) * mps;
+      }, 0);
+      return `<td style="text-align:center;color:var(--cobalt);font-weight:500">${tot}</td>`;
+    }).join('');
+
+    const matrizFormadoresCard = puestosDocentes.length === 0 ? '' : `
+    <div class="card" style="border-top:3px solid var(--purple)">
+      <div class="card-title" style="font-size:15px;letter-spacing:.5px">
+        FORMADORES POR GRADO · PROYECCIÓN
+        <span class="form-hint" style="margin-left:12px;font-weight:300">cantidades de maestros por salón — sin montos</span>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr>
+          <th style="text-align:left;min-width:200px">Puesto</th>
+          <th style="text-align:left;min-width:60px;opacity:.6">Grado</th>
+          ${corrida.map(thCiclo).join('')}
+        </tr></thead>
+        <tbody>
+          ${docenteRows}
+          <tr class="tr-total">
+            <td colspan="2">TOTAL FORMADORES</td>
+            ${totFormadoresRow}
+          </tr>
+        </tbody>
+      </table></div>
+      <div style="margin-top:8px;font-size:11px;opacity:.55;padding:4px">
+        Salones activos derivados de matrícula ÷ alumnos/salón · Si el grado está inactivo se muestra —
+      </div>
+    </div>`;
+
     return `
     <div class="section-header"><div>
       <div class="section-title">Nóminas</div>
@@ -1719,6 +1780,8 @@ const App = (() => {
     </div></div>
 
     ${summaryCard}
+
+    ${matrizFormadoresCard}
 
     ${puestosCard}
 
