@@ -1429,7 +1429,16 @@ const App = (() => {
       return `<tr><td>${TUITION_LABELS[i]}</td>${cells}</tr>`;
     }).join('');
 
-    const totales = `<tr class="tr-total"><td>TOTAL CUOTAS</td>${corrida.map(yr => `<td>${M(yr.sumCuotas)}</td>`).join('')}</tr>`;
+    const totales = `<tr class="tr-total"><td>Total Cuotas Brutas</td>${corrida.map(yr => `<td>${M(yr.sumCuotas)}</td>`).join('')}</tr>`;
+    const pctContra = state.descuentos.cuotasContraIngresoPct ?? 0.60;
+    const contraRow = `<tr>
+      <td style="color:var(--purple)">(−) Contra Ingreso Cuotas (${P(pctContra)})</td>
+      ${corrida.map(yr => `<td style="color:var(--purple)">${M(-yr.cuotasContraIngreso)}</td>`).join('')}
+    </tr>`;
+    const cuotasNetasRow = `<tr class="tr-gold-total">
+      <td>CUOTAS ESCOLARES NETAS</td>
+      ${corrida.map(yr => `<td>${M(yr.cuotasNetas)}</td>`).join('')}
+    </tr>`;
 
     return `
     <div class="section-header"><div>
@@ -1456,7 +1465,7 @@ const App = (() => {
       <div class="table-wrap">
         <table>
           <thead><tr><th>Nivel</th>${corrida.map(thCiclo).join('')}</tr></thead>
-          <tbody>${proyRows}${totales}</tbody>
+          <tbody>${proyRows}${totales}${contraRow}${cuotasNetasRow}</tbody>
         </table>
       </div>
     </div>`;
@@ -2026,9 +2035,7 @@ const App = (() => {
       { head: 'INGRESOS' },
       { l: 'Inscripciones Netas', fn: y => M(y.sumInscripciones - y.descInscripcion) },
       { l: 'Colegiaturas Netas', fn: y => M(y.colegiaturasNetas) },
-      { l: 'Cuotas Escolares', fn: y => M(y.sumCuotas) },
-      { l: '(−) Contra Ingreso Cuotas', fn: y => M(-y.cuotasContraIngreso), cls: 'num-negative' },
-      { l: 'Total Cuotas Netas', fn: y => M(y.cuotasNetas), cls: 'tr-sub' },
+      { l: 'Cuotas Escolares Netas', fn: y => M(y.cuotasNetas) },
       { l: 'TOTAL INGRESOS', fn: y => M(y.ingresoTotal), result: true },
       { sep: true },
       { head: 'EGRESOS' },
