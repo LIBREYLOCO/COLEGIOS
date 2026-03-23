@@ -919,7 +919,7 @@ const App = (() => {
       { label: 'Nómina Mensual Año 1', val: m2M(y1.nomina.totalMensual), sub: `Factor matrícula ${P(y1.nomina.factorNomina)}`, cls: '', accent: 'neutral' },
       { label: `EBITDA Año ${getYears()}`, val: m2M(yN.ebitda), sub: 'Utilidad operativa neta', cls: 'gold', accent: 'positive' },
       { label: 'Margen EBITDA Año 1', val: P(y1.ebitda / y1.ingresoTotal), sub: 'Utilidad / Ingresos netos', cls: 'cobalt', accent: 'positive' },
-      { label: 'Flujo Acumulado 7 Años', val: m2M(yN.cashAcumulado), sub: 'Dinero en bancos al cierre', cls: '', accent: 'positive' }
+      { label: `Flujo Acumulado ${getYears()} Años`, val: m2M(yN.cashAcumulado), sub: 'Dinero en bancos al cierre', cls: '', accent: 'positive' }
     ];
 
     return `
@@ -941,23 +941,58 @@ const App = (() => {
     </div>
 
     <div class="charts-grid">
-      <div class="chart-card"><div class="chart-title">Ingresos vs Egresos · 7 Años</div><div class="chart-wrap"><canvas id="chart-ingegr"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">Ingresos vs Egresos · ${getYears()} Años</div><div class="chart-wrap"><canvas id="chart-ingegr"></canvas></div></div>
       <div class="chart-card"><div class="chart-title">EBITDA y Flujo Acumulado</div><div class="chart-wrap"><canvas id="chart-ebitda"></canvas></div></div>
     </div>
     <div class="charts-grid">
-      <div class="chart-card"><div class="chart-title">Nómina Total · 7 Años</div><div class="chart-wrap"><canvas id="chart-nomina"></canvas></div></div>
-      <div class="chart-card"><div class="chart-title">Gastos de Operación · 7 Años</div><div class="chart-wrap"><canvas id="chart-gastos"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">Nómina Total · ${getYears()} Años</div><div class="chart-wrap"><canvas id="chart-nomina"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">Gastos de Operación · ${getYears()} Años</div><div class="chart-wrap"><canvas id="chart-gastos"></canvas></div></div>
     </div>
     <div class="charts-grid">
       <div class="chart-card"><div class="chart-title">Matrícula por Nivel · Proyección</div><div class="chart-wrap"><canvas id="chart-matricula"></canvas></div></div>
-      <div class="chart-card"><div class="chart-title">Desglose de Costos Año 1–7</div><div class="chart-wrap"><canvas id="chart-costos"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">Desglose de Costos · ${corrida[0].ano}–${corrida[corrida.length - 1].ano}</div><div class="chart-wrap"><canvas id="chart-costos"></canvas></div></div>
     </div>
     <div class="charts-grid">
       <div class="chart-card"><div class="chart-title">Composición de Ingresos Año 1</div><div class="chart-wrap"><canvas id="chart-pie"></canvas></div></div>
       <div class="chart-card"><div class="chart-title">Composición de Egresos Año 1</div><div class="chart-wrap"><canvas id="chart-gastos-pie"></canvas></div></div>
     </div>
 
-    ${renderProyeccionTable(corrida)}`;
+    ${renderProyeccionTable(corrida)}
+
+    <div class="card" style="margin-top:24px;border-top:3px solid var(--cobalt)">
+      <div class="card-title" style="display:flex;align-items:center;gap:10px">
+        <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="14" height="14" rx="2"/><path d="M7 10h6M7 13h4"/><path d="M10 3v4"/><path d="M8 5l2 2 2-2"/></svg>
+        Exportar a Excel
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:16px;line-height:1.7">
+        Selecciona los reportes a incluir en el archivo <code>.xlsx</code>. Requiere conexión a internet para cargar SheetJS.
+      </p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin-bottom:20px">
+        ${[
+          { id: 'corrida',   label: 'Corrida Anual',          desc: 'Estado de resultados año a año' },
+          { id: 'matricula', label: 'Matrícula por Grado',     desc: 'Alumnos por nivel y grado' },
+          { id: 'nomina',    label: 'Nómina Campus',           desc: 'Catálogo de puestos y costos' },
+          { id: 'gastos',    label: 'Gastos de Operación',     desc: 'Desglose por categoría' },
+          { id: 'proyeccion',label: 'Proyección Financiera',   desc: 'Tabla ejecutiva completa' },
+          { id: 'kpis',      label: 'KPIs Ejecutivos',         desc: 'Indicadores clave del modelo' },
+        ].map(r => `
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:10px 12px;
+                 border:1px solid var(--border);border-radius:6px;transition:.15s"
+                 onmouseover="this.style.borderColor='var(--cobalt)'" onmouseout="this.style.borderColor='var(--border)'">
+            <input type="checkbox" id="excel-chk-${r.id}" checked
+              style="accent-color:var(--cobalt);margin-top:2px;width:14px;height:14px;flex-shrink:0">
+            <div>
+              <div style="font-size:12px;font-weight:400;color:var(--navy)">${r.label}</div>
+              <div style="font-size:10px;color:var(--text-muted);margin-top:2px">${r.desc}</div>
+            </div>
+          </label>`).join('')}
+      </div>
+      <button class="toggle-btn" style="padding:10px 24px;font-size:12px;background:var(--cobalt);color:#fff;border:none;border-radius:6px;cursor:pointer"
+        onclick="App.exportExcel(['corrida','matricula','nomina','gastos','proyeccion','kpis'].filter(id => document.getElementById('excel-chk-'+id)?.checked))"
+        onmouseover="this.style.opacity='.82'" onmouseout="this.style.opacity='1'">
+        ⬇&nbsp; Descargar Excel (.xlsx)
+      </button>
+    </div>`;
   }
 
   // ============================================================
@@ -2483,10 +2518,10 @@ const App = (() => {
   // ============================================================
   function renderReportes() {
     const reports = [
-      { id: 'ejecutivo', icon: '📊', title: 'Resumen Ejecutivo', color: 'var(--cobalt)', desc: 'KPIs clave, EBITDA, ingresos, matrícula y flujo acumulado de los 7 ciclos.' },
-      { id: 'corrida', icon: '📈', title: 'Corrida Anual · 7 Años', color: 'var(--oxford)', desc: 'Estado de resultados completo año a año: ingresos, egresos, EBITDA y flujo.' },
+      { id: 'ejecutivo', icon: '📊', title: 'Resumen Ejecutivo', color: 'var(--cobalt)', desc: `KPIs clave, ingresos, gastos, EBITDA y flujo acumulado — ${getYears()} ciclos con gráficas.` },
+      { id: 'corrida', icon: '📈', title: `Corrida Anual · ${getYears()} Ciclos`, color: 'var(--oxford)', desc: 'Estado de resultados completo año a año: ingresos, egresos, EBITDA y flujo.' },
       { id: 'nomina', icon: '👥', title: 'Reporte de Nómina', color: 'var(--oxford)', desc: 'Catálogo de puestos con IMSS, ISN, Infonavit y CRM. Dir. Ejecutiva incluida.' },
-      { id: 'gastos', icon: '📋', title: 'Gastos de Operación', color: 'var(--oxford)', desc: 'Desglose por categoría (controlados, fijos, financieros) a 7 años.' },
+      { id: 'gastos', icon: '📋', title: 'Gastos de Operación', color: 'var(--oxford)', desc: `Desglose por categoría (controlados, fijos, financieros) — ${getYears()} ciclos.` },
       { id: 'proyeccion', icon: '🎯', title: 'Proyección Financiera', color: 'var(--gold)', desc: 'Tabla ejecutiva completa con todos los conceptos financieros clave.' },
       { id: 'matricula', icon: '🏫', title: 'Matrícula y Capacidad', color: 'var(--oxford)', desc: 'Proyección de alumnos por nivel y grado, ocupación y topes de capacidad.' }
     ];
@@ -2559,26 +2594,136 @@ const App = (() => {
     </div>`;
 
     let body = '';
+    let skipPrint = false; // ejecutivo maneja su propio print desde el script inline
     if (tipo === 'ejecutivo') {
       const y1 = corrida[0], yN = corrida[corrida.length - 1], cap = calcTopeTotal();
-      body = HDR + `<div class="kpi-grid">
-        <div class="kpi"><div class="kpi-label">Matrícula Año 1</div><div class="kpi-val">${fn2(y1.totalAlumnos)}</div><div class="kpi-sub">${fp(y1.totalAlumnos / cap)} de capacidad (tope ${fn2(cap)})</div></div>
+      const an = corrida.map(yr => calcGastos(yr.i, yr.totalAlumnos));
+      const mat = calcMatricula();
+      skipPrint = true;
+      // Serializar datos para charts
+      const chartJSON = JSON.stringify({
+        ciclos,
+        inscripciones: corrida.map(y => Math.round(y.sumInscripciones - y.descInscripcion)),
+        colegiaturas:  corrida.map(y => Math.round(y.sumColegiaturas - y.apoyosEcon - y.becas - y.prontoPago)),
+        cuotas:        corrida.map(y => Math.round(y.sumCuotas)),
+        ingExtra:      corrida.map(y => Math.round(y.ingExtra || 0)),
+        nomina:        corrida.map(y => Math.round(y.nomina.totalAnual)),
+        controlados:   an.map(a => Math.round(a.sumControlados)),
+        fijos:         an.map(a => Math.round(a.sumFijos)),
+        financieros:   an.map(a => Math.round(a.sumFinancieros)),
+        renta:         corrida.map(y => Math.round(y.rentaInmueble)),
+        operadora:     corrida.map(y => Math.round(y.operadora)),
+        ingresoTotal:  corrida.map(y => Math.round(y.ingresoTotal)),
+        egresoTotal:   corrida.map(y => Math.round(y.egresoTotal)),
+        ebitda:        corrida.map(y => Math.round(y.ebitda)),
+        flujo:         corrida.map(y => Math.round(y.cashAcumulado)),
+      });
+      body = HDR + `
+      <!-- ── KPIs ── -->
+      <div class="kpi-grid">
+        <div class="kpi"><div class="kpi-label">Matrícula Año 1</div><div class="kpi-val">${fn2(y1.totalAlumnos)}</div><div class="kpi-sub">${fp(y1.totalAlumnos / cap)} de capacidad · tope ${fn2(cap)}</div></div>
         <div class="kpi cobalt"><div class="kpi-label">Ingresos Año 1</div><div class="kpi-val">${fm(y1.ingresoTotal)}</div><div class="kpi-sub">Netos tras becas y descuentos</div></div>
         <div class="kpi cobalt"><div class="kpi-label">Ingresos Año ${getYears()}</div><div class="kpi-val">${fm(yN.ingresoTotal)}</div><div class="kpi-sub">+${fp(yN.ingresoTotal / y1.ingresoTotal - 1)} vs Año 1</div></div>
         <div class="kpi"><div class="kpi-label">Nómina Mensual Año 1</div><div class="kpi-val">${fm(y1.nomina.totalMensual)}</div><div class="kpi-sub">Factor matrícula ${fp(y1.nomina.factorNomina)}</div></div>
         <div class="kpi gold"><div class="kpi-label">EBITDA Año ${getYears()}</div><div class="kpi-val">${fm(yN.ebitda)}</div><div class="kpi-sub">Utilidad operativa neta</div></div>
-        <div class="kpi cobalt"><div class="kpi-label">Flujo Acumulado</div><div class="kpi-val">${fm(yN.cashAcumulado)}</div><div class="kpi-sub">Saldo bancario al cierre</div></div>
+        <div class="kpi cobalt"><div class="kpi-label">Flujo Acumulado ${getYears()} Años</div><div class="kpi-val">${fm(yN.cashAcumulado)}</div><div class="kpi-sub">Saldo bancario al cierre</div></div>
       </div>
-      <h2>Proyección de Resultados · ${getYears()} Ciclos</h2>
+
+      <!-- ── REPORTE DE INGRESOS ── -->
+      <h2>Reporte de Ingresos · ${getYears()} Ciclos</h2>
+      <canvas id="pdf-chart-ing" height="55" style="margin-bottom:10px"></canvas>
       <table><thead>${TH(['Concepto', ...ciclos])}</thead><tbody>
-        ${TD(['Matrícula (alumnos)', ...corrida.map(y => fn2(y.totalAlumnos))])}
+        ${TD(['Inscripciones (neto)', ...corrida.map(y => fm(y.sumInscripciones - y.descInscripcion))])}
+        ${TD(['Colegiaturas (neto)', ...corrida.map(y => fm(y.sumColegiaturas - y.apoyosEcon - y.becas - y.prontoPago))])}
+        ${TD(['Cuotas Escolares', ...corrida.map(y => fm(y.sumCuotas))])}
+        ${TD(['Ingresos Adicionales', ...corrida.map(y => fm(y.ingExtra || 0))])}
+        ${TD(['INGRESOS TOTALES', ...corrida.map(y => fm(y.ingresoTotal))], 'tr-sub')}
+      </tbody></table>
+
+      <!-- ── REPORTE DE GASTOS ── -->
+      <h2>Reporte de Gastos · ${getYears()} Ciclos</h2>
+      <canvas id="pdf-chart-gas" height="55" style="margin-bottom:10px"></canvas>
+      <table><thead>${TH(['Concepto', ...ciclos])}</thead><tbody>
+        ${TD(['Nómina Campus (anual)', ...corrida.map(y => fm(y.nomina.totalAnual))])}
+        ${TD(['Gastos Controlados', ...an.map(a => fm(a.sumControlados))])}
+        ${TD(['Gastos Fijos', ...an.map(a => fm(a.sumFijos))])}
+        ${TD(['Gastos Financieros', ...an.map(a => fm(a.sumFinancieros))])}
+        ${TD(['Renta Inmueble', ...corrida.map(y => fm(y.rentaInmueble))])}
+        ${TD(['Cuota Operadora (12%)', ...corrida.map(y => fm(y.operadora))])}
+        ${TD(['EGRESOS TOTALES', ...corrida.map(y => fm(y.egresoTotal))], 'tr-total')}
+      </tbody></table>
+
+      <!-- ── REPORTE DE RESULTADOS ── -->
+      <h2>Reporte de Resultados · EBITDA y Flujo</h2>
+      <canvas id="pdf-chart-res" height="55" style="margin-bottom:10px"></canvas>
+      <table><thead>${TH(['Concepto', ...ciclos])}</thead><tbody>
         ${TD(['Ingresos Totales', ...corrida.map(y => fm(y.ingresoTotal))], 'tr-sub')}
-        ${TD(['Nómina Anual', ...corrida.map(y => fm(y.nomina.totalAnual))])}
-        ${TD(['Gastos Operación', ...corrida.map(y => fm(y.gastosOp))])}
+        ${TD(['Egresos Totales', ...corrida.map(y => fm(y.egresoTotal))])}
         ${TD(['EBITDA', ...corrida.map(y => fm(y.ebitda))], 'tr-gold')}
         ${TD(['Margen EBITDA %', ...corrida.map(y => fp(y.ingresoTotal > 0 ? y.ebitda / y.ingresoTotal : 0))])}
         ${TD(['Flujo Acumulado', ...corrida.map(y => fm(y.cashAcumulado))], 'tr-total')}
-      </tbody></table>`;
+      </tbody></table>
+
+      <!-- ── MATRÍCULA ── -->
+      <h2>Matrícula por Nivel · Proyección ${getYears()} Ciclos</h2>
+      <table><thead>${TH(['Nivel / Grado', ...ciclos])}</thead><tbody>
+        ${LEVELS.flatMap(lv => [
+          `<tr><td colspan="${getYears() + 1}" style="background:#002147;color:#fff;padding:3px 7px;font-size:7.5pt">${lv.key}</td></tr>`,
+          ...GRADES.filter(g => g.level === lv.key).map(g => TD([g.label, ...mat.map(yr => fn2(yr[g.key] || 0))]))
+        ]).join('')}
+        ${TD(['TOTAL ALUMNOS', ...mat.map(yr => fn2(GRADES.reduce((s, g) => s + (yr[g.key] || 0), 0)))], 'tr-total')}
+      </tbody></table>
+
+      <script>
+        (function() {
+          var D = ${chartJSON};
+          var OXFORD = '#002147', COBALT = '#0047AB', GOLD = '#C9A227', PURPLE = '#6B3FA0';
+          var chartOpts = {
+            responsive: true, maintainAspectRatio: true,
+            plugins: { legend: { position: 'bottom', labels: { font: { size: 8 }, boxWidth: 10, padding: 8 } } },
+            scales: {
+              x: { stacked: true, ticks: { font: { size: 7 } } },
+              y: { stacked: true, ticks: { font: { size: 7 }, callback: function(v) { return v >= 1e6 ? '$' + (v/1e6).toFixed(1) + 'M' : v >= 1e3 ? '$' + (v/1e3).toFixed(0) + 'K' : '$' + v; } } }
+            }
+          };
+          function initCharts() {
+            new Chart(document.getElementById('pdf-chart-ing'), { type: 'bar', data: { labels: D.ciclos,
+              datasets: [
+                { label: 'Inscripciones', data: D.inscripciones, backgroundColor: COBALT },
+                { label: 'Colegiaturas', data: D.colegiaturas, backgroundColor: OXFORD },
+                { label: 'Cuotas', data: D.cuotas, backgroundColor: GOLD },
+                { label: 'Adicionales', data: D.ingExtra, backgroundColor: PURPLE }
+              ]}, options: chartOpts });
+            new Chart(document.getElementById('pdf-chart-gas'), { type: 'bar', data: { labels: D.ciclos,
+              datasets: [
+                { label: 'Nómina', data: D.nomina, backgroundColor: OXFORD },
+                { label: 'Controlados', data: D.controlados, backgroundColor: COBALT },
+                { label: 'Fijos', data: D.fijos, backgroundColor: '#5b7fa6' },
+                { label: 'Financieros', data: D.financieros, backgroundColor: '#8fa8c5' },
+                { label: 'Renta', data: D.renta, backgroundColor: PURPLE },
+                { label: 'Operadora', data: D.operadora, backgroundColor: '#9b7bb5' }
+              ]}, options: chartOpts });
+            var resOpts = JSON.parse(JSON.stringify(chartOpts));
+            resOpts.scales.x.stacked = false; resOpts.scales.y.stacked = false;
+            new Chart(document.getElementById('pdf-chart-res'), { type: 'bar', data: { labels: D.ciclos,
+              datasets: [
+                { label: 'Ingresos', data: D.ingresoTotal, backgroundColor: 'rgba(0,71,171,.25)', borderColor: COBALT, borderWidth: 1.5 },
+                { label: 'Egresos', data: D.egresoTotal, backgroundColor: 'rgba(0,33,71,.15)', borderColor: OXFORD, borderWidth: 1.5 },
+                { label: 'EBITDA', data: D.ebitda, type: 'line', borderColor: GOLD, backgroundColor: 'transparent', borderWidth: 2, tension: 0.35, pointRadius: 3 },
+                { label: 'Flujo Acum.', data: D.flujo, type: 'line', borderColor: PURPLE, backgroundColor: 'transparent', borderWidth: 2, tension: 0.35, pointRadius: 3, borderDash: [4,2] }
+              ]}, options: resOpts });
+            setTimeout(function() { window.print(); }, 600);
+          }
+          if (window.Chart) { initCharts(); }
+          else {
+            var s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+            s.onload = initCharts;
+            s.onerror = function() { window.print(); };
+            document.head.appendChild(s);
+          }
+        })();
+      </script>`;
     } else if (tipo === 'corrida') {
       body = HDR + `<h2>Corrida Anual · Estado de Resultados</h2>
       <table><thead>${TH(['Concepto', ...ciclos])}</thead><tbody>` + [
@@ -2665,7 +2810,8 @@ const App = (() => {
     if (!win) { alert('Habilita ventanas emergentes para generar el PDF.'); return; }
     win.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Reporte · L&L Financiero</title><style>${CSS}</style></head><body>${body}</body></html>`);
     win.document.close();
-    setTimeout(() => win.print(), 400);
+    // ejecutivo maneja su propio print desde el script inline (espera a que cargue Chart.js)
+    if (!skipPrint) setTimeout(() => win.print(), 400);
   }
 
   // ============================================================
@@ -3988,66 +4134,149 @@ const App = (() => {
     if (spin) spin.style.display = 'none';
   }
 
-  function exportExcel() {
-    // Load SheetJS dynamically if not already loaded
+  function exportExcel(selected) {
+    // Si no se pasan reportes seleccionados, exportar todos
+    const sheets = Array.isArray(selected) && selected.length > 0
+      ? selected
+      : ['corrida', 'matricula', 'nomina', 'gastos', 'proyeccion', 'kpis'];
+
     function doExport() {
       const XLSX = window.XLSX;
       const corrida = calcCorrida();
       const mat = calcMatricula();
       const fecha = new Date().toLocaleDateString('es-MX');
       const wb = XLSX.utils.book_new();
-
-      // Sheet 1: Corrida Anual
-      const header = ['Concepto', ...corrida.map(y => `${y.ano}-${y.ano + 1}`)];
-      const rows = [
-        header,
-        ['Matrícula Total', ...corrida.map(y => y.totalAlumnos)],
-        ['INGRESOS'],
-        ['Inscripciones Netas', ...corrida.map(y => Math.round(y.sumInscripciones - y.descInscripcion))],
-        ['Total Colegiaturas', ...corrida.map(y => Math.round(y.sumColegiaturas))],
-        ['Cuotas Escolares', ...corrida.map(y => Math.round(y.sumCuotas))],
-        ['Apoyos Económicos', ...corrida.map(y => -Math.round(y.apoyosEcon))],
-        ['Becas SEP/Maestros', ...corrida.map(y => -Math.round(y.becas))],
-        ['TOTAL INGRESOS', ...corrida.map(y => Math.round(y.ingresoTotal))],
-        ['EGRESOS'],
-        ['Nómina Total', ...corrida.map(y => -Math.round(y.nomina.totalAnual))],
-        ['Gastos de Operación', ...corrida.map(y => -Math.round(y.gastosOp))],
-        ['TOTAL EGRESOS', ...corrida.map(y => -Math.round(y.egresoTotal))],
-        ['RESULTADO OPERATIVO', ...corrida.map(y => Math.round(y.subtotal))],
-        ['Comisión Operadora', ...corrida.map(y => -Math.round(y.operadora))],
-        ['Renta Inmueble', ...corrida.map(y => -Math.round(y.rentaInmueble))],
-        ['EBITDA', ...corrida.map(y => Math.round(y.ebitda))],
-        ['Flujo Acumulado', ...corrida.map(y => Math.round(y.cashAcumulado))],
-        ['Utilidad/Acción', ...corrida.map(y => Math.round(y.utilidadPorAccion))]
-      ];
-      const ws1 = XLSX.utils.aoa_to_sheet(rows);
-      XLSX.utils.book_append_sheet(wb, ws1, 'Corrida Anual');
-
-      // Sheet 2: Matrícula
-      const matHeader = ['Grado', ...corrida.map(y => `${y.ano}`)];
-      const matRows = [matHeader, ...GRADES.map(g => [g.label, ...mat.map(yr => yr[g.key] || 0)])];
-      const ws2 = XLSX.utils.aoa_to_sheet(matRows);
-      XLSX.utils.book_append_sheet(wb, ws2, 'Matrícula');
-
-      // Sheet 3: KPIs
+      const yCols = corrida.map(y => `${y.ano}-${y.ano + 1}`);
       const y1 = corrida[0], yn = corrida[corrida.length - 1];
-      const capital = state.variables.capitalRequerido || 0;
-      const kpiRows = [
-        ['KPI', 'Valor'],
-        ['Fecha de generación', fecha],
-        ['Capital Requerido', capital],
-        ['Matrícula Año 1', y1.totalAlumnos],
-        ['Ingresos Año 1', Math.round(y1.ingresoTotal)],
-        ['EBITDA Año 1', Math.round(y1.ebitda)],
-        [`Matrícula Año ${corrida.length}`, yn.totalAlumnos],
-        [`EBITDA Año ${corrida.length}`, Math.round(yn.ebitda)],
-        ['Flujo Acumulado Final', Math.round(yn.cashAcumulado)],
-      ];
-      const ws3 = XLSX.utils.aoa_to_sheet(kpiRows);
-      XLSX.utils.book_append_sheet(wb, ws3, 'KPIs');
 
-      XLSX.writeFile(wb, `LyL_Modelo_Financiero_${new Date().getFullYear()}.xlsx`);
-      toast('Excel generado exitosamente', 'success');
+      // ── Corrida Anual ────────────────────────────────────────────
+      if (sheets.includes('corrida')) {
+        const ws = XLSX.utils.aoa_to_sheet([
+          ['Concepto', ...yCols],
+          ['Matrícula Total', ...corrida.map(y => y.totalAlumnos)],
+          ['INGRESOS'],
+          ['Inscripciones Netas', ...corrida.map(y => Math.round(y.sumInscripciones - y.descInscripcion))],
+          ['Colegiaturas Brutas', ...corrida.map(y => Math.round(y.sumColegiaturas))],
+          ['Cuotas Escolares', ...corrida.map(y => Math.round(y.sumCuotas))],
+          ['Ingresos Adicionales', ...corrida.map(y => Math.round(y.ingExtra || 0))],
+          ['− Apoyos Económicos', ...corrida.map(y => -Math.round(y.apoyosEcon))],
+          ['− Becas SEP/Maestros', ...corrida.map(y => -Math.round(y.becas))],
+          ['TOTAL INGRESOS', ...corrida.map(y => Math.round(y.ingresoTotal))],
+          ['EGRESOS'],
+          ['Nómina Total (anual)', ...corrida.map(y => -Math.round(y.nomina.totalAnual))],
+          ['Gastos de Operación', ...corrida.map(y => -Math.round(y.gastosOp))],
+          ['TOTAL EGRESOS', ...corrida.map(y => -Math.round(y.egresoTotal))],
+          ['RESULTADO OPERATIVO', ...corrida.map(y => Math.round(y.subtotal))],
+          ['− Comisión Operadora', ...corrida.map(y => -Math.round(y.operadora))],
+          ['− Renta Inmueble', ...corrida.map(y => -Math.round(y.rentaInmueble))],
+          ['EBITDA', ...corrida.map(y => Math.round(y.ebitda))],
+          ['Margen EBITDA %', ...corrida.map(y => y.ingresoTotal > 0 ? +(y.ebitda / y.ingresoTotal * 100).toFixed(1) : 0)],
+          ['Flujo Acumulado', ...corrida.map(y => Math.round(y.cashAcumulado))],
+          ['Utilidad/Acción', ...corrida.map(y => Math.round(y.utilidadPorAccion))]
+        ]);
+        XLSX.utils.book_append_sheet(wb, ws, 'Corrida Anual');
+      }
+
+      // ── Matrícula ────────────────────────────────────────────────
+      if (sheets.includes('matricula')) {
+        const ws = XLSX.utils.aoa_to_sheet([
+          ['Nivel', 'Grado', ...yCols],
+          ...GRADES.map(g => [g.level, g.label, ...mat.map(yr => yr[g.key] || 0)]),
+          ['', 'TOTAL', ...mat.map(yr => GRADES.reduce((s, g) => s + (yr[g.key] || 0), 0))]
+        ]);
+        XLSX.utils.book_append_sheet(wb, ws, 'Matrícula');
+      }
+
+      // ── Nómina ───────────────────────────────────────────────────
+      if (sheets.includes('nomina')) {
+        const puestos = state.nominas.puestos || [];
+        const pc = puestos.map(p => calcCostoPuesto(p));
+        const wsRows = [
+          ['Puesto', 'Sector', 'Cantidad', 'Sueldo Unit.', 'IMSS Pat.', 'ISN', 'Infonavit', 'Provisiones', 'Costo Total Mes'],
+          ...puestos.map((p, i) => {
+            const c = pc[i];
+            return [p.nombre, p.sector, c.count, p.sueldo, Math.round(c.imss), Math.round(c.isn), Math.round(c.infonavit), Math.round(c.provisiones), Math.round(c.costoTotal)];
+          }),
+          ['TOTAL', '', '', '',
+            Math.round(pc.reduce((s, c) => s + c.imss, 0)),
+            Math.round(pc.reduce((s, c) => s + c.isn, 0)),
+            Math.round(pc.reduce((s, c) => s + c.infonavit, 0)),
+            Math.round(pc.reduce((s, c) => s + c.provisiones, 0)),
+            Math.round(pc.reduce((s, c) => s + c.costoTotal, 0))
+          ],
+          [],
+          ['Nómina Mensual Año 1', Math.round(y1.nomina.totalMensual)],
+          ['Nómina Anual Año 1', Math.round(y1.nomina.totalAnual)],
+        ];
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(wsRows), 'Nómina');
+      }
+
+      // ── Gastos ───────────────────────────────────────────────────
+      if (sheets.includes('gastos')) {
+        const an = corrida.map(yr => calcGastos(yr.i, yr.totalAlumnos));
+        const go = state.gastosOperacion;
+        const gasRows = [
+          ['Categoría', 'Concepto', 'Base MXN/mes', ...yCols],
+          ...(go.controlados || []).map(c => ['Controlado', c.label, c.monto, ...an.map(a => Math.round(c.monto * a.factor * a.inf))]),
+          ...(go.fijos || []).map(c => ['Fijo', c.label, c.monto, ...an.map(a => Math.round(c.monto * a.inf))]),
+          ...(go.financieros || []).map(c => ['Financiero', c.label, c.monto, ...an.map(a => Math.round(c.monto * a.inf))]),
+          [],
+          ['', 'TOTAL CONTROLADOS', '', ...an.map(a => Math.round(a.sumControlados))],
+          ['', 'TOTAL FIJOS', '', ...an.map(a => Math.round(a.sumFijos))],
+          ['', 'TOTAL FINANCIEROS', '', ...an.map(a => Math.round(a.sumFinancieros))],
+          ['', 'TOTAL GASTOS', '', ...an.map(a => Math.round(a.total))],
+        ];
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(gasRows), 'Gastos');
+      }
+
+      // ── Proyección Financiera ────────────────────────────────────
+      if (sheets.includes('proyeccion')) {
+        const an = corrida.map(yr => calcGastos(yr.i, yr.totalAlumnos));
+        const wsRows = [
+          ['Concepto', ...yCols],
+          ['Matrícula Total', ...corrida.map(y => y.totalAlumnos)],
+          ['% Ocupación', ...corrida.map(y => +(y.totalAlumnos / calcTopeTotal() * 100).toFixed(1))],
+          ['Ingresos Inscripciones', ...corrida.map(y => Math.round(y.sumInscripciones - y.descInscripcion))],
+          ['Ingresos Colegiaturas', ...corrida.map(y => Math.round(y.sumColegiaturas - y.apoyosEcon - y.becas))],
+          ['Cuotas Escolares', ...corrida.map(y => Math.round(y.sumCuotas))],
+          ['INGRESOS TOTALES', ...corrida.map(y => Math.round(y.ingresoTotal))],
+          ['Nómina Mensual', ...corrida.map(y => Math.round(y.nomina.totalMensual))],
+          ['Nómina Anual', ...corrida.map(y => Math.round(y.nomina.totalAnual))],
+          ['Gastos Controlados', ...an.map(a => Math.round(a.sumControlados))],
+          ['Gastos Fijos', ...an.map(a => Math.round(a.sumFijos))],
+          ['Gastos Financieros', ...an.map(a => Math.round(a.sumFinancieros))],
+          ['EGRESOS TOTALES', ...corrida.map(y => Math.round(y.egresoTotal))],
+          ['EBITDA', ...corrida.map(y => Math.round(y.ebitda))],
+          ['Margen EBITDA %', ...corrida.map(y => y.ingresoTotal > 0 ? +(y.ebitda / y.ingresoTotal * 100).toFixed(1) : 0)],
+          ['Flujo Acumulado', ...corrida.map(y => Math.round(y.cashAcumulado))],
+        ];
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(wsRows), 'Proyección');
+      }
+
+      // ── KPIs ─────────────────────────────────────────────────────
+      if (sheets.includes('kpis')) {
+        const capital = state.variables.capitalRequerido || 0;
+        const ws = XLSX.utils.aoa_to_sheet([
+          ['KPI', 'Valor'],
+          ['Fecha de generación', fecha],
+          ['Horizonte (años)', corrida.length],
+          ['Capital Requerido', capital],
+          ['Matrícula Año 1', y1.totalAlumnos],
+          ['Ingresos Año 1', Math.round(y1.ingresoTotal)],
+          ['EBITDA Año 1', Math.round(y1.ebitda)],
+          ['Margen EBITDA Año 1 %', y1.ingresoTotal > 0 ? +(y1.ebitda / y1.ingresoTotal * 100).toFixed(1) : 0],
+          [`Matrícula Año ${corrida.length}`, yn.totalAlumnos],
+          [`EBITDA Año ${corrida.length}`, Math.round(yn.ebitda)],
+          [`Margen EBITDA Año ${corrida.length} %`, yn.ingresoTotal > 0 ? +(yn.ebitda / yn.ingresoTotal * 100).toFixed(1) : 0],
+          ['Flujo Acumulado Final', Math.round(yn.cashAcumulado)],
+          ['Nómina Mensual Año 1', Math.round(y1.nomina.totalMensual)],
+        ]);
+        XLSX.utils.book_append_sheet(wb, ws, 'KPIs');
+      }
+
+      if (wb.SheetNames.length === 0) { toast('Selecciona al menos un reporte', 'error'); return; }
+      XLSX.writeFile(wb, `LyL_Modelo_${new Date().getFullYear()}.xlsx`);
+      toast(`Excel generado — ${wb.SheetNames.length} hoja${wb.SheetNames.length > 1 ? 's' : ''}`, 'success');
     }
 
     if (window.XLSX) { doExport(); return; }
