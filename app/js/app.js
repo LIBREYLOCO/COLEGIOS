@@ -151,10 +151,10 @@ const App = (() => {
 
     // ── Estructura de salones — base del configurador ──
     salones: {
-      mat: 1, k1: 1, k2: 1, k3: 1,
-      p1: 2, p2: 2, p3: 1, p4: 1, p5: 1, p6: 1,
-      s1: 2, s2: 1, s3: 1,
-      b1: 2, b2: 2, b3: 2  // Capacidad física disponible aunque bachillerato esté inactivo
+      mat: 2, k1: 2, k2: 2, k3: 2,
+      p1: 2, p2: 2, p3: 2, p4: 2, p5: 2, p6: 2,
+      s1: 2, s2: 2, s3: 2,
+      b1: 1, b2: 1, b3: 1
     },
     alumnosPorSalon: {
       Maternal: 15, 'Kínder': 25, Primaria: 25, Secundaria: 25, Bachillerato: 25
@@ -306,8 +306,8 @@ const App = (() => {
 
     // ── Gastos de Operación ──
     gastosOperacion: {
-      capacidadGastoRef: 400,
-      alumnosBase: 400,        // Zone 1→2: con este # de alumnos los gastos son al 100%
+      capacidadGastoRef: 440,
+      alumnosBase: 440,        // Zone 1→2: con este # de alumnos los gastos son al 100%
       alumnosSuperBase: 670,   // Zone 2→3: sobre este # los gastos escalan por encima del 100%
       controlados: [
         { label: 'Capacitación', monto: 30000 },
