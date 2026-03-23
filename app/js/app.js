@@ -980,11 +980,11 @@ const App = (() => {
         </div>
         <div class="form-group">
           <label class="form-label">Horizonte de Proyección <span>(años)</span></label>
-          <div style="display:flex;align-items:center;gap:14px;margin-top:4px">
+          <div style="display:flex;align-items:center;gap:16px;margin-top:6px">
             <input type="range" id="horizonte-slider" min="1" max="10" value="${getYears()}"
-              style="flex:1;accent-color:var(--cobalt);cursor:pointer;height:4px"
+              style="flex:1;min-width:300px;accent-color:var(--cobalt);cursor:pointer;height:6px"
               oninput="App.setHorizonte(this.value)">
-            <div style="min-width:52px;font-size:20px;font-weight:300;color:var(--navy)"
+            <div style="min-width:64px;font-size:22px;font-weight:300;color:var(--navy)"
               id="horizonte-label">${getYears()} año${getYears() > 1 ? 's' : ''}</div>
           </div>
           <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">
@@ -4044,12 +4044,7 @@ const App = (() => {
     n = Math.max(1, Math.min(10, parseInt(n) || 7));
     state.horizonte = n;
     saveState();
-    // Re-render the current view (proyeccion) to update slider + table + charts
-    const body = document.getElementById('content-body');
-    if (body && currentView === 'proyeccion') {
-      body.innerHTML = renderProyeccion();
-      requestAnimationFrame(() => initCharts(calcCorrida()));
-    }
+    softRefresh();
   }
 
   function aplicarTipoColegiaturas() {
