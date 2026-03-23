@@ -985,7 +985,7 @@ const App = (() => {
               id="horizonte-label">${getYears()} año${getYears() > 1 ? 's' : ''}</div>
           </div>
           <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">
-            ${[3,5,7,10].map(n =>
+            ${[1,2,3,4,5,6,7,8,9,10].map(n =>
               `<button onclick="App.setHorizonte(${n})"
                 style="padding:3px 10px;border-radius:4px;font-size:11px;font-weight:400;
                 border:1px solid ${n === getYears() ? 'var(--cobalt)' : 'var(--border)'};
