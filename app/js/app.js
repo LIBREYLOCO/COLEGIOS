@@ -824,11 +824,22 @@ const App = (() => {
       const ebitda = subtotal - operadora - rentaInmueble;
 
       cashAcumulado += ebitda;
-      const utilidadPorAccion = ebitda / (state.variables.numAcciones || 1);
-      const numTickets = Math.max(1, state.variables.numTickets || 1);
+      // Acciones
+      const numAcc = state.variables.numAcciones || 1;
+      const pctMod = state.variables.porcentajeModelo || 0;
+      const accModelo = Math.round(numAcc * pctMod);
+      const accVenta = Math.max(1, numAcc - accModelo);
       const capitalReq = state.variables.capitalRequerido || 1;
-      const utilidadPorTicket = ebitda / numTickets;
-      const rendimientoTicket = capitalReq > 0 ? (utilidadPorTicket / (capitalReq / numTickets)) : 0;
+      const valorAccionVenta = capitalReq / accVenta;
+      const utilidadPorAccion = ebitda / numAcc;
+      const rendimientoAccion = utilidadPorAccion / valorAccionVenta;
+      // Tickets: inversión (aportan capital) + modelo (aportación en especie)
+      const numTicketsInv = Math.max(1, state.variables.numTickets || 260);
+      const ticketsModelo = pctMod < 1 ? Math.round(numTicketsInv * pctMod / (1 - pctMod)) : 0;
+      const totalTickets = numTicketsInv + ticketsModelo;
+      const valorTicketInv = capitalReq / numTicketsInv;            // valor de cada ticket de inversión
+      const utilidadPorTicket = ebitda / totalTickets;              // utilidad distribuida entre TODOS los tickets
+      const rendimientoTicket = utilidadPorTicket / valorTicketInv; // retorno vs capital por ticket de inversión
 
       results.push({
         ano, i, infFactor, colFactor,
@@ -838,7 +849,9 @@ const App = (() => {
         colegiaturasNetas, cuotasContraIngreso, cuotasNetas, ingresoTotal,
         nomina, gastosOp, egresoTotal,
         subtotal, operadora, rentaInmueble, ebitda,
-        cashAcumulado, utilidadPorAccion, utilidadPorTicket, rendimientoTicket
+        cashAcumulado,
+        utilidadPorAccion, rendimientoAccion,
+        utilidadPorTicket, rendimientoTicket, totalTickets
       });
     }
     return results;
@@ -932,8 +945,10 @@ const App = (() => {
     const accVenta = totalAcc - accModelo;
     const valorAccion = accVenta > 0 ? cap / accVenta : 0;
     const cashRecaudar = cap;
-    const tickets = v.numTickets || 500;
-    const valorTicket = tickets > 0 ? cap / tickets : 0;
+    const tickets = v.numTickets || 260;                    // tickets de inversión (aportan capital)
+    const ticketsModelo = pctModelo < 1 ? Math.round(tickets * pctModelo / (1 - pctModelo)) : 0;
+    const totalTickets = tickets + ticketsModelo;
+    const valorTicket = tickets > 0 ? cap / tickets : 0;   // valor de cada ticket de inversión
     const ano0 = v.anoInicio || ANO_INICIO;
 
     // Row helper para valores calculados (read-only, gold)
@@ -958,7 +973,27 @@ const App = (() => {
         <div class="form-group">
           <label class="form-label">Año de inicio — Ciclo 1 <span>(año calendario)</span></label>
           ${numInput(ano0, 'anoInicio', 'variables', '1')}
-          <span class="form-hint">Ciclo 1 = ${ano0 - 1}-${String(ano0).slice(-2)} · La corrida proyecta los ${getYears()} ciclos siguientes</span>
+          <span class="form-hint">Ciclo 1 = ${ano0 - 1}-${String(ano0).slice(-2)}</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Horizonte de Proyección <span>(años)</span></label>
+          <div style="display:flex;align-items:center;gap:14px;margin-top:4px">
+            <input type="range" id="horizonte-slider" min="1" max="10" value="${getYears()}"
+              style="flex:1;accent-color:var(--cobalt);cursor:pointer;height:4px"
+              oninput="App.setHorizonte(this.value)">
+            <div style="min-width:52px;font-size:20px;font-weight:300;color:var(--navy)"
+              id="horizonte-label">${getYears()} año${getYears() > 1 ? 's' : ''}</div>
+          </div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:8px">
+            ${[3,5,7,10].map(n =>
+              `<button onclick="App.setHorizonte(${n})"
+                style="padding:3px 10px;border-radius:4px;font-size:11px;font-weight:400;
+                border:1px solid ${n === getYears() ? 'var(--cobalt)' : 'var(--border)'};
+                background:${n === getYears() ? 'var(--cobalt)' : 'transparent'};
+                color:${n === getYears() ? '#fff' : 'var(--text-muted)'};
+                cursor:pointer;transition:all .15s">${n}</button>`).join('')}
+          </div>
+          <span class="form-hint">Afecta todos los módulos: corrida, nóminas, estructura de salones</span>
         </div>
       </div>
     </div>
@@ -1011,11 +1046,13 @@ const App = (() => {
         <div class="form-hint" style="font-size:11px;letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px">Tickets de Inversión</div>
         <div class="form-grid">
           <div class="form-group">
-            <label class="form-label">Número de Tickets</label>
+            <label class="form-label">Tickets de Inversión <span>(aportan capital)</span></label>
             ${numInput(tickets, 'numTickets', 'variables', '1')}
-            <span class="form-hint">Unidades mínimas de inversión</span>
+            <span class="form-hint">Unidades mínimas de inversión en efectivo</span>
           </div>
-          ${statRow('Valor por Ticket', M(valorTicket), `${M(cap)} ÷ ${N(tickets)} tickets`)}
+          ${statRow('Valor por Ticket de Inversión', M(valorTicket), `${M(cap)} ÷ ${N(tickets)} tickets`)}
+          ${statRow('Tickets del Modelo', `${ticketsModelo}`, `${N(tickets)} × ${P(pctModelo)} ÷ ${P(1 - pctModelo)} — aportación en especie, sin capital`)}
+          ${statRow('Total Tickets', `${totalTickets}`, `${N(tickets)} inversión + ${ticketsModelo} modelo — base para utilidad y rendimiento en proyección`)}
         </div>
       </div>
     </div>
@@ -1974,29 +2011,6 @@ const App = (() => {
       </button>
     </div>
 
-    <!-- ── Selector de horizonte ── -->
-    <div class="card" style="padding:18px 26px;margin-bottom:18px">
-      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
-        <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-muted);white-space:nowrap">Horizonte de proyección</div>
-        <div style="display:flex;align-items:center;gap:14px;flex:1;min-width:220px">
-          <input type="range" id="horizonte-slider" min="1" max="10" value="${yr}"
-            style="flex:1;accent-color:var(--emerald);cursor:pointer;height:4px"
-            oninput="App.setHorizonte(this.value)">
-          <div style="min-width:80px;font-size:22px;font-weight:300;color:var(--navy)"
-            id="horizonte-label">${yr} año${yr > 1 ? 's' : ''}</div>
-        </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
-          ${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n =>
-      `<button onclick="App.setHorizonte(${n})"
-              style="padding:4px 10px;border-radius:4px;font-size:11px;font-weight:400;
-              border:1px solid ${n === yr ? 'var(--emerald)' : 'var(--border)'};
-              background:${n === yr ? 'var(--emerald)' : 'transparent'};
-              color:${n === yr ? '#fff' : 'var(--text-muted)'};
-              cursor:pointer;transition:all .15s">${n}</button>`).join('')}
-        </div>
-      </div>
-    </div>
-
     <div class="charts-grid">
       <div class="chart-card"><div class="chart-title">Ingresos vs Egresos · ${yr} Años</div><div class="chart-wrap"><canvas id="chart-ingegr"></canvas></div></div>
       <div class="chart-card"><div class="chart-title">EBITDA y Flujo Acumulado</div><div class="chart-wrap"><canvas id="chart-ebitda"></canvas></div></div>
@@ -2029,8 +2043,11 @@ const App = (() => {
       { sep: true },
       { l: 'Flujo Acumulado (Bancos)', fn: y => M(y.cashAcumulado), cls: 'num-gold' },
       { sep: true },
+      { head: 'RENDIMIENTO PARA INVERSORES' },
       { l: 'Utilidad por Acción', fn: y => M(y.utilidadPorAccion), cls: 'num-blue' },
-      { l: 'Utilidad por Ticket', fn: y => M(y.utilidadPorTicket), cls: 'num-blue' },
+      { l: 'Rendimiento por Acción (%)', fn: y => P(y.rendimientoAccion), cls: 'num-blue' },
+      { sep: true },
+      { l: `Utilidad por Ticket (÷ total tickets)`, fn: y => M(y.utilidadPorTicket), cls: 'num-blue' },
       { l: 'Rendimiento por Ticket (%)', fn: y => P(y.rendimientoTicket), cls: 'num-blue' }
     ];
 
@@ -3222,106 +3239,96 @@ const App = (() => {
     const corrida = calcCorrida();
     const v = state.variables;
 
-    // Parámetros base
-    const numTickets = Math.max(1, v.numTickets || 100);
-    const capReq = v.capitalRequerido || 100000000;
-    const valorTicket = capReq / numTickets;
+    // Parámetros desde Variables Iniciales (solo lectura aquí)
+    const numTicketsInv = Math.max(1, v.numTickets || 260);
+    const pctMod = v.porcentajeModelo || 0;
+    const ticketsModelo = pctMod < 1 ? Math.round(numTicketsInv * pctMod / (1 - pctMod)) : 0;
+    const totalTk = numTicketsInv + ticketsModelo;
+    const capReq = v.capitalRequerido || 1;
+    const valorTicketInv = capReq / numTicketsInv;  // valor por ticket de inversión
 
-    // Utilidades totales proyectadas (7 años típicos)
     const ebitdaTotal = corrida.reduce((sum, yr) => sum + Math.max(0, yr.ebitda), 0);
     const utilAnualPromedio = ebitdaTotal / corrida.length;
+    // Utilidad promedio por ticket (sobre totalTk) y rendimiento vs valorTicketInv
+    const utilTicketPromedio = utilAnualPromedio / totalTk;
+    const rendimientoAnualPct = valorTicketInv > 0 ? (utilTicketPromedio / valorTicketInv) : 0;
 
-    // Rendimiento del ticket base
-    const utilTicketPromedio = utilAnualPromedio / numTickets;
-    const rendimientoAnualPct = valorTicket > 0 ? (utilTicketPromedio / valorTicket) : 0;
-
-    // Función helper para construir las cards de los Tiers
     const buildTierCard = (titulo, cantTickets, color, icono) => {
-      const invBase = valorTicket * cantTickets;
-      const utilAnual = utilTicketPromedio * cantTickets;
-      const retorno7 = (ebitdaTotal / numTickets) * cantTickets;
-      const roi = invBase > 0 ? (retorno7 / invBase) - 1 : 0;
+      const invBase = valorTicketInv * cantTickets;            // capital aportado
+      const utilAnual = utilTicketPromedio * cantTickets;      // utilidad promedio anual
+      const retorno = (ebitdaTotal / totalTk) * cantTickets;  // retorno total proyectado
+      const roi = invBase > 0 ? (retorno / invBase) - 1 : 0;
 
-      let breakdownHtml = '<div style="margin-top:20px; font-size:11px; background:rgba(0,0,0,0.01); padding:12px; border-radius:4px">';
-      breakdownHtml += '<div style="font-weight:600; color:var(--text); margin-bottom:8px; text-transform:uppercase; letter-spacing:1px; font-size:10px; opacity:.7">Proyección Anual</div>';
-
+      let breakdownHtml = '<div style="margin-top:20px;font-size:11px;background:rgba(0,0,0,.02);padding:12px;border-radius:4px">';
+      breakdownHtml += '<div style="font-weight:600;color:var(--text);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;font-size:10px;opacity:.7">Utilidad por Año</div>';
       corrida.forEach((yr, idx) => {
-        const utilAnio = (Math.max(0, yr.ebitda) / numTickets) * cantTickets;
-        const rendimientoAnio = invBase > 0 ? (utilAnio / invBase) : 0;
-
+        const utilAnio = (Math.max(0, yr.ebitda) / totalTk) * cantTickets;
+        const rend = invBase > 0 ? (utilAnio / invBase) : 0;
         breakdownHtml += `
-          <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid rgba(0,0,0,0.05)">
+          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(0,0,0,.05)">
             <span style="opacity:.7">Año ${idx + 1}</span>
-            <span style="font-weight:500; color:var(--${color})">${M(utilAnio)} <span style="opacity:.5; font-size:10px; margin-left:4px">(${P(rendimientoAnio)})</span></span>
-          </div>
-        `;
+            <span style="font-weight:500;color:var(--${color})">${M(utilAnio)} <span style="opacity:.5;font-size:10px;margin-left:4px">(${P(rend)})</span></span>
+          </div>`;
       });
       breakdownHtml += '</div>';
 
       return `
-        <div class="kpi-card" style="border-top: 3px solid var(--${color}); flex: 1; min-width: 250px;">
-          <div style="font-size:24px; margin-bottom:8px">${icono}</div>
-          <div class="kpi-label" style="font-size:14px; color:var(--${color}); font-weight:600">${titulo}</div>
-          <div style="font-size:11px; opacity:.6; margin-bottom:12px">${cantTickets} ${cantTickets === 1 ? 'Ticket' : 'Tickets'}</div>
-          
-          <div style="margin-bottom:16px; padding-bottom:16px; border-bottom:1px dashed var(--border)">
-            <div style="font-size:10px; text-transform:uppercase; letter-spacing:1px; opacity:.5">Inversión Requerida</div>
+        <div class="kpi-card" style="border-top:3px solid var(--${color});flex:1;min-width:250px">
+          <div style="font-size:24px;margin-bottom:8px">${icono}</div>
+          <div class="kpi-label" style="font-size:14px;color:var(--${color});font-weight:600">${titulo}</div>
+          <div style="font-size:11px;opacity:.6;margin-bottom:12px">${cantTickets} ${cantTickets === 1 ? 'Ticket' : 'Tickets'}</div>
+          <div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px dashed var(--border)">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;opacity:.5">Inversión Requerida</div>
             <div class="kpi-val" style="font-size:22px">${M(invBase)}</div>
           </div>
-          
           <div style="margin-bottom:12px">
-            <div style="font-size:10px; text-transform:uppercase; letter-spacing:1px; opacity:.5">Utilidad Promedio Anual</div>
-            <div class="kpi-val" style="font-size:18px; color:var(--gold)">${M(utilAnual)}</div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;opacity:.5">Utilidad Promedio Anual</div>
+            <div class="kpi-val" style="font-size:18px;color:var(--gold)">${M(utilAnual)}</div>
             <div class="badge badge-gold" style="margin-top:4px">Rendimiento: ${P(rendimientoAnualPct)} anual</div>
           </div>
-          
           <div style="margin-bottom:12px">
-            <div style="font-size:10px; text-transform:uppercase; letter-spacing:1px; opacity:.5">Retorno Total Esperado (7 años)</div>
-            <div class="kpi-val" style="font-size:18px">${M(retorno7)}</div>
-            <div style="font-size:11px; opacity:.7; margin-top:2px">ROI: ${P(roi)}</div>
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;opacity:.5">Retorno Total (${corrida.length} años)</div>
+            <div class="kpi-val" style="font-size:18px">${M(retorno)}</div>
+            <div style="font-size:11px;opacity:.7;margin-top:2px">ROI: ${P(roi)}</div>
           </div>
-          
           ${breakdownHtml}
-        </div>
-      `;
+        </div>`;
     };
 
     return `
     <div class="section-header">
       <div>
         <div class="section-title">Análisis de Ticket de Inversión</div>
-        <div class="section-sub">Atractivo para inversionistas · Tiers y flujos proyectados a ${corrida.length} años</div>
+        <div class="section-sub">Flujos proyectados a ${corrida.length} años · Parámetros desde Variables Iniciales</div>
       </div>
       <div class="badge badge-oxford">Capital Requerido: ${M(capReq)}</div>
     </div>
 
-    <!-- Ajuste rápido de emisión -->
-    <div class="card" style="display:flex; align-items:center; gap:20px; padding:16px 20px; background:linear-gradient(to right, rgba(14,30,74,0.03), transparent);">
-      <div style="flex:1">
-        <div style="font-weight:500; color:var(--navy); font-size:14px">Emisión de Tickets</div>
-        <div style="font-size:12px; color:var(--text-muted); margin-top:4px">Ajusta el número total de tickets a emitir. Este valor se sincroniza con el módulo de Variables Iniciales.</div>
-      </div>
-      <div style="display:flex; align-items:center; gap:12px;">
-        <label style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted)">Total a emitir:</label>
-        <input type="number" class="form-input" value="${numTickets}" min="1" step="1" style="width:100px; font-weight:600; font-size:16px; text-align:center"
-          data-key="numTickets" data-nested="variables">
-      </div>
+    <div class="info-note" style="margin-bottom:18px">
+      <svg viewBox="0 0 20 20" fill="none" width="15" height="15" style="flex-shrink:0;color:var(--cobalt)">
+        <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.4"/>
+        <path d="M10 7v4m0 2.5v.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+      <span>
+        <strong>${N(numTicketsInv)}</strong> tickets de inversión · valor ${M(valorTicketInv)} c/u ·
+        <strong>${ticketsModelo}</strong> tickets del modelo (${P(pctMod)}) ·
+        <strong>Total: ${totalTk} tickets</strong> —
+        Configurable en <em>Variables Iniciales → Estructura de Capital</em>.
+      </span>
     </div>
 
-    <!-- Tiers de Inversión -->
-    <h3 style="font-size:14px; color:var(--navy); margin: 24px 0 16px; font-weight:500">Opciones de Inversión (Tiers)</h3>
-    <div style="display:flex; gap:20px; flex-wrap:wrap; align-items:stretch;">
+    <h3 style="font-size:14px;color:var(--navy);margin:24px 0 16px;font-weight:500">Opciones de Inversión (Tiers)</h3>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:stretch">
       ${buildTierCard('Nivel Clásico', 1, 'cobalt', '🎟️')}
       ${buildTierCard('Nivel Premium', 3, 'gold', '🎖️')}
       ${buildTierCard('Nivel Fundador', 5, 'oxford', '🏛️')}
     </div>
-    
-    <!-- Contexto / Disclaimer -->
-    <div style="margin-top:24px; padding:16px; background:var(--bg); border:1px solid var(--border); border-radius:6px; font-size:11px; color:var(--text-muted); line-height:1.6">
-      <strong>Nota sobre el cálculo:</strong> La utilidad proyectada asume una distribución lineal del 100% del EBITDA generado a lo largo de ${corrida.length} años.
-      El rendimiento anual promedio mostrado (${P(rendimientoAnualPct)}) es una media aritmética del flujo de caja libre antes de impuestos. El ROI refleja el crecimiento del capital inicial aportado al finalizar el ciclo proyectado.
-    </div>
-    `;
+
+    <div style="margin-top:24px;padding:16px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--text-muted);line-height:1.6">
+      <strong>Nota:</strong> La utilidad se distribuye entre los ${totalTk} tickets totales (${numTicketsInv} de inversión + ${ticketsModelo} del modelo).
+      El rendimiento se calcula sobre el valor del ticket de inversión (${M(valorTicketInv)}).
+      El ROI refleja el retorno acumulado al finalizar el horizonte de ${corrida.length} años.
+    </div>`;
   }
 
   // ============================================================
