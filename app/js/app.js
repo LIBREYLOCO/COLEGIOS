@@ -233,9 +233,6 @@ const App = (() => {
         // ── Dirección ──
         { nombre: 'DIRECCIÓN', sector: 'Dirección', sueldo: 53000, count: 1, esHonorarios: false },
         { nombre: 'Recepción', sector: 'Administración', sueldo: 10000, count: 1, esHonorarios: false },
-        { nombre: 'Marca', sector: 'Dir Ejecutiva', sueldo: 25000, count: 1, esHonorarios: false },
-        { nombre: 'DIRECCION EJEC.', sector: 'Dir Ejecutiva', sueldo: 72424, count: 1, esHonorarios: false },
-        { nombre: 'D.O.', sector: 'Dir Ejecutiva', sueldo: 35000, count: 1, esHonorarios: false },
         // ── Administración ──
         { nombre: 'Coordinador Administrativo', sector: 'Administración', sueldo: 25000, count: 1, esHonorarios: false },
         { nombre: 'Coordinación Preescolar', sector: 'Administración', sueldo: 25000, count: 1, esHonorarios: false },
@@ -262,17 +259,14 @@ const App = (() => {
         { nombre: 'Mantenimiento 1', sector: 'Administración', sueldo: 12000, count: 1, esHonorarios: false },
         { nombre: 'Mantenimiento 2', sector: 'Administración', sueldo: 12000, count: 1, esHonorarios: false },
         // ── Maternal: 1 formador + 1 asistente por salón ──
-        { nombre: 'Formador Preescolar', sector: 'MATERNAL',  sueldo: 15000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'mat' },
-        { nombre: 'Asistente Preescolar', sector: 'MATERNAL', sueldo: 11000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'mat' },
-        // ── Kínder: 1 maestro + 1 formador + 1 asistente por cada 3 salones ──
-        { nombre: 'Maestro Kínder',   sector: 'KINDER 1', sueldo: 15000, count: 1, esHonorarios: false, esPorSalon: true, divisorSalon: 3, gradoKey: 'k1' },
-        { nombre: 'Formador Kínder',  sector: 'KINDER 1', sueldo: 13000, count: 1, esHonorarios: false, esPorSalon: true, divisorSalon: 3, gradoKey: 'k1' },
+        { nombre: 'Formador Preescolar',  sector: 'MATERNAL',  sueldo: 15000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'mat' },
+        { nombre: 'Asistente Preescolar', sector: 'MATERNAL',  sueldo: 11000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'mat' },
+        // ── Kínder: 1 formador por salón + 1 asistente por cada 3 salones ──
+        { nombre: 'Formador Kínder',  sector: 'KINDER 1', sueldo: 15000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'k1' },
         { nombre: 'Asistente Kínder', sector: 'KINDER 1', sueldo: 11000, count: 1, esHonorarios: false, esPorSalon: true, divisorSalon: 3, gradoKey: 'k1' },
-        { nombre: 'Maestro Kínder',   sector: 'KINDER 2', sueldo: 15000, count: 1, esHonorarios: false, esPorSalon: true, divisorSalon: 3, gradoKey: 'k2' },
-        { nombre: 'Formador Kínder',  sector: 'KINDER 2', sueldo: 13000, count: 1, esHonorarios: false, esPorSalon: true, divisorSalon: 3, gradoKey: 'k2' },
+        { nombre: 'Formador Kínder',  sector: 'KINDER 2', sueldo: 15000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'k2' },
         { nombre: 'Asistente Kínder', sector: 'KINDER 2', sueldo: 11000, count: 1, esHonorarios: false, esPorSalon: true, divisorSalon: 3, gradoKey: 'k2' },
-        { nombre: 'Maestro Kínder',   sector: 'KINDER 3', sueldo: 15000, count: 1, esHonorarios: false, esPorSalon: true, divisorSalon: 3, gradoKey: 'k3' },
-        { nombre: 'Formador Kínder',  sector: 'KINDER 3', sueldo: 13000, count: 1, esHonorarios: false, esPorSalon: true, divisorSalon: 3, gradoKey: 'k3' },
+        { nombre: 'Formador Kínder',  sector: 'KINDER 3', sueldo: 15000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'k3' },
         { nombre: 'Asistente Kínder', sector: 'KINDER 3', sueldo: 11000, count: 1, esHonorarios: false, esPorSalon: true, divisorSalon: 3, gradoKey: 'k3' },
         // ── Primaria: 1 titular por salón ──
         { nombre: 'Titular Primaria', sector: 'PRIMARIA 1', sueldo: 15000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'p1' },
@@ -281,16 +275,19 @@ const App = (() => {
         { nombre: 'Titular Primaria', sector: 'PRIMARIA 4', sueldo: 15000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'p4' },
         { nombre: 'Titular Primaria', sector: 'PRIMARIA 5', sueldo: 15000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'p5' },
         { nombre: 'Titular Primaria', sector: 'PRIMARIA 6', sueldo: 15000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'p6' },
-        // ── Secundaria: 2 titulares por salón ──
-        { nombre: 'Titular Secundaria', sector: 'SECUNDARIA 1', sueldo: 15000, count: 2, esHonorarios: false, esPorSalon: true, gradoKey: 's1' },
-        { nombre: 'Titular Secundaria', sector: 'SECUNDARIA 2', sueldo: 15000, count: 2, esHonorarios: false, esPorSalon: true, gradoKey: 's2' },
-        { nombre: 'Titular Secundaria', sector: 'SECUNDARIA 3', sueldo: 15000, count: 2, esHonorarios: false, esPorSalon: true, gradoKey: 's3' },
-        // ── Preparatoria — count = salones[b1/b2/b3] ──
-        { nombre: 'Mentor Prepa',         sector: 'MENTOR PREPA 1', sueldo: 26000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'b1' },
+        // ── Secundaria: 1 titular por salón + 1 medio tiempo por grado activo ──
+        { nombre: 'Titular Secundaria',   sector: 'SECUNDARIA 1', sueldo: 15000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 's1' },
+        { nombre: 'Titular Secundaria',   sector: 'SECUNDARIA 2', sueldo: 15000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 's2' },
+        { nombre: 'Titular Secundaria',   sector: 'SECUNDARIA 3', sueldo: 15000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 's3' },
+        { nombre: '½ Tiempo Secundaria', sector: 'SECUNDARIA 1', sueldo: 10000, count: 1, esHonorarios: false, esPorSalon: true, divisorSalon: 99, gradoKey: 's1' },
+        { nombre: '½ Tiempo Secundaria', sector: 'SECUNDARIA 2', sueldo: 10000, count: 1, esHonorarios: false, esPorSalon: true, divisorSalon: 99, gradoKey: 's2' },
+        { nombre: '½ Tiempo Secundaria', sector: 'SECUNDARIA 3', sueldo: 10000, count: 1, esHonorarios: false, esPorSalon: true, divisorSalon: 99, gradoKey: 's3' },
+        // ── Preparatoria: escala con b1/b2/b3 (inactiva por default) ──
+        { nombre: 'Mentor Prepa',          sector: 'MENTOR PREPA 1', sueldo: 26000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'b1' },
         { nombre: 'Formador preparatoria', sector: 'PREPA 1',        sueldo: 15000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'b1' },
-        { nombre: 'Mentor Prepa',         sector: 'MENTOR PREPA 2', sueldo: 26000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'b2' },
+        { nombre: 'Mentor Prepa',          sector: 'MENTOR PREPA 2', sueldo: 26000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'b2' },
         { nombre: 'Formador preparatoria', sector: 'PREPA 2',        sueldo: 15000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'b2' },
-        { nombre: 'Mentor Prepa',         sector: 'MENTOR PREPA 3', sueldo: 26000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'b3' },
+        { nombre: 'Mentor Prepa',          sector: 'MENTOR PREPA 3', sueldo: 26000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'b3' },
         { nombre: 'Formador preparatoria', sector: 'PREPA 3',        sueldo: 15000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'b3' },
         // ── Liderazgo ──
         { nombre: 'Life Project Lider', sector: 'Administración', sueldo: 25000, count: 1, esHonorarios: false }
@@ -370,13 +367,13 @@ const App = (() => {
   let sidebarOpen = true;
 
   function loadState() {
-    // Intentar cargar v9
+    // Intentar cargar v10
     try {
-      const s9 = localStorage.getItem('lyl_state_v9');
-      if (s9) return JSON.parse(s9);
+      const s10 = localStorage.getItem('lyl_state_v10');
+      if (s10) return JSON.parse(s10);
     } catch (e) { }
 
-    // Migrar desde v8 — conservar datos financieros, resetear puestos docentes a nueva estructura
+    // Migrar desde versión anterior — conservar datos financieros, resetear puestos a nueva estructura
     const migrateKeys = [
       'variables', 'horizonte', 'matriculaInicial', 'nuevosIngresos',
       'desercionPorNivel', 'entradaPorNivel', 'desercionAnual',
@@ -385,7 +382,7 @@ const App = (() => {
       'ingresosAdicionales', 'gastosOperacion', 'dirEjecutiva',
       'salones', 'alumnosPorSalon', 'capacidadMaxima'
     ];
-    for (const vKey of ['lyl_state_v8', 'lyl_state_v7']) {
+    for (const vKey of ['lyl_state_v9', 'lyl_state_v8', 'lyl_state_v7']) {
       try {
         const raw = localStorage.getItem(vKey);
         if (!raw) continue;
@@ -406,7 +403,7 @@ const App = (() => {
   }
 
   function saveState() {
-    try { localStorage.setItem('lyl_state_v9', JSON.stringify(state)); } catch (e) { }
+    try { localStorage.setItem('lyl_state_v10', JSON.stringify(state)); } catch (e) { }
     const b = document.getElementById('save-badge');
     if (b) b.textContent = '● Guardado ' + new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
   }
@@ -1761,15 +1758,29 @@ const App = (() => {
       return Math.max(1, Math.ceil(sal / div)) * mps;
     };
 
+    // BASE = count si todos los salones configurados estuvieran ocupados
+    const baseSalones = state.salones || {};
+    const baseCount = p => {
+      const sal = baseSalones[p.gradoKey] || 0;
+      if (sal === 0) return 0;
+      const mps = Math.max(1, Math.round(p.count || 1));
+      const div = Math.max(1, Math.round(p.divisorSalon || 1));
+      return Math.max(1, Math.ceil(sal / div)) * mps;
+    };
+    const totalBase = puestosDocentes.reduce((s, p) => s + baseCount(p), 0);
+
     const docenteRows = puestosDocentes.map(p => {
+      const base = baseCount(p);
       const celdas = salonesPorAno.map(sm => {
         const sal = sm[p.gradoKey] || 0;
         const total = sal > 0 ? derivedCount(p, sal) : 0;
-        return `<td style="text-align:center;${total === 0 ? 'opacity:.3' : ''}">${total || '—'}</td>`;
+        const overBase = base > 0 && total > base;
+        return `<td style="text-align:center;${total === 0 ? 'opacity:.3' : ''}${overBase ? 'color:var(--purple);font-weight:600' : ''}">${total || '—'}</td>`;
       }).join('');
       return `<tr>
         <td style="max-width:220px">${p.nombre}${mpsLabel(p)}</td>
         <td style="opacity:.55;font-size:11px">${p.gradoKey || '—'}</td>
+        <td style="text-align:center;background:var(--beige);font-weight:500;opacity:.8">${base || '—'}</td>
         ${celdas}
       </tr>`;
     }).join('');
@@ -1780,7 +1791,8 @@ const App = (() => {
         const sal = sm[p.gradoKey] || 0;
         return s + (sal > 0 ? derivedCount(p, sal) : 0);
       }, 0);
-      return `<td style="text-align:center;color:var(--cobalt);font-weight:500">${tot}</td>`;
+      const overBase = totalBase > 0 && tot > totalBase;
+      return `<td style="text-align:center;color:var(--cobalt);font-weight:500${overBase ? ';color:var(--purple)' : ''}">${tot}</td>`;
     }).join('');
 
     const matrizFormadoresCard = puestosDocentes.length === 0 ? '' : `
@@ -1793,18 +1805,20 @@ const App = (() => {
         <thead><tr>
           <th style="text-align:left;min-width:200px">Puesto</th>
           <th style="text-align:left;min-width:60px;opacity:.6">Grado</th>
+          <th style="text-align:center;min-width:60px;background:var(--beige);font-size:11px;letter-spacing:.5px">BASE</th>
           ${corrida.map(thCiclo).join('')}
         </tr></thead>
         <tbody>
           ${docenteRows}
           <tr class="tr-total">
             <td colspan="2">TOTAL FORMADORES</td>
+            <td style="text-align:center;background:var(--beige);font-weight:600">${totalBase || '—'}</td>
             ${totFormadoresRow}
           </tr>
         </tbody>
       </table></div>
       <div style="margin-top:8px;font-size:11px;opacity:.55;padding:4px">
-        Salones activos derivados de matrícula ÷ alumnos/salón · Si el grado está inactivo se muestra —
+        BASE = salones máx configurados · Ciclos = salones activos derivados de matrícula · <span style="color:var(--purple)">Púrpura</span> = supera la base
       </div>
     </div>`;
 
