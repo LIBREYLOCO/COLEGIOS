@@ -580,6 +580,22 @@ const App = (() => {
     state.topeTotalAlumnos = Object.values(state.capacidadMaxima).reduce((s, v) => s + v, 0);
   }
 
+  /**
+   * Deriva el número de salones ACTIVOS por grado a partir de la matrícula real.
+   * Fórmula: ceil(alumnos[grado] / alumnosPorSalon[nivel])
+   * 0 alumnos → 0 salones (grado inactivo). 1+ alumnos → mínimo 1 salón.
+   */
+  function deriveSalones(gradeEnrollment) {
+    const aps = state.alumnosPorSalon || {};
+    const result = {};
+    GRADES.forEach(g => {
+      const n = (gradeEnrollment || {})[g.key] || 0;
+      const porSalon = Math.max(1, aps[g.level] || 25);
+      result[g.key] = n > 0 ? Math.max(1, Math.ceil(n / porSalon)) : 0;
+    });
+    return result;
+  }
+
   // ============================================================
   // Motor de nómina por puesto — LSS / LISR México 2025
   // ============================================================
@@ -607,10 +623,18 @@ const App = (() => {
    * Soporta campo "count" para representar N personas en el mismo rol.
    * Si esHonorarios=true omite IMSS/ISN/Infonavit — costo = sueldo.
    */
-  function calcCostoPuesto(p) {
-    const count = p.esPorSalon
-      ? Math.max(1, (state.salones || {})[p.gradoKey] ?? Math.round(p.count || 1))
-      : Math.max(1, Math.round(p.count || 1));
+  function calcCostoPuesto(p, salonesMap) {
+    const salMap = salonesMap || state.salones || {};
+    let count;
+    if (p.esPorSalon) {
+      // Si el mapa tiene el grado, usar ese valor (puede ser 0 para grados inactivos)
+      const salVal = salMap[p.gradoKey];
+      count = salVal != null ? Math.max(0, salVal) : Math.max(1, Math.round(p.count || 1));
+    } else {
+      count = Math.max(1, Math.round(p.count || 1));
+    }
+    // Grado inactivo (deriveSalones devolvió 0) → costo cero
+    if (count === 0) return { count: 0, sueldo: p.sueldo || 0, sd: 0, sdi: 0, imss: 0, infonavit: 0, isn: 0, provisiones: 0, isrEmpleado: 0, costoTotal: 0 };
     const sueldo = p.sueldo || 0;
     if (p.esHonorarios) {
       const s = {
@@ -664,21 +688,23 @@ const App = (() => {
 
   /**
    * Costo mensual de nómina para el yearIdx dado.
-   * factorNomina = min(1, totalAlumnos / capacidadNominaRef)  — misma lógica que gastos op.
-   * Si totalAlumnos no se pasa (ej. vista de Resumen sin corrida), se asume factor = 1.
+   * La nómina se regula automáticamente vía deriveSalones(gradeEnrollment).
+   * totalAlumnos se conserva en firma por compatibilidad con llamadas externas.
    */
-  function calcNomina(yearIdx, totalAlumnos) {
+  // eslint-disable-next-line no-unused-vars
+  function calcNomina(yearIdx, totalAlumnos, gradeEnrollment) {
     const inf = Math.pow(1 + state.variables.inflacion, yearIdx);
     const puestos = state.nominas.puestos || [];
-    const puestosBase = puestos.reduce((s, p) => s + calcCostoPuesto(p).costoTotal, 0);
 
-    // Factor por matrícula — escala hacia abajo si hay menos alumnos que alumnosBase (sin Zone 3)
-    const go = state.gastosOperacion;
-    const capNomina = go.alumnosBase || go.capacidadGastoRef || 450;
-    const factorNomina = totalAlumnos != null ? Math.min(1, totalAlumnos / capNomina) : 1;
+    // Salones dinámicos: si hay matrícula por grado → derivar; si no → usar state.salones (estático)
+    const salonesMap = gradeEnrollment ? deriveSalones(gradeEnrollment) : state.salones;
+
+    // La nómina ya no usa factorNomina — se regula sola vía deriveSalones (grados inactivos = 0 maestros)
+    const factorNomina = 1; // mantenido en return para compatibilidad con vistas que lo muestran
+    const puestosBase = puestos.reduce((s, p) => s + calcCostoPuesto(p, salonesMap).costoTotal, 0);
 
     // Si hay puestos definidos, su total ya incluye IMSS/ISN/etc — inflacionar directamente
-    const base = (puestosBase > 0 ? puestosBase : state.nominas.nominaCampusBase) * inf * factorNomina;
+    const base = (puestosBase > 0 ? puestosBase : state.nominas.nominaCampusBase) * inf;
     const asim = state.nominas.asimilados;
     const fondo = state.nominas.fondoFiniquitos;
     const transicion = state.nominas.nominaTransicion[yearIdx] || 0;
@@ -771,7 +797,7 @@ const App = (() => {
       }, 0);
       const ingresoTotal = (sumInscripciones - descInscripcion) + sumColegiaturas - apoyosEcon - becas - prontoPago + sumCuotas + ingExtra;
 
-      const nomina = calcNomina(i, totalAlumnos);
+      const nomina = calcNomina(i, totalAlumnos, gradeEnrollment);
       const gastosOpDet = calcGastos(i, totalAlumnos);
       const gastosOp = gastosOpDet.total;
       const egresoTotal = nomina.totalAnual + gastosOp;
@@ -979,18 +1005,22 @@ const App = (() => {
 
     <div class="card">
       <div class="card-title">Factor de Gasto por Matrícula</div>
+      <p style="font-size:0.82em;color:var(--text-muted);margin:0 0 12px">
+        Aplica <em>solo</em> a <strong>gastos controlados</strong> (operación). La nómina docente se regula
+        automáticamente por la matrícula vía deriveSalones — no usa este factor.
+      </p>
       <div class="form-grid">
         <div class="form-group">
           <label class="form-label">Alumnos base <span>(inicio del 100%)</span></label>
           <input type="number" class="form-input" value="${state.gastosOperacion.alumnosBase || 450}" step="10" min="1"
             data-key="alumnosBase" data-nested="gastosOperacion">
-          <span class="form-hint">Con menos alumnos, la nómina y gastos controlados escalan hacia abajo</span>
+          <span class="form-hint">Con menos alumnos los gastos controlados escalan hacia abajo</span>
         </div>
         <div class="form-group">
           <label class="form-label">Alumnos super-base <span>(inicio de gasto extra)</span></label>
           <input type="number" class="form-input" value="${state.gastosOperacion.alumnosSuperBase || 670}" step="10" min="1"
             data-key="alumnosSuperBase" data-nested="gastosOperacion">
-          <span class="form-hint">Entre base y super-base = 100%. Pasando el super-base el gasto sube proporcionalmente</span>
+          <span class="form-hint">Entre base y super-base = 100%. Sobre el super-base los gastos controlados suben proporcionalmente</span>
         </div>
       </div>
     </div>`;
@@ -1453,16 +1483,18 @@ const App = (() => {
   // ============================================================
   function renderNominas() {
     const nom = state.nominas;
-    const nomY1 = calcNomina(0);
     const corrida = calcCorrida();
-    const annuals = corrida.map(yr => calcNomina(yr.i, yr.totalAlumnos));
+    const matricula = calcMatricula();
+    // annuals: usar la nómina ya calculada dentro de calcCorrida (que ya pasa gradeEnrollment)
+    const annuals = corrida.map(yr => yr.nomina);
 
     // factor matrícula del año 1 — usa alumnosBase como referencia
     const capNomina = state.gastosOperacion.alumnosBase || state.gastosOperacion.capacidadGastoRef || 450;
 
-    // ── Tabla de puestos ──────────────────────────────────────────
+    // ── Tabla de puestos — usa salones derivados del Año 1 ──────────────────────────────────────────
     const puestos = nom.puestos || [];
-    const pCosts = puestos.map(calcCostoPuesto);
+    const salonesAno1 = deriveSalones(matricula[0]);
+    const pCosts = puestos.map(p => calcCostoPuesto(p, salonesAno1));
     const pRows = puestos.map((p, idx) => {
       const c = pCosts[idx];
       const cnt = c.count || 1;
@@ -3283,73 +3315,102 @@ const App = (() => {
     const aps  = state.alumnosPorSalon || {};
     const puestos = state.nominas.puestos || [];
 
-    // Calcular costo mensual de puestos esPorSalon por gradoKey
-    const costoMensualPorGrado = {};
-    puestos.forEach(p => {
-      if (!p.esPorSalon || !p.gradoKey) return;
-      const c = calcCostoPuesto(p);
-      costoMensualPorGrado[p.gradoKey] = (costoMensualPorGrado[p.gradoKey] || 0) + c.costoTotal;
-    });
+    // Corrida para proyección dinámica
+    const corrida = calcCorrida();
+    const numYears = corrida.length;
 
-    // KPIs globales
-    let totalSalones = 0, totalCap = 0, totalFormadores = 0, totalCostoDoc = 0;
-    GRADES.forEach(g => {
-      const s = sal[g.key] ?? 2;
-      const porSalon = aps[g.level] ?? 25;
-      totalSalones   += s;
-      totalCap       += s * porSalon;
-      totalFormadores += s;   // 1 formador por salón
-      totalCostoDoc  += costoMensualPorGrado[g.key] || 0;
-    });
+    // Salones derivados por año
+    const derivedPerYear = corrida.map(yr => deriveSalones(yr.gradeEnrollment));
 
-    // Tabla por nivel → grados
+    // KPIs: Año 1 y Año 7
+    const salonesY1   = derivedPerYear[0] || {};
+    const salonesYLast = derivedPerYear[numYears - 1] || {};
+    const infYLast = Math.pow(1 + state.variables.inflacion, numYears - 1);
+
+    const formadoresY1    = GRADES.reduce((s, g) => s + (salonesY1[g.key]    || 0), 0);
+    const formadoresYLast = GRADES.reduce((s, g) => s + (salonesYLast[g.key] || 0), 0);
+
+    const docenteY1    = puestos.filter(p => p.esPorSalon)
+      .reduce((s, p) => s + calcCostoPuesto(p, salonesY1).costoTotal, 0);
+    const docenteYLast = puestos.filter(p => p.esPorSalon)
+      .reduce((s, p) => s + calcCostoPuesto(p, salonesYLast).costoTotal, 0) * infYLast;
+
+    const totalSalMax = GRADES.reduce((s, g) => s + (sal[g.key] ?? 2), 0);
+
+    // Encabezados de año
+    const yearHeaders = corrida.map(yr =>
+      `<th style="width:72px;text-align:center;font-size:0.8em;white-space:nowrap">` +
+      `Ciclo ${yr.i + 1}<br><span style="font-weight:300;color:var(--text-muted)">${yr.ano}</span></th>`
+    ).join('');
+
+    // Filas por nivel
     const filasPorNivel = LEVELS.map(lv => {
       const gradosLv = GRADES.filter(g => g.level === lv.key);
-      let lvSal = 0, lvCap = 0, lvForm = 0, lvCosto = 0;
+      const porSalon = aps[lv.key] ?? 25;
 
       const filas = gradosLv.map(g => {
-        const s   = sal[g.key] ?? 2;
-        const por = aps[lv.key] ?? 25;
-        const cap = s * por;
-        const costo = costoMensualPorGrado[g.key] || 0;
-        lvSal  += s; lvCap  += cap; lvForm += s; lvCosto += costo;
+        const salMax = sal[g.key] ?? 2;
+        const yearCells = derivedPerYear.map(der => {
+          const d = der[g.key] || 0;
+          const isOver = d > salMax && salMax > 0;
+          const isZero = d === 0;
+          let cellStyle = 'text-align:center;font-size:0.85em';
+          let cellContent = d > 0 ? String(d) : '—';
+          if (isOver) {
+            cellStyle += ';color:var(--purple);font-weight:600';
+            cellContent += ' ⚠';
+          } else if (isZero) {
+            cellStyle += ';color:var(--text-faint)';
+          } else {
+            cellStyle += ';color:var(--text-muted)';
+          }
+          return `<td style="${cellStyle}">${cellContent}</td>`;
+        }).join('');
+
         return `
           <tr>
             <td>${g.label}</td>
-            <td><input type="number" class="cell-input" style="width:60px" min="1" max="10"
-                  data-salon-grade="${g.key}" value="${s}"></td>
-            <td class="num-muted">${por}</td>
-            <td class="num-muted">${cap}</td>
-            <td class="num-muted">${s}</td>
-            <td class="num-gold">${M(costo)}</td>
-            <td class="num-muted">${M(costo * 12)}</td>
+            <td style="text-align:center"><input type="number" class="cell-input" style="width:52px" min="1" max="10"
+                  data-salon-grade="${g.key}" value="${salMax}"></td>
+            <td class="num-muted" style="text-align:center">${porSalon}</td>
+            ${yearCells}
           </tr>`;
+      }).join('');
+
+      // Subtotal nivel
+      const lvSalMax = gradosLv.reduce((s, g) => s + (sal[g.key] ?? 2), 0);
+      const subtotalYearCells = derivedPerYear.map(der => {
+        const total = gradosLv.reduce((s, g) => s + (der[g.key] || 0), 0);
+        return `<td class="num-gold" style="text-align:center">${total > 0 ? total : '—'}</td>`;
       }).join('');
 
       return `
         <tr class="tr-level-header">
-          <td colspan="7">${lv.key}</td>
+          <td colspan="${3 + numYears}">${lv.key}</td>
         </tr>
         ${filas}
         <tr class="tr-gold-total">
           <td>Subtotal ${lv.key}</td>
-          <td class="num-gold">${lvSal}</td>
-          <td>
-            <input type="number" class="cell-input" style="width:60px" min="1" max="200"
-              data-aps-level="${lv.key}" value="${aps[lv.key] ?? 25}">
+          <td class="num-gold" style="text-align:center">${lvSalMax}</td>
+          <td style="text-align:center">
+            <input type="number" class="cell-input" style="width:52px" min="1" max="200"
+              data-aps-level="${lv.key}" value="${porSalon}">
           </td>
-          <td class="num-gold">${lvCap}</td>
-          <td class="num-gold">${lvForm}</td>
-          <td class="num-gold">${M(lvCosto)}</td>
-          <td class="num-gold">${M(lvCosto * 12)}</td>
+          ${subtotalYearCells}
         </tr>`;
+    }).join('');
+
+    // Fila total plantel
+    const totalYearCells = derivedPerYear.map(der => {
+      const total = GRADES.reduce((s, g) => s + (der[g.key] || 0), 0);
+      return `<td class="num-positive" style="text-align:center"><strong>${total}</strong></td>`;
     }).join('');
 
     return `
     <div class="section-header">
       <div>
         <h2 class="section-title">Estructura de Salones</h2>
-        <p class="section-sub">Configura salones por grado. La capacidad máxima y la nómina docente se actualizan automáticamente.</p>
+        <p class="section-sub">Configura salones máximos y alumnos por salón. Los formadores activos se derivan automáticamente de la matrícula proyectada año por año.</p>
       </div>
       <button class="btn-recalcular" onclick="App.recalcular()">
         <svg viewBox="0 0 16 16" fill="none" width="13" height="13">
@@ -3360,25 +3421,25 @@ const App = (() => {
     </div>
 
     <div class="kpi-grid">
-      <div class="kpi-card gold">
-        <div class="kpi-label">Total Salones</div>
-        <div class="kpi-value">${totalSalones}</div>
-        <div class="kpi-sub">en todos los grados</div>
-      </div>
       <div class="kpi-card">
-        <div class="kpi-label">Capacidad Total</div>
-        <div class="kpi-value">${totalCap.toLocaleString('es-MX')}</div>
-        <div class="kpi-sub">alumnos máximo</div>
-      </div>
-      <div class="kpi-card">
-        <div class="kpi-label">Formadores requeridos</div>
-        <div class="kpi-value">${totalFormadores}</div>
-        <div class="kpi-sub">frente a grupo</div>
+        <div class="kpi-label">Salones Máx Configurados</div>
+        <div class="kpi-value">${totalSalMax}</div>
+        <div class="kpi-sub">capacidad física total</div>
       </div>
       <div class="kpi-card gold">
-        <div class="kpi-label">Costo Docente Mensual</div>
-        <div class="kpi-value positive">${M(totalCostoDoc)}</div>
-        <div class="kpi-sub">${M(totalCostoDoc * 12)} anual</div>
+        <div class="kpi-label">Formadores Activos Ciclo 1</div>
+        <div class="kpi-value positive">${formadoresY1}</div>
+        <div class="kpi-sub">Ciclo ${numYears}: ${formadoresYLast} formadores</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Costo Docente Mensual Año 1</div>
+        <div class="kpi-value positive">${M(docenteY1)}</div>
+        <div class="kpi-sub">${M(docenteY1 * 12)} anual</div>
+      </div>
+      <div class="kpi-card gold">
+        <div class="kpi-label">Costo Docente Mensual Año ${numYears}</div>
+        <div class="kpi-value positive">${M(docenteYLast)}</div>
+        <div class="kpi-sub">${M(docenteYLast * 12)} anual (c/inflación)</div>
       </div>
     </div>
 
@@ -3387,7 +3448,7 @@ const App = (() => {
         <circle cx="10" cy="10" r="8" stroke="currentColor" stroke-width="1.4"/>
         <path d="M10 7v4m0 2.5v.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
       </svg>
-      <span>Edita los <strong>salones por grado</strong> (primera columna de inputs) o los <strong>alumnos por salón</strong> por nivel (fila de subtotal). Los cambios actualizan la capacidad máxima, la nómina docente y el EBITDA en toda la corrida.</span>
+      <span>Edita los <strong>Sal. Máx</strong> por grado y los <strong>Alum/Sal</strong> en las filas de subtotal (editable). Las columnas de ciclo muestran los <em>formadores activos</em> derivados de la matrícula — son read-only. <span style="color:var(--purple);font-weight:600">⚠</span> = matrícula supera la capacidad del salón.</span>
     </div>
 
     <div class="card" style="padding:0;overflow:hidden">
@@ -3395,25 +3456,25 @@ const App = (() => {
         <table>
           <thead>
             <tr>
-              <th style="width:160px">Grado</th>
-              <th style="width:80px">Salones</th>
-              <th style="width:90px">Alumnos/Salón</th>
-              <th style="width:90px">Cap. Total</th>
-              <th style="width:80px">Formadores</th>
-              <th>Costo Docente Mensual</th>
-              <th>Costo Docente Anual</th>
+              <th style="width:140px">Grado</th>
+              <th style="width:72px;text-align:center">Sal. Máx</th>
+              <th style="width:72px;text-align:center">Alum/Sal</th>
+              ${yearHeaders}
+            </tr>
+            <tr style="background:var(--surface);border-bottom:1px solid var(--border)">
+              <th colspan="3" style="font-weight:300;font-size:0.75em;color:var(--text-muted);text-align:left;padding:4px 12px">
+                Configuración (editable)
+              </th>
+              ${corrida.map(() => '<th style="font-weight:300;font-size:0.75em;color:var(--text-muted);text-align:center;padding:4px 6px">Formadores</th>').join('')}
             </tr>
           </thead>
           <tbody>
             ${filasPorNivel}
             <tr class="tr-total">
               <td><strong>TOTAL PLANTEL</strong></td>
-              <td class="num-positive"><strong>${totalSalones}</strong></td>
+              <td class="num-positive" style="text-align:center"><strong>${totalSalMax}</strong></td>
               <td>—</td>
-              <td class="num-positive"><strong>${totalCap.toLocaleString('es-MX')}</strong></td>
-              <td class="num-positive"><strong>${totalFormadores}</strong></td>
-              <td class="num-positive"><strong>${M(totalCostoDoc)}</strong></td>
-              <td class="num-positive"><strong>${M(totalCostoDoc * 12)}</strong></td>
+              ${totalYearCells}
             </tr>
           </tbody>
         </table>
@@ -3424,7 +3485,7 @@ const App = (() => {
       <svg viewBox="0 0 20 20" fill="none" width="15" height="15" style="flex-shrink:0;color:var(--gold)">
         <path d="M10 2l2.4 5h5.3l-4.3 3.1 1.6 5.2L10 12.3l-5 3 1.6-5.2L2.3 7h5.3z" stroke="currentColor" stroke-width="1.3"/>
       </svg>
-      <span>El personal fijo (dirección, administración, intendencia) <strong>no</strong> cambia con los salones. Los asistentes de Maternal y Kínder se ajustan manualmente en la sección de Nóminas.</span>
+      <span>Los <strong>formadores activos</strong> = ⌈alumnos ÷ alum/salón⌉ por grado. Si un grado tiene 0 alumnos, sus formadores desaparecen automáticamente de la nómina. El personal fijo (dirección, admón., intendencia) no varía con los salones.</span>
     </div>`;
   }
 
