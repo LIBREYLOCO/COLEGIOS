@@ -86,14 +86,14 @@ const App = (() => {
     variables: {
       anoInicio: 2026,
       terreno: 40000,
-      capitalRequerido: 100000000,
+      capitalRequerido: 200000000,
       inflacion: 0.05,
       aumentoColegiatura: 0.06,
-      porcentajeModelo: 0.30,
+      porcentajeModelo: 0.25,
       porcentajeOperadora: 0.12,
       rentaInmuebleBase: 0,
-      numAcciones: 100,
-      numTickets: 100,
+      numAcciones: 347,
+      numTickets: 260,
       // ── New enrollment variables ──
       tasaDesercion: 0.03,    // % alumnos que no continúan al siguiente grado
       tasaCaptacion: 0.05     // crecimiento anual de nuevos ingresos externos
@@ -105,11 +105,11 @@ const App = (() => {
     // Distribución: 15 Maternal + 31 K1 + 36 K2 + 36 K3 + 54×6 Primaria + 62×2+61 Sec + 45+44×2 Bach
     // Total = 759 alumnos
     matriculaInicial: {
-      mat: 15,                                            // Maternal: fijo 15 (tradicional)
-      k1: 13, k2: 11, k3: 10,                          // Kinder: cascade desde Maternal
-      p1: 30, p2: 26, p3: 22, p4: 19, p5: 16, p6: 14, // 1°Prim fijo 30 → cascade
-      s1: 25, s2: 21, s3: 18,
-      b1: 20, b2: 17, b3: 14
+      mat: 15,
+      k1: 25, k2: 25, k3: 25,
+      p1: 30, p2: 26, p3: 24, p4: 24, p5: 22, p6: 19,
+      s1: 28, s2: 21, s3: 18,
+      b1: 0, b2: 0, b3: 0      // Bachillerato desactivado por default
     },
 
     // ── Nuevos ingresos EXTERNOS por grado (alumnos que entran desde fuera, por año) ──
@@ -138,7 +138,7 @@ const App = (() => {
       'Kínder': [25, 27, 29, 31, 33, 35],
       'Primaria': [62, 64, 66, 68, 70, 72],
       'Secundaria': [65, 67, 69, 70, 72, 73],
-      'Bachillerato': [48, 50, 52, 54, 56, 58]
+      'Bachillerato': [0, 0, 0, 0, 0, 0]  // Desactivado por default
     },
     // desercionAnual[nivel][t] = % de alumnos que no continúan al año t+1
     desercionAnual: {
@@ -151,10 +151,10 @@ const App = (() => {
 
     // ── Estructura de salones — base del configurador ──
     salones: {
-      mat: 2, k1: 2, k2: 2, k3: 2,
-      p1: 2, p2: 2, p3: 2, p4: 2, p5: 2, p6: 2,
-      s1: 2, s2: 2, s3: 2,
-      b1: 1, b2: 1, b3: 1
+      mat: 1, k1: 1, k2: 1, k3: 1,
+      p1: 2, p2: 2, p3: 1, p4: 1, p5: 1, p6: 1,
+      s1: 2, s2: 1, s3: 1,
+      b1: 2, b2: 2, b3: 2  // Capacidad física disponible aunque bachillerato esté inactivo
     },
     alumnosPorSalon: {
       Maternal: 15, 'Kínder': 25, Primaria: 25, Secundaria: 25, Bachillerato: 25
@@ -219,7 +219,8 @@ const App = (() => {
       inscripcionPct: 0.1557,
       apoyosEconomicosPct: 0.0786,
       becasSepPct: 0.0500,
-      prontoPagoPct: 0.10
+      prontoPagoPct: 0.10,
+      cuotasContraIngresoPct: 0.60   // % de cuotas que es "contra ingreso" (estimado)
     },
 
     // ── Nóminas ──
@@ -306,7 +307,7 @@ const App = (() => {
     // ── Gastos de Operación ──
     gastosOperacion: {
       capacidadGastoRef: 400,
-      alumnosBase: 450,        // Zone 1→2: con este # de alumnos los gastos son al 100%
+      alumnosBase: 400,        // Zone 1→2: con este # de alumnos los gastos son al 100%
       alumnosSuperBase: 670,   // Zone 2→3: sobre este # los gastos escalan por encima del 100%
       controlados: [
         { label: 'Capacitación', monto: 30000 },
@@ -316,7 +317,7 @@ const App = (() => {
         { label: 'Operación', monto: 3107394 },
         { label: 'Otros Gastos Generales', monto: 204132 },
         { label: 'Uniformes', monto: 254560 },
-        { label: 'Preparatoria', monto: 737416 }
+        { label: 'Preparatoria', monto: 737416, nivelKey: 'bachillerato' }
       ],
       fijos: [
         { label: 'Capacitación Rectoría', monto: 30000 },
@@ -746,12 +747,21 @@ const App = (() => {
     return n / superBase;                  // Zona 3: escala hacia arriba
   }
 
-  function calcGastos(yearIdx, totalAlumnos) {
+  function calcGastos(yearIdx, totalAlumnos, gradeEnrollment) {
     const go = state.gastosOperacion;
     const inf = Math.pow(1 + state.variables.inflacion, yearIdx);
     const factor = calcFactorMatricula(totalAlumnos);
 
-    const sumC = (go.controlados || []).reduce((s, c) => s + (c.monto || 0), 0) * factor * inf;
+    // Items con nivelKey (o label 'preparatoria'/'bachillerato') van a $0 si ese nivel no tiene alumnos
+    function itemActivo(c) {
+      const nk = c.nivelKey || (
+        ['preparatoria', 'bachillerato'].includes((c.label || '').toLowerCase()) ? 'bachillerato' : null
+      );
+      if (!nk || !gradeEnrollment) return true;
+      return GRADES.filter(g => g.levelKey === nk).some(g => (gradeEnrollment[g.key] || 0) > 0);
+    }
+
+    const sumC = (go.controlados || []).reduce((s, c) => s + (itemActivo(c) ? (c.monto || 0) : 0), 0) * factor * inf;
     const sumF = (go.fijos || []).reduce((s, c) => s + (c.monto || 0), 0) * inf;
     const sumFn = (go.financieros || []).reduce((s, c) => s + (c.monto || 0), 0) * inf;
     const total = sumC + sumF + sumFn;
@@ -788,6 +798,12 @@ const App = (() => {
       const apoyosEcon = sumColegiaturas * state.descuentos.apoyosEconomicosPct;
       const becas = sumColegiaturas * state.descuentos.becasSepPct;
       const prontoPago = sumColegiaturas * (state.descuentos.prontoPagoPct || 0);
+      // Colegiaturas netas (ya con todos los descuentos consolidados)
+      const colegiaturasNetas = sumColegiaturas - apoyosEcon - becas - prontoPago;
+      // Cuotas: contra ingreso estimado (60% por default) y neto
+      const cuotasContraIngresoPct = state.descuentos.cuotasContraIngresoPct ?? 0.60;
+      const cuotasContraIngreso = sumCuotas * cuotasContraIngresoPct;
+      const cuotasNetas = sumCuotas - cuotasContraIngreso;
       // Ingresos adicionales / eventos
       const ingExtra = (state.ingresosAdicionales || []).reduce((s, ia) => {
         const starts = ia.cicloInicio || 1;
@@ -795,10 +811,10 @@ const App = (() => {
         if (!ia.esRecurrente && i + 1 > starts) return s;
         return s + (ia.montoAnual || 0) * Math.pow(1 + state.variables.inflacion, i);
       }, 0);
-      const ingresoTotal = (sumInscripciones - descInscripcion) + sumColegiaturas - apoyosEcon - becas - prontoPago + sumCuotas + ingExtra;
+      const ingresoTotal = (sumInscripciones - descInscripcion) + colegiaturasNetas + cuotasNetas + ingExtra;
 
       const nomina = calcNomina(i, totalAlumnos, gradeEnrollment);
-      const gastosOpDet = calcGastos(i, totalAlumnos);
+      const gastosOpDet = calcGastos(i, totalAlumnos, gradeEnrollment);
       const gastosOp = gastosOpDet.total;
       const egresoTotal = nomina.totalAnual + gastosOp;
 
@@ -818,7 +834,8 @@ const App = (() => {
         ano, i, infFactor, colFactor,
         gradeEnrollment, levelEnrollment, totalAlumnos,
         sumInscripciones, descInscripcion, sumColegiaturas, sumCuotas, ingExtra,
-        apoyosEcon, becas, prontoPago, ingresoTotal,
+        apoyosEcon, becas, prontoPago,
+        colegiaturasNetas, cuotasContraIngreso, cuotasNetas, ingresoTotal,
         nomina, gastosOp, egresoTotal,
         subtotal, operadora, rentaInmueble, ebitda,
         cashAcumulado, utilidadPorAccion, utilidadPorTicket, rendimientoTicket
@@ -1277,6 +1294,7 @@ const App = (() => {
         <div class="form-group"><label class="form-label">Apoyos Económicos</label>${pctInput(desc.apoyosEconomicosPct, 'apoyosEconomicosPct', 'descuentos')}<span class="form-hint">% sobre total de colegiaturas anuales</span></div>
         <div class="form-group"><label class="form-label">Becas SEP + Maestros + Socios</label>${pctInput(desc.becasSepPct, 'becasSepPct', 'descuentos')}<span class="form-hint">% sobre total de colegiaturas anuales</span></div>
         <div class="form-group"><label class="form-label">Pronto Pago</label>${pctInput(desc.prontoPagoPct, 'prontoPagoPct', 'descuentos')}<span class="form-hint">% de descuento sobre colegiaturas mes a mes por pago anticipado</span></div>
+        <div class="form-group"><label class="form-label">Contra Ingreso Cuotas</label>${pctInput(desc.cuotasContraIngresoPct ?? 0.60, 'cuotasContraIngresoPct', 'descuentos')}<span class="form-hint">% de las cuotas escolares que se trata como contra ingreso (estimado, default 60%)</span></div>
       </div>
     </div>`;
   }
@@ -1771,16 +1789,27 @@ const App = (() => {
   function renderGastos() {
     const go = state.gastosOperacion;
     const corrida = calcCorrida();
-    const cap = go.capacidadGastoRef || 400;
-    // Per-year detail
-    const annuals = corrida.map(yr => calcGastos(yr.i, yr.totalAlumnos));
+    // Per-year detail — incluir gradeEnrollment para items condicionales por nivel
+    const annuals = corrida.map(yr => calcGastos(yr.i, yr.totalAlumnos, yr.gradeEnrollment));
 
     function seccionRows(arr, secKey, esControlado) {
       const catRows = arr.map((c, idx) => {
-        const cells = annuals.map(a => {
+        const cells = annuals.map((a, yi) => {
           const inf = a.inf;
           const factor = esControlado ? a.factor : 1;
-          return `<td>${M((c.monto || 0) * factor * inf)}</td>`;
+          let monto = c.monto || 0;
+          // Items condicionales por nivel: $0 si ese nivel no tiene alumnos ese año
+          if (esControlado) {
+            const nk = c.nivelKey || (
+              ['preparatoria', 'bachillerato'].includes((c.label || '').toLowerCase()) ? 'bachillerato' : null
+            );
+            if (nk && corrida[yi]) {
+              const ge = corrida[yi].gradeEnrollment;
+              const active = GRADES.filter(g => g.levelKey === nk).some(g => (ge[g.key] || 0) > 0);
+              if (!active) monto = 0;
+            }
+          }
+          return `<td>${M(monto * factor * inf)}</td>`;
         }).join('');
         return `<tr>
           <td><input type="text" class="cell-input" value="${c.label}"
@@ -1804,7 +1833,7 @@ const App = (() => {
     }
 
     const factorRow = `<tr class="tr-sub">
-      <td colspan="2" style="color:var(--gold);font-size:11px;letter-spacing:.5px">% GASTO ESTIMADO (matrícula/${cap} alumnos)</td>
+      <td colspan="2" style="color:var(--gold);font-size:11px;letter-spacing:.5px">% FACTOR MATRÍCULA APLICADO</td>
       ${annuals.map(a => `<td style="color:var(--gold);font-weight:400">${(a.factor * 100).toFixed(1)}%</td>`).join('')}
     </tr>`;
 
@@ -1820,7 +1849,7 @@ const App = (() => {
     return `
     <div class="section-header"><div>
       <div class="section-title">Gastos de Operación</div>
-      <div class="section-sub">Controlados · Fijos · Financieros · escalan con matrícula / ${cap} alumnos ref.</div>
+      <div class="section-sub">Controlados · Fijos · Financieros — el factor de escala se configura en Variables Iniciales</div>
     </div></div>
 
     <div class="card">
@@ -1832,18 +1861,6 @@ const App = (() => {
           <tr class="tr-result"><td>TOTAL GASTOS OPERACIÓN</td>${annuals.map(a => `<td>${M(a.total)}</td>`).join('')}</tr>
         </tbody>
       </table></div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Capacidad de Referencia</div>
-      <div class="form-grid">
-        <div class="form-group">
-          <label class="form-label">Alumnos al 100% de gasto <span>(ref.)</span></label>
-          <input type="number" class="form-input" value="${cap}" step="10"
-            data-key="capacidadGastoRef" data-nested="gastosOperacion">
-          <span class="form-hint">Con ${cap} alumnos o más, el gasto controlado es al 100%. Con menos, escala proporcionalmente.</span>
-        </div>
-      </div>
     </div>
 
     <div class="card">
@@ -1994,10 +2011,10 @@ const App = (() => {
       { sep: true },
       { head: 'INGRESOS' },
       { l: 'Inscripciones Netas', fn: y => M(y.sumInscripciones - y.descInscripcion) },
-      { l: 'Total Colegiaturas', fn: y => M(y.sumColegiaturas) },
+      { l: 'Colegiaturas Netas', fn: y => M(y.colegiaturasNetas) },
       { l: 'Cuotas Escolares', fn: y => M(y.sumCuotas) },
-      { l: 'Apoyos Económicos', fn: y => M(-y.apoyosEcon), cls: 'num-negative' },
-      { l: 'Becas SEP / Maestros', fn: y => M(-y.becas), cls: 'num-negative' },
+      { l: '(−) Contra Ingreso Cuotas', fn: y => M(-y.cuotasContraIngreso), cls: 'num-negative' },
+      { l: 'Total Cuotas Netas', fn: y => M(y.cuotasNetas), cls: 'tr-sub' },
       { l: 'TOTAL INGRESOS', fn: y => M(y.ingresoTotal), result: true },
       { sep: true },
       { head: 'EGRESOS' },
