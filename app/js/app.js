@@ -477,13 +477,17 @@ const App = (() => {
   /**
    * Modelo matrícula — dos tipos de grado:
    *
-   * GRADOS DE ENTRADA (mat, p1, s1, b1) — reciben alumnos nuevos del exterior:
-   *   grade[t] = base_año0 × (1 + crec)^t
-   *   → Siempre crecen. mat arranca en 15, p1 en 30.
+   * GRADOS DE ENTRADA (mat, p1, s1, b1):
+   *   grade[t] = year0 × (1 + crec)^t
+   *   → Crecen exponencialmente a partir del valor inicial.
    *
-   * GRADOS CASCADE (todos los demás) — alumnos que avanzan del grado anterior:
-   *   grade[t] = prev_grade[t-1] × reinscripcion × (1 + crec)
-   *   → reinscripcion retiene, crec agrega nuevo ingreso lateral.
+   * GRADOS CASCADE (todos los demás):
+   *   grade[t] = prev_grade[t-1] × rein  +  year0[grade] × crec × (1+crec)^(t-1)
+   *   → fromPrev: alumnos promovidos/reinscritos del grado anterior.
+   *   → extraNew: nuevos ingresos propios del grado (transferencias, captación)
+   *     que crecen al mismo ritmo que el factor de crecimiento configurado.
+   *   Esto permite que k1 crezca más allá de Maternal, p2 más allá de p1, etc.
+   *   Si supera capacidad, el excedente se distribuye entre grados con cupo libre.
    *
    * Grados inactivos (gradosActivos[key] === false) → 0 en todos los años.
    */
@@ -510,9 +514,16 @@ const App = (() => {
 
         let val;
         if (ENTRY_GRADES.has(g.key)) {
+          // Entrada directa: crece exponencialmente desde el valor inicial
           val = year0[g.key] * Math.pow(1 + crec, t);
         } else {
-          val = prev[GRADES[i - 1].key] * rein * (1 + crec);
+          // Cascade aditivo:
+          //   fromPrev = alumnos promovidos del grado anterior (reinscritos)
+          //   extraNew = nuevos ingresos propios del grado (captación, transferencias)
+          //             que crecen al ritmo del factor de crecimiento
+          const fromPrev = prev[GRADES[i - 1].key] * rein;
+          const extraNew = year0[g.key] * crec * Math.pow(1 + crec, t - 1);
+          val = fromPrev + extraNew;
         }
         val = Math.max(0, Math.round(val));
         cur[g.key] = val;
