@@ -3640,7 +3640,10 @@ const App = (() => {
   async function syncScenariosFromCloud() {
     try {
       const res = await fetch(SC_API, { method: 'GET' });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => '');
+        throw new Error('HTTP ' + res.status + (errBody ? ' · ' + errBody.slice(0, 600) : ''));
+      }
       const { scenarios } = await res.json();
       const cloud = Array.isArray(scenarios) ? scenarios : [];
       const local = getSavedScenarios();
