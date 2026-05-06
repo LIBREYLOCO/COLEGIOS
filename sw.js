@@ -1,5 +1,5 @@
 // L&L · Service Worker — Cache-first para app shell
-const CACHE = 'lyl-v1';
+const CACHE = 'lyl-v3';
 const SHELL = [
   '/',
   '/index.html',
@@ -30,6 +30,8 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = new URL(e.request.url);
   if (url.origin !== location.origin) return;
+  // Nunca cachear funciones serverless (datos dinámicos)
+  if (url.pathname.startsWith('/.netlify/functions/')) return;
 
   e.respondWith(
     caches.match(e.request).then(cached => {

@@ -58,11 +58,110 @@ const App = (() => {
   function getYears() { return (state && state.horizonte) ? Math.max(1, Math.min(10, state.horizonte)) : 7; }
   const ANO_INICIO = 2026;
 
-  // ── Parámetros Legales Nómina México 2025 ──────────────────────
-  const NOM_UMA = 113.14;   // UMA diaria
-  const NOM_SMG = 278.80;   // Salario mínimo general diario (actualizado 2025)
+  // ── Parámetros Legales Nómina México 2026 ──────────────────────
+  const NOM_UMA = 117.31;   // UMA diaria (DOF 09-ene-2026, vigente desde 01-feb-2026)
+  const NOM_SMG = 315.04;   // Salario mínimo general diario (DOF 09-dic-2025, +13% vs 2025)
   const NOM_DIAS_MES = 30.4;
   const NOM_FI = 1.0493;   // Factor de integración (15d aguinaldo + 25% prima vac)
+  const NOM_RT_CLASE = 0.0054355; // Riesgos de Trabajo — Clase I (colegios). Art. 73 LSS
+
+  // Cesantía y Vejez patronal 2026 — escala progresiva por rango de SBC en UMAs
+  // Tabla oficial DOF reforma 2020 (Segundo Transitorio), vigente desde 01-ene-2026
+  function calcCVRate(sdi) {
+    const u = sdi / NOM_UMA;
+    if (u <= 1.00) return 0.03150;
+    if (u <= 1.50) return 0.03680;
+    if (u <= 2.00) return 0.04850;
+    if (u <= 2.50) return 0.05560;
+    if (u <= 3.00) return 0.06030;
+    if (u <= 3.50) return 0.06360;
+    if (u <= 4.00) return 0.06610;
+    return 0.07513;
+  }
+
+  // ── IMSS Obrero (cuotas del trabajador, retenidas del bruto) ──
+  // Necesarias para calcular el bruto que produce un neto deseado.
+  function calcIMSSObreroMensual(brutoMensual) {
+    const sd = brutoMensual / NOM_DIAS_MES;
+    const sdi = sd * NOM_FI;
+    const sdiM = sdi * NOM_DIAS_MES;
+    const exc   = 0.0040  * Math.max(0, sdi - 3 * NOM_UMA) * NOM_DIAS_MES; // EM excedente obrero
+    const prest = 0.0025  * sdiM;                                          // EM prest. dinero obrero
+    const gmp   = 0.00375 * sdiM;                                          // EM GMP obrero
+    const iv    = 0.00625 * sdiM;                                          // Invalidez y Vida obrero
+    const cv    = 0.01125 * sdiM;                                          // Cesantía y Vejez obrero (fijo)
+    return exc + prest + gmp + iv + cv;
+  }
+
+  function calcNetoFromBruto(brutoMensual) {
+    return brutoMensual - calcISR(brutoMensual) - calcIMSSObreroMensual(brutoMensual);
+  }
+
+  // Búsqueda binaria — encuentra el bruto mensual que produce el neto deseado
+  function calcBrutoFromNeto(netoMensual) {
+    if (!(netoMensual > 0)) return 0;
+    let lo = netoMensual, hi = netoMensual * 2.5;
+    for (let i = 0; i < 60; i++) {
+      const mid = (lo + hi) / 2;
+      const neto = calcNetoFromBruto(mid);
+      if (Math.abs(neto - netoMensual) < 0.005) return mid;
+      if (neto < netoMensual) lo = mid; else hi = mid;
+    }
+    return (lo + hi) / 2;
+  }
+
+  // Catálogo de conceptos patronales (toggleables en la UI)
+  // grupo: IMSS | OTRO  ·  short: etiqueta corta para encabezado de tabla
+  const CONCEPTOS_PATRONALES = [
+    { key: 'cuotaFijaEM',  label: 'Cuota Fija EM',     short: 'EM Fija',  grupo: 'IMSS',
+      calc: (sueldo, sd, sdi, sdiM) => 0.2040 * NOM_SMG * NOM_DIAS_MES },
+    { key: 'excedenteEM',  label: 'Excedente EM',      short: 'EM Exc.',  grupo: 'IMSS',
+      calc: (sueldo, sd, sdi, sdiM) => 0.011 * Math.max(0, sdi - 3 * NOM_UMA) * NOM_DIAS_MES },
+    { key: 'prestDinero',  label: 'Prest. en Dinero',  short: 'Prest.$',  grupo: 'IMSS',
+      calc: (sueldo, sd, sdi, sdiM) => 0.0070 * sdiM },
+    { key: 'gmp',          label: 'GMP Pensionados',   short: 'GMP',      grupo: 'IMSS',
+      calc: (sueldo, sd, sdi, sdiM) => 0.0105 * sdiM },
+    { key: 'invalidezVida', label: 'Invalidez y Vida', short: 'IV',       grupo: 'IMSS',
+      calc: (sueldo, sd, sdi, sdiM) => 0.0175 * sdiM },
+    { key: 'riesgosTrab',  label: 'Riesgos Trabajo',   short: 'RT',       grupo: 'IMSS',
+      calc: (sueldo, sd, sdi, sdiM) => NOM_RT_CLASE * sdiM },
+    { key: 'guarderias',   label: 'Guarderías',        short: 'Guard.',   grupo: 'IMSS',
+      calc: (sueldo, sd, sdi, sdiM) => 0.0100 * sdiM },
+    { key: 'retiro',       label: 'Retiro',            short: 'Retiro',   grupo: 'IMSS',
+      calc: (sueldo, sd, sdi, sdiM) => 0.0200 * sdiM },
+    { key: 'cesantia',     label: 'Cesantía y Vejez',  short: 'C&V',      grupo: 'IMSS',
+      calc: (sueldo, sd, sdi, sdiM) => calcCVRate(sdi) * sdiM },
+    { key: 'infonavit',    label: 'Infonavit',         short: 'Infonavit', grupo: 'OTRO',
+      calc: (sueldo, sd, sdi, sdiM) => 0.0500 * sdiM },
+    { key: 'isn',          label: 'ISN',               short: 'ISN',      grupo: 'OTRO',
+      calc: (sueldo, sd, sdi, sdiM) => 0.0300 * sueldo },
+    { key: 'provisiones',  label: 'Provisiones',       short: 'Provs.',   grupo: 'OTRO',
+      calc: (sueldo, sd, sdi, sdiM) => (NOM_FI - 1) * sueldo }
+  ];
+
+  // Construye la lista completa: estándar + extras configurados por el usuario
+  function getAllConceptos() {
+    const extras = ((state && state.nominas && state.nominas.conceptosExtras) || []).map((e, i) => ({
+      key: 'extra_' + i,
+      label: e.nombre || 'Extra',
+      short: (e.nombre || 'Extra').substring(0, 8),
+      grupo: 'EXTRA',
+      custom: true,
+      extraIdx: i,
+      calc: (sueldo, sd, sdi, sdiM) => {
+        const v = parseFloat(e.valor) || 0;
+        if (e.tipo === 'pctSueldo') return v * sueldo;
+        if (e.tipo === 'pctSDI')    return v * sdiM;
+        return v; // fijo mensual
+      }
+    }));
+    return CONCEPTOS_PATRONALES.concat(extras);
+  }
+
+  function isConceptoActivo(key) {
+    const ca = (state && state.nominas && state.nominas.conceptosActivos) || {};
+    return ca[key] !== false; // default: activo si no se definió
+  }
 
   // Tabla ISR mensual (Art. 96 LISR — 11 tramos verificados en modelo PDF)
   const ISR_TABLA = [
@@ -282,13 +381,14 @@ const App = (() => {
         { nombre: '½ Tiempo Secundaria', sector: 'SECUNDARIA 1', sueldo: 10000, count: 1, esHonorarios: false, esPorSalon: true, divisorSalon: 99, gradoKey: 's1' },
         { nombre: '½ Tiempo Secundaria', sector: 'SECUNDARIA 2', sueldo: 10000, count: 1, esHonorarios: false, esPorSalon: true, divisorSalon: 99, gradoKey: 's2' },
         { nombre: '½ Tiempo Secundaria', sector: 'SECUNDARIA 3', sueldo: 10000, count: 1, esHonorarios: false, esPorSalon: true, divisorSalon: 99, gradoKey: 's3' },
-        // ── Preparatoria: escala con b1/b2/b3 (inactiva por default) ──
-        { nombre: 'Mentor Prepa',          sector: 'MENTOR PREPA 1', sueldo: 26000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'b1' },
+        // ── Preparatoria: 1 mentor por grado activo + 1 formador por salón + 1 adicional cada 2 salones (toda Prepa) ──
+        { nombre: 'Mentor Prepa',          sector: 'MENTOR PREPA 1', sueldo: 26000, count: 1, esHonorarios: false, esPorSalon: true, divisorSalon: 99, gradoKey: 'b1' },
+        { nombre: 'Mentor Prepa',          sector: 'MENTOR PREPA 2', sueldo: 26000, count: 1, esHonorarios: false, esPorSalon: true, divisorSalon: 99, gradoKey: 'b2' },
+        { nombre: 'Mentor Prepa',          sector: 'MENTOR PREPA 3', sueldo: 26000, count: 1, esHonorarios: false, esPorSalon: true, divisorSalon: 99, gradoKey: 'b3' },
         { nombre: 'Formador preparatoria', sector: 'PREPA 1',        sueldo: 15000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'b1' },
-        { nombre: 'Mentor Prepa',          sector: 'MENTOR PREPA 2', sueldo: 26000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'b2' },
         { nombre: 'Formador preparatoria', sector: 'PREPA 2',        sueldo: 15000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'b2' },
-        { nombre: 'Mentor Prepa',          sector: 'MENTOR PREPA 3', sueldo: 26000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'b3' },
         { nombre: 'Formador preparatoria', sector: 'PREPA 3',        sueldo: 15000, count: 1, esHonorarios: false, esPorSalon: true, gradoKey: 'b3' },
+        { nombre: 'Formador Adicional Prepa', sector: 'PREPA TOTAL', sueldo: 15000, count: 1, esHonorarios: false, esPorSalon: true, gradosKeys: ['b1','b2','b3'], divisorSalon: 2, redondeo: 'floor' },
         // ── Liderazgo ──
         { nombre: 'Life Project Lider', sector: 'Administración', sueldo: 25000, count: 1, esHonorarios: false }
       ],
@@ -305,7 +405,19 @@ const App = (() => {
       impEstatalRate: 0.0300,
       aguinaldoRate: 0.0417,
       primaVacacionalRate: 0.0041,
-      primaAntiguedadRate: 0.0303
+      primaAntiguedadRate: 0.0303,
+      // Toggle por concepto patronal — true = se incluye en costo total
+      conceptosActivos: {
+        cuotaFijaEM: true, excedenteEM: true, prestDinero: true, gmp: true,
+        invalidezVida: true, riesgosTrab: true, guarderias: true,
+        retiro: true, cesantia: true,
+        infonavit: true, isn: true, provisiones: true
+      },
+      // Beneficios extras personalizados — { nombre, tipo: 'pctSueldo'|'pctSDI'|'fijo', valor }
+      conceptosExtras: [],
+      // Tasa de uplift para puestos por honorarios (mismo patrón que Dirección Ejecutiva)
+      // Cubre IVA + costo de gestión / facturación que carga el contratista
+      tasaHonorarios: 0.065
     },
 
     // ── Gastos de Operación ──
@@ -366,11 +478,76 @@ const App = (() => {
   let chartInstances = {};
   let sidebarOpen = true;
 
+  // Migra puestos de Prepa a nueva estructura (idempotente, V4)
+  function migratePrepaPuestos(s) {
+    if (!s || !s.nominas || !Array.isArray(s.nominas.puestos)) return s;
+    if (s.nominas.prepaMigrationV4) return s;
+    const puestos = s.nominas.puestos;
+
+    // 1) Mentor Prepa: matching flexible → divisorSalon=99, count=1
+    puestos.forEach(p => {
+      if (!p.esPorSalon) return;
+      const txt = (p.nombre || '') + ' ' + (p.sector || '');
+      const isMentor = /mentor\s*prepa/i.test(txt) || /mentor\s*bach/i.test(txt);
+      if (isMentor) {
+        if (!p.divisorSalon || p.divisorSalon < 90) p.divisorSalon = 99;
+        if (p.count !== 1) p.count = 1;
+      }
+    });
+
+    // 2) Formador preparatoria (NO Adicional): 1 por salón → count=1, divisorSalon=1
+    puestos.forEach(p => {
+      if (!p.esPorSalon) return;
+      if (p.nombre === 'Formador Adicional Prepa') return; // skip adicional
+      const txt = (p.nombre || '') + ' ' + (p.sector || '');
+      const isFormPrepa = /formador\s*prep/i.test(txt) || /formador\s*bach/i.test(p.nombre || '');
+      const inPrepaGrado = p.gradoKey && /^b[123]$/.test(p.gradoKey);
+      if (isFormPrepa && inPrepaGrado) {
+        if (p.count !== 1) p.count = 1;
+        if (p.divisorSalon && p.divisorSalon !== 1) p.divisorSalon = 1;
+      }
+    });
+
+    // 3) Asegurar UN solo 'Formador Adicional Prepa' con la config correcta
+    const adicionales = puestos
+      .map((p, i) => ({ p, i }))
+      .filter(({ p }) => p.nombre === 'Formador Adicional Prepa');
+
+    if (adicionales.length > 1) {
+      adicionales.slice(1).map(x => x.i).reverse()
+        .forEach(i => puestos.splice(i, 1));
+    }
+
+    if (adicionales.length === 0) {
+      const lastPrepaIdx = puestos.map((p, i) => ({ p, i }))
+        .filter(({ p }) => p.gradoKey && /^b[123]$/.test(p.gradoKey))
+        .pop();
+      const insertAt = lastPrepaIdx ? lastPrepaIdx.i + 1 : puestos.length;
+      puestos.splice(insertAt, 0, {
+        nombre: 'Formador Adicional Prepa', sector: 'PREPA TOTAL',
+        sueldo: 15000, count: 1, esHonorarios: false, esPorSalon: true,
+        gradosKeys: ['b1', 'b2', 'b3'], divisorSalon: 2, redondeo: 'floor'
+      });
+    } else {
+      const adi = adicionales[0].p;
+      if (!Array.isArray(adi.gradosKeys) || adi.gradosKeys.join(',') !== 'b1,b2,b3') {
+        adi.gradosKeys = ['b1', 'b2', 'b3'];
+      }
+      if (adi.divisorSalon !== 2) adi.divisorSalon = 2;
+      if (adi.redondeo !== 'floor') adi.redondeo = 'floor';
+      if (!adi.esPorSalon) adi.esPorSalon = true;
+      if (adi.count !== 1) adi.count = 1;
+    }
+
+    s.nominas.prepaMigrationV4 = true;
+    return s;
+  }
+
   function loadState() {
     // Intentar cargar v10
     try {
       const s10 = localStorage.getItem('lyl_state_v10');
-      if (s10) return JSON.parse(s10);
+      if (s10) return migratePrepaPuestos(JSON.parse(s10));
     } catch (e) { }
 
     // Migrar desde versión anterior — conservar datos financieros, resetear puestos a nueva estructura
@@ -631,69 +808,123 @@ const App = (() => {
   /** Multiplica todos los costos calculados por el número de personas */
   function multiplyByCnt(c, n) {
     if (n <= 1) return { ...c, count: 1 };
+    const conceptosX = {};
+    if (c.conceptos) {
+      Object.keys(c.conceptos).forEach(k => { conceptosX[k] = c.conceptos[k] * n; });
+    }
     return {
       ...c, count: n,
+      conceptos: conceptosX,
       imss: c.imss * n, infonavit: c.infonavit * n, isn: c.isn * n,
       provisiones: c.provisiones * n, isrEmpleado: c.isrEmpleado * n,
+      honorariosUplift: (c.honorariosUplift || 0) * n,
       costoTotal: c.costoTotal * n
-      // sueldo se mantiene unitario para mostrar en tabla
+      // neto y bruto se mantienen unitarios para mostrar en tabla
     };
   }
 
   /**
    * Costo total patronal por puesto (mensual).
-   * Soporta campo "count" para representar N personas en el mismo rol.
-   * Si esHonorarios=true omite IMSS/ISN/Infonavit — costo = sueldo.
+   * El campo p.sueldo es el NETO unitario que el empleado recibe en su cuenta.
+   * El sistema calcula el bruto requerido (back-calc ISR + IMSS obrero) y
+   * sobre ese bruto computa todas las cuotas patronales.
+   * Si esHonorarios=true → no hay retenciones de IMSS/ISR; sueldo = bruto = costo.
    */
   function calcCostoPuesto(p, salonesMap) {
     const salMap = salonesMap || state.salones || {};
-    let count;
-    if (p.esPorSalon) {
-      // p.count = personas por unidad · p.divisorSalon = salones por unidad (def: 1)
-      const salVal = salMap[p.gradoKey];
-      const mps = Math.max(1, Math.round(p.count || 1));
-      const div = Math.max(1, Math.round(p.divisorSalon || 1));
-      if (salVal != null) {
-        count = salVal > 0 ? Math.max(1, Math.ceil(salVal / div)) * mps : 0;
-      } else {
-        count = mps; // sin mapa: al menos las personas configuradas
-      }
-    } else {
-      count = Math.max(1, Math.round(p.count || 1));
+    const count = calcMultiplicadorPuesto(p, salMap);
+    const neto = p.sueldo || 0;
+    if (count === 0) {
+      return { count: 0, neto, sueldo: neto, bruto: neto, sd: 0, sdi: 0, conceptos: {},
+               imss: 0, infonavit: 0, isn: 0, provisiones: 0, isrEmpleado: 0, costoTotal: 0 };
     }
-    // Grado inactivo (deriveSalones devolvió 0) → costo cero
-    if (count === 0) return { count: 0, sueldo: p.sueldo || 0, sd: 0, sdi: 0, imss: 0, infonavit: 0, isn: 0, provisiones: 0, isrEmpleado: 0, costoTotal: 0 };
-    const sueldo = p.sueldo || 0;
     if (p.esHonorarios) {
+      // Honorarios: no hay retenciones de IMSS; el contratista declara su propio ISR.
+      // Aplicamos uplift (mismo patrón que Dirección Ejecutiva) que cubre IVA + costo
+      // de gestión / facturación. Costo al colegio = neto pactado × (1 + tasaHonorarios).
+      const tasa = (state.nominas && state.nominas.tasaHonorarios != null)
+        ? state.nominas.tasaHonorarios : 0.065;
+      const uplift = neto * tasa;
       const s = {
-        count, sueldo, sd: 0, sdi: 0, imss: 0, infonavit: 0, isn: 0,
-        provisiones: 0, isrEmpleado: calcISR(sueldo), costoTotal: sueldo
+        count, neto, sueldo: neto, bruto: neto, sd: 0, sdi: 0, conceptos: {},
+        imss: 0, infonavit: 0, isn: 0, provisiones: 0,
+        honorariosUplift: uplift,
+        isrEmpleado: 0, costoTotal: neto + uplift
       };
       return multiplyByCnt(s, count);
     }
-    const sd = sueldo / NOM_DIAS_MES;
+    // Back-calcular sueldo bruto a partir del neto deseado
+    const bruto = calcBrutoFromNeto(neto);
+    const sd = bruto / NOM_DIAS_MES;
     const sdi = sd * NOM_FI;
     const sdiMensual = sdi * NOM_DIAS_MES;
 
-    // IMSS Patronal — cuota fija por TRABAJADOR × count (no confundir con sueldo total)
-    const cuotaFijaEM = 0.2040 * NOM_SMG * NOM_DIAS_MES;          // Cuota fija EM por trabajador
-    const excedenteEM = 0.011 * Math.max(0, sdi - 3 * NOM_UMA) * NOM_DIAS_MES; // Excedente 3 UMA
-    const invalidezVida = 0.0175 * sdiMensual;                        // Invalidez y vida
-    const guarderias = 0.01 * sdiMensual;                        // Guarderías y PS
-    const retiro = 0.02 * sdiMensual;                        // Retiro
-    const cesantia = 0.0315 * sdiMensual;                        // Cesantía y vejez
-    const imss = cuotaFijaEM + excedenteEM + invalidezVida + guarderias + retiro + cesantia;
+    // Conceptos patronales se calculan sobre el BRUTO
+    const todos = getAllConceptos();
+    const conceptos = {};
+    todos.forEach(c => { conceptos[c.key] = c.calc(bruto, sd, sdi, sdiMensual); });
 
-    const infonavit = 0.05 * sdiMensual;                         // Infonavit 5%
-    const isn = sueldo * 0.03;                                // ISN 3%
-    const provisiones = (NOM_FI - 1) * sueldo;                       // Aguinaldo + prima vac via FI
+    let imss = 0, infonavit = 0, isn = 0, provisiones = 0, extrasTot = 0;
+    todos.forEach(c => {
+      if (!isConceptoActivo(c.key)) return;
+      const v = conceptos[c.key];
+      if (c.grupo === 'IMSS') imss += v;
+      else if (c.key === 'infonavit') infonavit += v;
+      else if (c.key === 'isn') isn += v;
+      else if (c.key === 'provisiones') provisiones += v;
+      else extrasTot += v;
+    });
 
     const single = {
-      count, sueldo, sd, sdi, imss, infonavit, isn, provisiones,
-      isrEmpleado: calcISR(sueldo),
-      costoTotal: sueldo + imss + infonavit + isn + provisiones
+      count, neto, sueldo: bruto, bruto, sd, sdi, conceptos,
+      imss, infonavit, isn, provisiones,
+      extras: extrasTot,
+      isrEmpleado: calcISR(bruto),
+      costoTotal: bruto + imss + infonavit + isn + provisiones + extrasTot
     };
     return multiplyByCnt(single, count);
+  }
+
+  /**
+   * Costo para 1 persona del rol — ignora esPorSalon y multiplicador.
+   * Usado para mostrar costos UNITARIOS en la tabla de Estructura de Puestos.
+   * El multiplicador real (formadores por grado por año) se aplica en calcNomina.
+   */
+  function calcCostoUnitario(p) {
+    return calcCostoPuesto({ ...p, count: 1, esPorSalon: false });
+  }
+
+  /**
+   * Multiplicador efectivo del puesto para un año dado.
+   * Para esPorSalon:
+   *   - gradoKey (string): salones[grado] / divisor
+   *   - gradosKeys (array): suma de salones de los grados / divisor
+   *   - redondeo: 'ceil' (default, siempre ≥1 si hay salones) | 'floor' (puede ser 0)
+   *   - p.count = personas por unidad multiplicador final
+   * Para puestos fijos: p.count.
+   */
+  function calcMultiplicadorPuesto(p, salonesMap) {
+    const mps = Math.max(1, Math.round(p.count || 1));
+    if (!p.esPorSalon) return mps;
+    const div = Math.max(1, Math.round(p.divisorSalon || 1));
+    const sm = salonesMap || {};
+
+    let salVal;
+    if (Array.isArray(p.gradosKeys) && p.gradosKeys.length > 0) {
+      // Suma de salones a través de múltiples grados
+      salVal = p.gradosKeys.reduce((s, k) => s + (sm[k] || 0), 0);
+    } else if (p.gradoKey != null) {
+      salVal = sm[p.gradoKey];
+      if (salVal == null) return mps;
+    } else {
+      return mps;
+    }
+
+    if (salVal === 0) return 0;
+    const round = p.redondeo === 'floor' ? Math.floor : Math.ceil;
+    const raw = round(salVal / div);
+    // floor permite 0 (ej. 1 salón ÷ 2 = 0). ceil siempre garantiza ≥1 si hay salones.
+    return (p.redondeo === 'floor' ? raw : Math.max(1, raw)) * mps;
   }
 
   // ============================================================
@@ -846,9 +1077,11 @@ const App = (() => {
       const egresoTotal = nomina.totalAnual + gastosOp;
 
       const subtotal = ingresoTotal - egresoTotal;
-      const operadora = Math.max(0, subtotal) * state.variables.porcentajeOperadora;
       const rentaInmueble = state.variables.rentaInmuebleBase * infFactor;
-      const ebitda = subtotal - operadora - rentaInmueble;
+      // La operadora cobra sobre la utilidad DESPUÉS de descontar renta del inmueble
+      const utilidadDespRenta = subtotal - rentaInmueble;
+      const operadora = Math.max(0, utilidadDespRenta) * state.variables.porcentajeOperadora;
+      const ebitda = utilidadDespRenta - operadora;
 
       cashAcumulado += ebitda;
       // Acciones
@@ -875,7 +1108,7 @@ const App = (() => {
         apoyosEcon, becas, prontoPago,
         colegiaturasNetas, cuotasContraIngreso, cuotasNetas, ingresoTotal,
         nomina, gastosOp, egresoTotal,
-        subtotal, operadora, rentaInmueble, ebitda,
+        subtotal, rentaInmueble, utilidadDespRenta, operadora, ebitda,
         cashAcumulado,
         utilidadPorAccion, rendimientoAccion,
         utilidadPorTicket, rendimientoTicket, totalTickets
@@ -1617,34 +1850,58 @@ const App = (() => {
     // factor matrícula del año 1 — usa alumnosBase como referencia
     const capNomina = state.gastosOperacion.alumnosBase || state.gastosOperacion.capacidadGastoRef || 450;
 
-    // ── Tabla de puestos — usa salones derivados del Año 1 ──────────────────────────────────────────
+    // ── Tabla de puestos — costos unitarios + multiplicador BASE (al tope de salones) ──────────────
     const puestos = nom.puestos || [];
     const salonesAno1 = deriveSalones(matricula[0]);
-    const pCosts = puestos.map(p => calcCostoPuesto(p, salonesAno1));
+    const salonesBase = state.salones || {};                                 // salones MÁX configurados (tope)
+    const pCosts = puestos.map(p => calcCostoPuesto(p, salonesAno1));        // multiplicado por formadores año 1 (resumen consolidado)
+    const pUnits = puestos.map(p => calcCostoUnitario(p));                   // costo para 1 persona del rol
+    const pMultsBase = puestos.map(p => calcMultiplicadorPuesto(p, salonesBase)); // # formadores al TOPE (base)
+
+    // Conceptos activos (orden estable: IMSS → OTRO → EXTRA)
+    const todosConceptos = getAllConceptos();
+    const activeConceptos = todosConceptos.filter(c => isConceptoActivo(c.key));
+    const nCols = activeConceptos.length;
+
+    // Helper: monto del concepto para el puesto (sobre el objeto cost — unitario o multiplicado)
+    const montoConcepto = (c, key) => (c.conceptos && c.conceptos[key]) || 0;
+
     const pRows = puestos.map((p, idx) => {
-      const c = pCosts[idx];
-      const cnt = c.count || 1;
+      const u = pUnits[idx];                 // costo unitario (1 persona)
+      const mult = pMultsBase[idx];          // # formadores al TOPE (base) — coincide con col. BASE de Formadores por Grado
       const honCheck = p.esHonorarios
         ? `<input type="checkbox" checked onchange="App.toggleHonorarios(${idx})">`
         : `<input type="checkbox" onchange="App.toggleHonorarios(${idx})">`;
-      const tdC = (v, gold) =>
-        `<td style="text-align:right;${gold ? 'color:var(--gold);font-weight:500' : 'opacity:.85'}">${M(v)}</td>`;
+      const tasaHon = (nom.tasaHonorarios != null) ? nom.tasaHonorarios : 0.065;
+      const conceptCells = p.esHonorarios
+        ? (nCols > 0
+            ? `<td colspan="${nCols}" style="text-align:center;font-size:11px;opacity:.85">
+                <span style="color:var(--gold);font-weight:500">+ ${(tasaHon * 100).toFixed(2)}% honorarios = ${M(u.honorariosUplift || 0)}</span>
+                <span style="margin-left:10px;opacity:.5;font-size:10px">(exento IMSS/ISN — el contratista declara su propio ISR)</span>
+              </td>`
+            : '')
+        : activeConceptos.map(cd =>
+            `<td style="text-align:right;opacity:.85;font-size:11px">${M(montoConcepto(u, cd.key))}</td>`
+          ).join('');
+      const brutoCell = p.esHonorarios
+        ? `<td style="text-align:right;opacity:.4;font-size:11px">—</td>`
+        : `<td style="text-align:right;color:var(--purple);opacity:.85;font-size:11px" title="Sueldo bruto calculado para producir el neto deseado">${M(u.bruto)}</td>`;
+      const multCell = `<td style="text-align:center;background:var(--beige);color:var(--oxford);font-size:11px;font-weight:500"
+          title="Tope: # de formadores si todos los salones máx configurados estuvieran activos. Coincide con la columna BASE de la tabla 'Formadores por Grado'.">${mult || '—'}</td>`;
       return `<tr>
         <td><input type="text" class="cell-input" value="${p.nombre}" style="width:150px;text-align:left"
           data-puesto-idx="${idx}" data-puesto-field="nombre"></td>
         <td><input type="text" class="cell-input" value="${p.sector}" style="width:95px;text-align:left"
           data-puesto-idx="${idx}" data-puesto-field="sector"></td>
-        <td><input type="number" class="cell-input" value="${cnt}" step="1" min="1" style="width:46px;text-align:center"
-          data-puesto-idx="${idx}" data-puesto-field="count" title="Número de personas"></td>
+        <td style="text-align:center;font-weight:500">1</td>
         <td><input type="number" class="cell-input" value="${p.sueldo}" step="500" style="width:100px"
-          data-puesto-idx="${idx}" data-puesto-field="sueldo" title="Sueldo bruto unitario"></td>
+          data-puesto-idx="${idx}" data-puesto-field="sueldo" title="Sueldo NETO unitario (lo que recibe el empleado en su cuenta)"></td>
+        ${brutoCell}
         <td style="text-align:center">${honCheck}</td>
-        ${p.esHonorarios
-          ? `<td colspan="5" style="text-align:center;opacity:.4;font-size:11px">— exento IMSS/ISN —</td>`
-          : `${tdC(c.imss)}${tdC(c.isn)}${tdC(c.infonavit)}`}
-        ${tdC(c.provisiones)}
-        <td style="text-align:right;color:var(--cobalt);opacity:.85">${M(p.sueldo * cnt)}</td>
-        ${tdC(c.costoTotal, true)}
+        ${conceptCells}
+        <td style="text-align:right;color:var(--gold);font-weight:500" title="Costo unitario mensual al colegio (bruto + cuotas patronales por 1 persona)">${M(u.costoTotal)}</td>
+        ${multCell}
+        <td style="text-align:right;color:var(--cobalt);font-weight:500" title="Costo mensual al tope = Costo Unit. × Base. Es el costo si todos los salones máx configurados estuvieran activos.">${M(u.costoTotal * mult)}</td>
         <td style="text-align:center">
           <button onclick="App.removePuesto(${idx})"
             style="background:none;border:none;color:var(--purple);cursor:pointer;font-size:13px;padding:2px 6px"
@@ -1653,62 +1910,130 @@ const App = (() => {
       </tr>`;
     }).join('');
 
-    const totSueldoBruto = pCosts.reduce((s, c) => s + c.sueldo * (c.count || 1), 0);
-    const totIMSS = pCosts.reduce((s, c) => s + c.imss, 0);
-    const totISN = pCosts.reduce((s, c) => s + c.isn, 0);
-    const totInfo = pCosts.reduce((s, c) => s + c.infonavit, 0);
-    const totProv = pCosts.reduce((s, c) => s + c.provisiones, 0);
+    // Totales unitarios (sumados como si fuera 1 de cada rol — referencia)
+    const totBrutoUnit = pUnits.reduce((s, u) => s + (u.bruto || 0), 0);
+    const totCostoUnit = pUnits.reduce((s, u) => s + u.costoTotal, 0);
+    const totConceptoUnit = (key) => pUnits.reduce((s, u) => s + montoConcepto(u, key), 0);
+
+    // Totales al TOPE (base = todos los salones máx configurados)
+    const totFormadoresBase = pMultsBase.reduce((s, m) => s + m, 0);
+    const totCostoBase = puestos.reduce((s, p, i) => s + pUnits[i].costoTotal * pMultsBase[i], 0);
+
+    // Totales multiplicados por formadores año 1 (resumen consolidado abajo)
+    const totBruto = pCosts.reduce((s, c) => s + (c.bruto || 0) * (c.count || 1), 0);
+    const totSueldoBruto = totBruto; // alias para resumen consolidado abajo
+    const totNeto  = pCosts.reduce((s, c) => s + (c.neto || 0) * (c.count || 1), 0);
     const totCosto = pCosts.reduce((s, c) => s + c.costoTotal, 0);
-    const totPersonas = puestos.reduce((s, p) => s + Math.max(1, Math.round(p.count || 1)), 0);
+    const totPersonas = puestos.length; // # de roles (uno por fila)
+    const totIMSS = pCosts.reduce((s, c) => s + c.imss, 0);
+    const totIMSSAgg = totIMSS;
+    const totInfo = pCosts.reduce((s, c) => s + c.infonavit, 0);
+    const totISN = pCosts.reduce((s, c) => s + c.isn, 0);
+    const totProv = pCosts.reduce((s, c) => s + c.provisiones, 0);
+
+    // Totales por concepto activo (para fila TOTAL — unitarios)
+    const totConceptCells = activeConceptos.map(cd =>
+      `<td style="text-align:right;font-size:11px">${M(totConceptoUnit(cd.key))}</td>`
+    ).join('');
+
+    // Headers dinámicos por concepto activo
+    const conceptHeaders = activeConceptos.map(cd => {
+      const grpColor = cd.grupo === 'IMSS' ? '#4a90c2' : (cd.grupo === 'OTRO' ? '#888' : 'var(--gold)');
+      return `<th style="text-align:right;font-size:10px;color:${grpColor};white-space:nowrap" title="${cd.label}">${cd.short}</th>`;
+    }).join('');
+
+    // Barra de toggles agrupada por IMSS / OTRO / EXTRA
+    const renderToggleGroup = (titulo, grupo) => {
+      const items = todosConceptos.filter(c => c.grupo === grupo);
+      if (items.length === 0 && grupo !== 'EXTRA') return '';
+      const checks = items.map(c => {
+        const checked = isConceptoActivo(c.key);
+        const removeBtn = c.custom
+          ? `<button onclick="App.removeConceptoExtra(${c.extraIdx})" title="Eliminar concepto extra"
+              style="background:none;border:none;color:var(--purple);cursor:pointer;font-size:11px;padding:0 2px;margin-left:2px">✕</button>`
+          : '';
+        return `<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-size:11px;padding:3px 7px;background:${checked ? '#fff' : '#f0eee8'};border:1px solid ${checked ? 'var(--cobalt)' : '#ccc'};border-radius:3px">
+          <input type="checkbox" ${checked ? 'checked' : ''} onchange="App.toggleConcepto('${c.key}')" style="margin:0">
+          <span title="${c.label}">${c.label}</span>${removeBtn}
+        </label>`;
+      }).join('');
+      const addBtn = grupo === 'EXTRA'
+        ? `<button onclick="App.addConceptoExtra()" title="Agregar beneficio o concepto extra"
+            style="background:var(--gold);color:#fff;border:none;border-radius:3px;padding:3px 9px;font-size:11px;cursor:pointer">+ Concepto</button>`
+        : '';
+      return `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:6px">
+        <span style="font-size:11px;color:var(--oxford);opacity:.7;font-weight:500;min-width:80px">${titulo}</span>
+        ${checks}${addBtn}
+      </div>`;
+    };
+
+    const tasaHonActual = (nom.tasaHonorarios != null) ? nom.tasaHonorarios : 0.065;
+    const togglesBar = `
+      <div style="background:#f7f5ee;padding:10px 12px;border-radius:6px;margin-bottom:10px;border:1px solid var(--beige)">
+        <div style="font-size:11px;color:var(--oxford);opacity:.6;margin-bottom:6px;letter-spacing:.5px">
+          CONCEPTOS PATRONALES — desactiva uno para excluirlo del costo total
+        </div>
+        ${renderToggleGroup('IMSS:', 'IMSS')}
+        ${renderToggleGroup('Otros:', 'OTRO')}
+        ${renderToggleGroup('Extras:', 'EXTRA')}
+        <div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--beige);font-size:11px">
+          <span style="color:var(--oxford);opacity:.7;font-weight:500;min-width:80px">Honorarios:</span>
+          <span style="opacity:.7">Tasa uplift</span>
+          <input type="number" step="0.001" min="0" max="0.30" value="${tasaHonActual.toFixed(4)}"
+            style="width:80px;padding:3px 6px;border:1px solid var(--cobalt);border-radius:3px;font-size:11px;text-align:right"
+            data-key="tasaHonorarios" data-nested="nominas"
+            title="Tasa decimal aplicada sobre el neto pactado en puestos por honorarios. Equivalente al patrón de Dirección Ejecutiva (cubre IVA + gestión)">
+          <span style="opacity:.6">= ${(tasaHonActual * 100).toFixed(2)}% sobre neto pactado para puestos marcados como Hon.</span>
+        </div>
+      </div>`;
 
     const puestosCard = `
     <div class="card">
       <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
         Estructura de Puestos
-        <span class="form-hint" style="margin:0 auto 0 12px">${totPersonas} personas · UMA $${NOM_UMA} · SMG $${NOM_SMG}</span>
+        <span class="form-hint" style="margin:0 auto 0 12px">${totPersonas} personas · UMA $${NOM_UMA} · SMG $${NOM_SMG} · IMSS Pat. total $${M(totIMSSAgg)}</span>
         <button onclick="App.addPuesto()"
           style="background:var(--cobalt);color:#fff;border:none;border-radius:4px;
                  padding:5px 14px;font-size:12px;cursor:pointer;letter-spacing:.5px">
           + Añadir Puesto
         </button>
       </div>
+      ${togglesBar}
       <div class="table-wrap"><table>
         <thead><tr>
           <th style="text-align:left">Puesto</th>
           <th style="text-align:left">Sector</th>
-          <th style="text-align:center" title="Número de personas">Cant.</th>
-          <th style="text-align:right">Sueldo Unit.</th>
+          <th style="text-align:center" title="Cantidad por unidad — siempre 1 (multiplicador real en columna 'Form. Año 1')">Cant.</th>
+          <th style="text-align:right" title="Sueldo NETO unitario — lo que el empleado recibe en su cuenta">Neto Unit.</th>
+          <th style="text-align:right;color:var(--purple)" title="Bruto unitario calculado: el sueldo que se debe timbrar para que tras ISR + IMSS obrero quede el neto">Bruto Calc.</th>
           <th title="Honorarios" style="text-align:center">Hon.</th>
-          <th style="text-align:right">IMSS Pat.</th>
-          <th style="text-align:right">ISN</th>
-          <th style="text-align:right">Infonavit</th>
-          <th style="text-align:right">Provisiones</th>
-          <th style="text-align:right;color:var(--cobalt)">Sueldo Total</th>
-          <th style="text-align:right;color:var(--gold)">Costo Total</th>
+          ${conceptHeaders}
+          <th style="text-align:right;color:var(--gold)" title="Costo unitario mensual al colegio (1 persona) = Bruto + Cuotas Patronales">Costo Unit.</th>
+          <th style="text-align:center;background:var(--beige);color:var(--oxford)" title="Tope: # de formadores si todos los salones máx configurados estuvieran activos. Coincide con la columna BASE de la tabla 'Formadores por Grado'.">Base</th>
+          <th style="text-align:right;color:var(--cobalt)" title="Costo mensual al tope = Costo Unit. × Base">Costo Mensual</th>
           <th></th>
         </tr></thead>
         <tbody>
           ${pRows}
           <tr class="tr-total">
-            <td>TOTAL MENSUAL</td>
+            <td>TOTAL</td>
+            <td style="opacity:.5;font-size:11px">unitarios + tope</td>
+            <td style="text-align:center">1×${puestos.length}</td>
             <td></td>
-            <td style="text-align:center;color:var(--cobalt)">${totPersonas}</td>
-            <td></td><td></td>
-            <td style="text-align:right">${M(totIMSS)}</td>
-            <td style="text-align:right">${M(totISN)}</td>
-            <td style="text-align:right">${M(totInfo)}</td>
-            <td style="text-align:right">${M(totProv)}</td>
-            <td style="text-align:right;color:var(--cobalt);font-weight:500">${M(totSueldoBruto)}</td>
-            <td style="text-align:right;color:var(--gold);font-weight:500">${M(totCosto)}</td>
+            <td style="text-align:right;color:var(--purple);font-size:11px">${M(totBrutoUnit)}</td>
+            <td></td>
+            ${totConceptCells}
+            <td style="text-align:right;color:var(--gold);font-weight:500">${M(totCostoUnit)}</td>
+            <td style="text-align:center;background:var(--beige);font-weight:600">${totFormadoresBase}</td>
+            <td style="text-align:right;color:var(--cobalt);font-weight:600">${M(totCostoBase)}</td>
             <td></td>
           </tr>
         </tbody>
       </table></div>
       <div style="margin-top:10px;padding:8px 4px;border-top:1px solid var(--beige);
-           font-size:11px;color:var(--oxford);opacity:.6;letter-spacing:.3px">
-        Cant. = personas en el puesto · todos los costos se multiplican por Cant.
-        · SDI = Sal.Diario × ${NOM_FI} · IMSS: Cuota fija + Excedente + Inv.Vida + Guard. + Retiro + Cesantía
-        · Provisiones = ${((NOM_FI - 1) * 100).toFixed(2)}% (aguinaldo+prima vac) · ISN 3% · Infonavit 5% SDI
+           font-size:11px;color:var(--oxford);opacity:.7;letter-spacing:.3px">
+        <strong style="color:var(--cobalt)">Costo unitario × tope:</strong> cada fila muestra el costo de <strong>1 persona</strong> del rol. La columna <strong>Base</strong> es el tope (formadores si todos los salones máx configurados estuvieran activos) — coincide con la columna BASE de la tabla <em>Formadores por Grado</em>. El <strong>Costo Mensual</strong> = Costo Unit. × Base. Para la proyección año por año ver el Resumen Consolidado abajo.<br>
+        <strong style="color:var(--purple)">Modelo NETO 2026:</strong> capturas el neto; el sistema back-calcula el bruto restando ISR (Art. 96 LISR) + IMSS obrero (EM + IV 0.625% + C&V 1.125%). Cuotas patronales 2026: EM (fija + exc. 1.10% + prest.dinero 0.70% + GMP 1.05%) + Inv.Vida 1.75% + RT Cl.I 0.54% + Guard. 1% + Retiro 2% + C&V progresiva (3.15%–7.51% según UMA) · Infonavit 5% SDI · ISN 3% · Provisiones ${((NOM_FI - 1) * 100).toFixed(2)}% (aguinaldo + prima vac)
       </div>
     </div>`;
 
@@ -1734,28 +2059,67 @@ const App = (() => {
       return `<tr><td>${label}</td>${cells}</tr>`;
     }
 
+    // Helper: total mensual del concepto sumado sobre todos los puestos (valores ya × formadores año 1)
+    const totConceptoCampus = (key) => pCosts.reduce((s, c) => s + ((c.conceptos && c.conceptos[key]) || 0), 0);
+    const totHonorariosUplift = pCosts.reduce((s, c) => s + (c.honorariosUplift || 0), 0);
+
+    // Conceptos agrupados (respetando toggles)
+    const conceptosIMSS = activeConceptos.filter(c => c.grupo === 'IMSS');
+    const conceptosOTRO = activeConceptos.filter(c => c.grupo === 'OTRO');
+    const conceptosEXTRA = activeConceptos.filter(c => c.grupo === 'EXTRA');
+
+    const sectionHeaderRow = (label) =>
+      `<tr><td colspan="${getYears() + 1}" style="background:var(--beige);font-size:10px;letter-spacing:1px;font-weight:500;color:var(--oxford);opacity:.7;padding:5px 8px">${label}</td></tr>`;
+
+    const conceptoRows = (cs, indent = true) => cs.map(cd => sumRowDirect(
+      (indent ? '&nbsp;&nbsp;&nbsp;' : '') + cd.label,
+      (i, inf) => totConceptoCampus(cd.key) * inf * annuals[i].factorNomina,
+      'font-size:11.5px;opacity:.92'
+    )).join('');
+
+    // Subtotal IMSS Patronal (suma de los IMSS activos)
+    const subtotalIMSS = () => conceptosIMSS.reduce((s, cd) => s + totConceptoCampus(cd.key), 0);
+
     const summaryCard = `
     <div class="card" style="border-top:3px solid var(--cobalt)">
       <div class="card-title" style="font-size:15px;letter-spacing:.5px">
-        RESUMEN NÓMINA TOTAL · PROYECCIÓN 7 AÑOS
+        RESUMEN NÓMINA TOTAL · PROYECCIÓN ${getYears()} AÑOS
+        <span class="form-hint" style="margin-left:12px;font-weight:300">desglose por concepto coincide con los toggles de Estructura de Puestos</span>
       </div>
       <div class="table-wrap"><table>
         <thead><tr>
-          <th style="text-align:left;min-width:220px">Concepto</th>
+          <th style="text-align:left;min-width:240px">Concepto</th>
           ${corrida.map(thCiclo).join('')}
         </tr></thead>
         <tbody>
           <tr><td style="opacity:.5;font-size:11px">Factor matrícula (${capNomina} al.=100%)</td>
             ${annuals.map(a => `<td style="opacity:.5;font-size:11px;text-align:right">${(a.factorNomina * 100).toFixed(0)}%</td>`).join('')}
           </tr>
-          ${sumRowDirect('Sueldos Brutos (campus)', (i, inf) => totSueldoBruto * inf * annuals[i].factorNomina)}
-          ${sumRowDirect('IMSS Patronal', (i, inf) => totIMSS * inf * annuals[i].factorNomina)}
-          ${sumRowDirect('Infonavit (5% SDI)', (i, inf) => totInfo * inf * annuals[i].factorNomina)}
-          ${sumRowDirect('ISN (3%)', (i, inf) => totISN * inf * annuals[i].factorNomina)}
-          ${sumRowDirect('CRM / Provisiones (ley)', (i, inf) => totProv * inf * annuals[i].factorNomina)}
-          ${annuals[0].asim ? sumRow('Asimilados', a => a.asim) : ''}
-          ${annuals[0].fondo ? sumRow('Fondo Finiquitos', a => a.fondo) : ''}
-          ${annuals[0].transicion ? sumRow('Nómina Transición (legado)', a => a.transicion) : ''}
+          ${sumRowDirect('Sueldos Brutos (campus)', (i, inf) => totSueldoBruto * inf * annuals[i].factorNomina, 'font-weight:500;color:var(--purple)')}
+
+          ${conceptosIMSS.length > 0 ? sectionHeaderRow('IMSS PATRONAL — desglose') : ''}
+          ${conceptoRows(conceptosIMSS)}
+          ${conceptosIMSS.length > 0 ? sumRowDirect('&nbsp;&nbsp;<strong>Subtotal IMSS Patronal</strong>',
+              (i, inf) => subtotalIMSS() * inf * annuals[i].factorNomina,
+              'font-weight:500;border-top:1px solid var(--beige)') : ''}
+
+          ${conceptosOTRO.length > 0 ? sectionHeaderRow('OTROS PATRONALES') : ''}
+          ${conceptoRows(conceptosOTRO)}
+
+          ${conceptosEXTRA.length > 0 ? sectionHeaderRow('CONCEPTOS EXTRAS') : ''}
+          ${conceptoRows(conceptosEXTRA)}
+
+          ${totHonorariosUplift > 0 ? sectionHeaderRow('HONORARIOS') : ''}
+          ${totHonorariosUplift > 0 ? sumRowDirect(
+            `&nbsp;&nbsp;&nbsp;Uplift Honorarios (${(tasaHonActual * 100).toFixed(2)}%)`,
+            (i, inf) => totHonorariosUplift * inf * annuals[i].factorNomina,
+            'font-size:11.5px;color:var(--gold)') : ''}
+
+          ${(annuals[0].asim || annuals[0].fondo || annuals[0].transicion) ? sectionHeaderRow('LEGADO (campos antiguos)') : ''}
+          ${annuals[0].asim ? sumRow('&nbsp;&nbsp;&nbsp;Asimilados', a => a.asim) : ''}
+          ${annuals[0].fondo ? sumRow('&nbsp;&nbsp;&nbsp;Fondo Finiquitos', a => a.fondo) : ''}
+          ${annuals[0].transicion ? sumRow('&nbsp;&nbsp;&nbsp;Nómina Transición', a => a.transicion) : ''}
+
           <tr style="opacity:.35"><td colspan="${getYears() + 1}"></td></tr>
           <tr><td style="color:var(--gold)">Honorarios Dir. Ejecutiva (campus)</td>${deRowCols}</tr>
           <tr class="tr-total">
@@ -1782,39 +2146,28 @@ const App = (() => {
     const mpsLabel = p => {
       const div = Math.max(1, Math.round(p.divisorSalon || 1));
       const mps = Math.max(1, Math.round(p.count || 1));
-      if (div > 1) return ` (÷${div} sal)`;
+      if (div >= 99) return ` (1/grado)`;
+      if (div > 1) return ` (÷${div} sal${p.redondeo === 'floor' ? ', floor' : ''})`;
       return mps > 1 ? ` (×${mps}/sal)` : '';
     };
 
-    const derivedCount = (p, sal) => {
-      if (!sal) return 0;
-      const mps = Math.max(1, Math.round(p.count || 1));
-      const div = Math.max(1, Math.round(p.divisorSalon || 1));
-      return Math.max(1, Math.ceil(sal / div)) * mps;
-    };
+    const gradoLabel = p =>
+      Array.isArray(p.gradosKeys) && p.gradosKeys.length ? p.gradosKeys.join('+') : (p.gradoKey || '—');
 
-    // BASE = count si todos los salones configurados estuvieran ocupados
+    // BASE = count si todos los salones máx configurados estuvieran ocupados
     const baseSalones = state.salones || {};
-    const baseCount = p => {
-      const sal = baseSalones[p.gradoKey] || 0;
-      if (sal === 0) return 0;
-      const mps = Math.max(1, Math.round(p.count || 1));
-      const div = Math.max(1, Math.round(p.divisorSalon || 1));
-      return Math.max(1, Math.ceil(sal / div)) * mps;
-    };
-    const totalBase = puestosDocentes.reduce((s, p) => s + baseCount(p), 0);
+    const totalBase = puestosDocentes.reduce((s, p) => s + calcMultiplicadorPuesto(p, baseSalones), 0);
 
     const docenteRows = puestosDocentes.map(p => {
-      const base = baseCount(p);
+      const base = calcMultiplicadorPuesto(p, baseSalones);
       const celdas = salonesPorAno.map(sm => {
-        const sal = sm[p.gradoKey] || 0;
-        const total = sal > 0 ? derivedCount(p, sal) : 0;
+        const total = calcMultiplicadorPuesto(p, sm);
         const overBase = base > 0 && total > base;
         return `<td style="text-align:center;${total === 0 ? 'opacity:.3' : ''}${overBase ? 'color:var(--purple);font-weight:600' : ''}">${total || '—'}</td>`;
       }).join('');
       return `<tr>
         <td style="max-width:220px">${p.nombre}${mpsLabel(p)}</td>
-        <td style="opacity:.55;font-size:11px">${p.gradoKey || '—'}</td>
+        <td style="opacity:.55;font-size:11px">${gradoLabel(p)}</td>
         <td style="text-align:center;background:var(--beige);font-weight:500;opacity:.8">${base || '—'}</td>
         ${celdas}
       </tr>`;
@@ -1822,10 +2175,7 @@ const App = (() => {
 
     // Fila de totales de formadores por año
     const totFormadoresRow = salonesPorAno.map(sm => {
-      const tot = puestosDocentes.reduce((s, p) => {
-        const sal = sm[p.gradoKey] || 0;
-        return s + (sal > 0 ? derivedCount(p, sal) : 0);
-      }, 0);
+      const tot = puestosDocentes.reduce((s, p) => s + calcMultiplicadorPuesto(p, sm), 0);
       const overBase = totalBase > 0 && tot > totalBase;
       return `<td style="text-align:center;color:var(--cobalt);font-weight:500${overBase ? ';color:var(--purple)' : ''}">${tot}</td>`;
     }).join('');
@@ -2136,8 +2486,9 @@ const App = (() => {
               <tr><td colspan="2">Gastos de Operación</td><td colspan="6" class="num-negative">${M(yr.gastosOp)}</td></tr>
               <tr class="tr-result"><td colspan="2">EGRESO TOTAL</td><td colspan="6">${M(yr.egresoTotal)}</td></tr>
               <tr class="tr-ebitda"><td colspan="2">SUBTOTAL OPERATIVO</td><td colspan="6">${M(yr.subtotal)}</td></tr>
-              <tr><td colspan="2">Comisión Operadora (−${P(state.variables.porcentajeOperadora)})</td><td colspan="6" class="num-negative">${M(-yr.operadora)}</td></tr>
               <tr><td colspan="2">Renta del Activo Inmobiliario</td><td colspan="6" class="num-negative">${M(-yr.rentaInmueble)}</td></tr>
+              <tr class="tr-result"><td colspan="2">Utilidad después de Renta</td><td colspan="6">${M(yr.utilidadDespRenta)}</td></tr>
+              <tr><td colspan="2">Comisión Operadora (−${P(state.variables.porcentajeOperadora)} sobre util. desp. renta)</td><td colspan="6" class="num-negative">${M(-yr.operadora)}</td></tr>
               <tr class="tr-ebitda"><td colspan="2">EBITDA</td><td colspan="6">${M(yr.ebitda)}</td></tr>
               <tr class="tr-sub"><td colspan="2">Flujo Acumulado</td><td colspan="6" class="num-gold">${M(yr.cashAcumulado)}</td></tr>
             </tbody>
@@ -2191,8 +2542,9 @@ const App = (() => {
       { l: 'TOTAL EGRESOS', fn: y => M(y.egresoTotal), result: true },
       { sep: true },
       { l: 'RESULTADO OPERATIVO', fn: y => M(y.subtotal), ebitda: true },
-      { l: 'Comisión Operadora', fn: y => M(-y.operadora), cls: 'num-negative' },
       { l: 'Renta del Activo Inmobiliario', fn: y => M(-y.rentaInmueble), cls: 'num-negative' },
+      { l: 'Utilidad después de Renta', fn: y => M(y.utilidadDespRenta), result: true },
+      { l: `Comisión Operadora (${P(state.variables.porcentajeOperadora)} sobre util. desp. renta)`, fn: y => M(-y.operadora), cls: 'num-negative' },
       { l: 'EBITDA', fn: y => M(y.ebitda), ebitda: true },
       { sep: true },
       { l: 'Flujo Acumulado (Bancos)', fn: y => M(y.cashAcumulado), cls: 'num-gold' },
@@ -3271,18 +3623,71 @@ const App = (() => {
   }
 
   // ── VISTA 5: ESCENARIOS GUARDADOS ──────────────────────────────
+  // Almacenamiento en la nube vía Netlify Blobs (compartido entre máquinas).
+  // localStorage se conserva como caché para render inmediato y fallback offline.
   const SC_KEY = 'lil_saved_scenarios';
+  const SC_API = '/.netlify/functions/scenarios';
+  let scenariosSyncedOnce = false;
+
   function getSavedScenarios() {
     try { return JSON.parse(localStorage.getItem(SC_KEY) || '[]'); }
     catch (e) { return []; }
   }
-  function saveCurrentScenario(name) {
-    const list = getSavedScenarios();
+  function setSavedScenariosLocal(list) {
+    try { localStorage.setItem(SC_KEY, JSON.stringify((list || []).slice(0, 20))); }
+    catch (e) { }
+  }
+  async function syncScenariosFromCloud() {
+    try {
+      const res = await fetch(SC_API, { method: 'GET' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const { scenarios } = await res.json();
+      const cloud = Array.isArray(scenarios) ? scenarios : [];
+      const local = getSavedScenarios();
+      // Migración primera carga: si la nube está vacía y hay escenarios locales, subirlos
+      if (cloud.length === 0 && local.length > 0 && !scenariosSyncedOnce) {
+        try {
+          const put = await fetch(SC_API, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ scenarios: local })
+          });
+          if (put.ok) {
+            const { scenarios: pushed } = await put.json();
+            setSavedScenariosLocal(pushed || local);
+          }
+        } catch (e) { /* mantener local */ }
+      } else {
+        setSavedScenariosLocal(cloud);
+      }
+      scenariosSyncedOnce = true;
+      if (currentView === 'scenariosaved') navigate('scenariosaved');
+    } catch (e) {
+      console.warn('No se pudo sincronizar escenarios desde la nube:', e.message);
+    }
+  }
+  async function saveCurrentScenario(name) {
     const snap = { name, ts: Date.now(), state: JSON.parse(JSON.stringify(state)) };
-    list.unshift(snap);
-    localStorage.setItem(SC_KEY, JSON.stringify(list.slice(0, 20)));
+    const optimistic = [snap, ...getSavedScenarios()].slice(0, 20);
+    setSavedScenariosLocal(optimistic);
     navigate('scenariosaved');
     toast(`Escenario "${name}" guardado`, 'success');
+    try {
+      const res = await fetch(SC_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scenario: snap })
+      });
+      if (res.ok) {
+        const { scenarios } = await res.json();
+        setSavedScenariosLocal(scenarios || []);
+        if (currentView === 'scenariosaved') navigate('scenariosaved');
+      } else {
+        toast('Guardado local — falló subida a la nube', 'error');
+      }
+    } catch (e) {
+      toast('Guardado local — sin conexión a la nube', 'error');
+    }
   }
   function loadScenario(idx) {
     const list = getSavedScenarios();
@@ -3293,11 +3698,25 @@ const App = (() => {
     toast(`Escenario "${list[idx].name}" cargado`, 'success');
     requestAnimationFrame(() => initCharts(calcCorrida()));
   }
-  function deleteScenario(idx) {
+  async function deleteScenario(idx) {
     const list = getSavedScenarios();
+    const target = list[idx];
+    if (!target) return;
     list.splice(idx, 1);
-    localStorage.setItem(SC_KEY, JSON.stringify(list));
+    setSavedScenariosLocal(list);
     navigate('scenariosaved');
+    try {
+      const res = await fetch(SC_API, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ts: target.ts })
+      });
+      if (res.ok) {
+        const { scenarios } = await res.json();
+        setSavedScenariosLocal(scenarios || []);
+        if (currentView === 'scenariosaved') navigate('scenariosaved');
+      }
+    } catch (e) { /* mantener borrado local */ }
   }
   function renderScenarioSaved() {
     const list = getSavedScenarios();
@@ -4074,6 +4493,43 @@ const App = (() => {
     scheduleUpdate();
   }
 
+  function toggleConcepto(key) {
+    if (!state.nominas.conceptosActivos) state.nominas.conceptosActivos = {};
+    const ca = state.nominas.conceptosActivos;
+    ca[key] = ca[key] === false; // false → true · (true|undef) → false
+    scheduleUpdate();
+  }
+
+  function addConceptoExtra() {
+    if (!state.nominas.conceptosExtras) state.nominas.conceptosExtras = [];
+    const nombre = (prompt('Nombre del concepto / beneficio:', 'Vales de despensa') || '').trim();
+    if (!nombre) return;
+    const tipo = (prompt('Tipo: pctSueldo (% del sueldo), pctSDI (% del SDI mensual), o fijo (monto mensual)', 'pctSueldo') || 'pctSueldo').trim();
+    if (!['pctSueldo', 'pctSDI', 'fijo'].includes(tipo)) {
+      toast('Tipo inválido. Usa pctSueldo, pctSDI o fijo', 'error'); return;
+    }
+    const valorStr = prompt(`Valor (${tipo === 'fijo' ? 'pesos' : 'porcentaje en decimal, ej. 0.04'}):`, '0.04');
+    const valor = parseFloat(valorStr);
+    if (isNaN(valor) || valor < 0) { toast('Valor inválido', 'error'); return; }
+    state.nominas.conceptosExtras.push({ nombre, tipo, valor });
+    if (!state.nominas.conceptosActivos) state.nominas.conceptosActivos = {};
+    state.nominas.conceptosActivos['extra_' + (state.nominas.conceptosExtras.length - 1)] = true;
+    scheduleUpdate();
+    toast('Concepto agregado', 'success');
+  }
+
+  function removeConceptoExtra(idx) {
+    if (!state.nominas.conceptosExtras?.[idx]) return;
+    if (!confirm(`¿Eliminar "${state.nominas.conceptosExtras[idx].nombre}"?`)) return;
+    state.nominas.conceptosExtras.splice(idx, 1);
+    // Reindex conceptosActivos para extras (las claves son "extra_N")
+    const ca = state.nominas.conceptosActivos || {};
+    Object.keys(ca).filter(k => k.startsWith('extra_')).forEach(k => delete ca[k]);
+    state.nominas.conceptosExtras.forEach((_, i) => { ca['extra_' + i] = true; });
+    scheduleUpdate();
+    toast('Concepto eliminado');
+  }
+
   // ============================================================
   // 21. UTILS + INIT
   // ============================================================
@@ -4114,6 +4570,10 @@ const App = (() => {
     }, true);
 
     navigate('dashboard');
+
+    // Sincroniza escenarios guardados desde la nube (Netlify Blobs).
+    // No bloquea el render: la lista local se actualiza cuando responde.
+    syncScenariosFromCloud();
   }
 
   function recalcular() { softRefresh(); toast('Proyección actualizada', 'success'); }
@@ -4340,6 +4800,7 @@ const App = (() => {
   return {
     init, navigate, resetState, exportCSV, toggleSidebar, recalcular,
     addPuesto, removePuesto, toggleHonorarios,
+    toggleConcepto, addConceptoExtra, removeConceptoExtra,
     generarPDF: _generarPDF, logout, setHorizonte,
     saveCurrentScenario, loadScenario, deleteScenario, exportExcel, setTasaDescuento,
     addIngreso, removeIngreso, updateIngreso, clearHistorial,
